@@ -315,6 +315,8 @@ class JsonStructuralParser {
         );
       }
     }
+
+    throw new JsonParseError("Unterminated object.", this.position, this.position);
   }
 
   private parseArray(parentId: string | undefined, depth: number, path: string, registerPath: boolean): string {
@@ -346,7 +348,7 @@ class JsonStructuralParser {
 
     let index = 0;
 
-    while (true) {
+    while (this.position < this.text.length) {
       this.skipWhitespace();
       const childNodeId = this.parseValue(nodeId, depth + 1, `${path}[${index}]`, true);
       this.skipWhitespace();
@@ -366,11 +368,9 @@ class JsonStructuralParser {
 
       index += 1;
 
-      if (this.position >= this.text.length) {
-        throw new JsonParseError("Unterminated array.", this.position, this.position);
-      }
-
     }
+
+    throw new JsonParseError("Unterminated array.", this.position, this.position);
   }
 
   private parseStringNode(parentId: string | undefined, depth: number, path: string, registerPath: boolean): string {
@@ -533,7 +533,7 @@ class JsonStructuralParser {
     let value = "";
 
     while (this.position < this.text.length) {
-      const character = this.text[this.position] ?? "";
+      const character = this.text[this.position]!;
 
       if (character === '"') {
         this.position += 1;
@@ -640,7 +640,7 @@ class JsonStructuralParser {
   }
 
   private skipWhitespace(): void {
-    while (isWhitespace(this.text[this.position])) {
+    while (this.position < this.text.length && isWhitespace(this.text[this.position])) {
       this.position += 1;
     }
   }

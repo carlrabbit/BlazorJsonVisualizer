@@ -150,6 +150,7 @@ var JsonStructuralParser = class {
         );
       }
     }
+    throw new JsonParseError("Unterminated object.", this.position, this.position);
   }
   parseArray(parentId, depth, path, registerPath) {
     const startOffset = this.position;
@@ -174,7 +175,7 @@ var JsonStructuralParser = class {
       return nodeId;
     }
     let index = 0;
-    while (true) {
+    while (this.position < this.text.length) {
       this.skipWhitespace();
       const childNodeId = this.parseValue(nodeId, depth + 1, `${path}[${index}]`, true);
       this.skipWhitespace();
@@ -190,10 +191,8 @@ var JsonStructuralParser = class {
         );
       }
       index += 1;
-      if (this.position >= this.text.length) {
-        throw new JsonParseError("Unterminated array.", this.position, this.position);
-      }
     }
+    throw new JsonParseError("Unterminated array.", this.position, this.position);
   }
   parseStringNode(parentId, depth, path, registerPath) {
     const token = this.readStringToken("Expected a string value.");
@@ -321,7 +320,7 @@ var JsonStructuralParser = class {
     }
     let value = "";
     while (this.position < this.text.length) {
-      const character = this.text[this.position] ?? "";
+      const character = this.text[this.position];
       if (character === '"') {
         this.position += 1;
         return {
@@ -405,7 +404,7 @@ var JsonStructuralParser = class {
     this.pathToNodeIds[path] = [...existingNodeIds, nodeId];
   }
   skipWhitespace() {
-    while (isWhitespace(this.text[this.position])) {
+    while (this.position < this.text.length && isWhitespace(this.text[this.position])) {
       this.position += 1;
     }
   }
@@ -747,7 +746,7 @@ var DomRuntimeControllerImpl = class {
   }
   scrollToNode(sessionId, nodeId) {
     const hostElement = this.hostElements.get(sessionId);
-    const targetElement = hostElement?.querySelector(`[data-node-id="${nodeId}"]`);
+    const targetElement = hostElement?.querySelector(`[data-node-id="${escapeSelectorValue(nodeId)}"]`);
     targetElement?.scrollIntoView({ block: "nearest" });
   }
   async emit(event) {
@@ -758,6 +757,12 @@ var DomRuntimeControllerImpl = class {
     await callback(event);
   }
 };
+function escapeSelectorValue(value) {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+  return value.replace(/["\\]/g, "\\$&");
+}
 function createRuntimeView(session, toggleFold2) {
   const container = document.createElement("section");
   container.className = "bjv-runtime";
@@ -832,6 +837,7 @@ function appendFoldableLines(container, document2, node, indentLevel, trailingCo
       const propertyNode = document2.nodesById[propertyNodeId];
       const valueNodeId = propertyNode.firstChildId;
       if (valueNodeId === void 0) {
+        console.warn(`Property node ${propertyNode.nodeId} is missing its value node.`);
         return;
       }
       appendValueLines(
