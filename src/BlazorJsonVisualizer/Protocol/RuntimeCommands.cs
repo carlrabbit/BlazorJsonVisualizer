@@ -14,6 +14,14 @@ public sealed record DetachSchemaCommand(string SessionId, string SchemaId);
 
 public sealed record GetSchemaMetadataForPathCommand(string SessionId, string Path);
 
+public sealed record CreateProjectionCommand(string SessionId, string ProjectionId, string Kind, string SourcePath);
+
+public sealed record DisposeProjectionCommand(string SessionId, string ProjectionId);
+
+public sealed record ProjectionSelectionDto(string Kind, string RowId, string? ColumnId = null);
+
+public sealed record SelectProjectionItemCommand(string SessionId, string ProjectionId, ProjectionSelectionDto Selection);
+
 public sealed record SetViewportCommand(string SessionId, double Width, double Height);
 
 public sealed record ToggleFoldCommand(string SessionId, string NodeId);

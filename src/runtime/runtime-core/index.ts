@@ -1,4 +1,4 @@
-export const RUNTIME_PROTOCOL_VERSION = "0.5.0-milestone-005";
+export const RUNTIME_PROTOCOL_VERSION = "0.6.0-milestone-006";
 
 export type JsonContentType = "application/json";
 export type DocumentSessionLifecycleState = "created" | "mounted" | "document-loaded" | "disposed";
@@ -125,6 +125,45 @@ export interface GetSchemaMetadataForPathCommand {
   path: string;
 }
 
+export interface CreateProjectionCommand {
+  sessionId: string;
+  projectionId: string;
+  kind: string;
+  sourcePath: string;
+}
+
+export interface DisposeProjectionCommand {
+  sessionId: string;
+  projectionId: string;
+}
+
+export interface ProjectionRowSelectionDto {
+  kind: "row";
+  rowId: string;
+}
+
+export interface ProjectionCellSelectionDto {
+  kind: "cell";
+  rowId: string;
+  columnId: string;
+}
+
+export type ProjectionSelectionDto = ProjectionRowSelectionDto | ProjectionCellSelectionDto;
+
+export interface SelectProjectionItemCommand {
+  sessionId: string;
+  projectionId: string;
+  selection: ProjectionSelectionDto;
+}
+
+export interface EditProjectionCellCommand {
+  sessionId: string;
+  projectionId: string;
+  rowId: string;
+  columnId: string;
+  value: JsonValueDto;
+}
+
 export interface RuntimePatchOperationDto {
   kind: RuntimeTransactionKind;
   path: string;
@@ -175,6 +214,45 @@ export interface SchemaNodeMetadataDto {
   defaultValue?: JsonValueDto | undefined;
 }
 
+export type ProjectionCapability = "readRows" | "selectRow" | "selectCell" | "editCell";
+
+export interface ProjectionDto {
+  projectionId: string;
+  sessionId: string;
+  kind: string;
+  sourcePath: string;
+  capabilities: ProjectionCapability[];
+}
+
+export interface TableProjectionDto {
+  projectionId: string;
+  sourcePath: string;
+  columns: TableColumnDto[];
+  rows: TableRowDto[];
+}
+
+export interface TableColumnDto {
+  columnId: string;
+  propertyName: string;
+  title?: string | undefined;
+  expectedType?: string | string[] | undefined;
+}
+
+export interface TableRowDto {
+  rowId: string;
+  itemNodeId: string;
+  index: number;
+  cells: TableCellDto[];
+}
+
+export interface TableCellDto {
+  columnId: string;
+  propertyName: string;
+  valueNodeId?: string | undefined;
+  value: JsonValueDto | undefined;
+  diagnostics?: SchemaDiagnosticDto[] | undefined;
+}
+
 export interface StructuralNodeRecord {
   nodeId: string;
   kind: StructuralNodeKind;
@@ -215,6 +293,9 @@ export interface DocumentSessionRecord {
   schemaDiagnostics: SchemaDiagnosticDto[];
   schemaMetadataByNodeId: Record<string, SchemaNodeMetadataDto>;
   schemaAttachment?: SchemaAttachmentRecord | undefined;
+  projectionsById: Record<string, ProjectionDto>;
+  tableProjectionsById: Record<string, TableProjectionDto>;
+  projectionSelectionsById: Record<string, ProjectionSelectionDto>;
   revealTargetNodeId?: string | undefined;
 }
 
@@ -300,6 +381,27 @@ export interface SchemaMetadataChangedEventDto {
   affectedNodeIds: string[];
 }
 
+export interface ProjectionCreatedEventDto {
+  type: "projectionCreated";
+  sessionId: string;
+  projectionId: string;
+  kind: string;
+}
+
+export interface ProjectionChangedEventDto {
+  type: "projectionChanged";
+  sessionId: string;
+  projectionId: string;
+}
+
+export interface ProjectionSelectionChangedEventDto {
+  type: "projectionSelectionChanged";
+  sessionId: string;
+  projectionId: string;
+  sourceNodeId?: string | undefined;
+  sourcePath?: string | undefined;
+}
+
 export type RuntimeEventDto =
   | SessionCreatedEventDto
   | SessionDisposedEventDto
@@ -312,7 +414,10 @@ export type RuntimeEventDto =
   | TransactionRejectedEventDto
   | SchemaAttachedEventDto
   | SchemaDiagnosticsChangedEventDto
-  | SchemaMetadataChangedEventDto;
+  | SchemaMetadataChangedEventDto
+  | ProjectionCreatedEventDto
+  | ProjectionChangedEventDto
+  | ProjectionSelectionChangedEventDto;
 
 export interface ParseJsonDocumentResult {
   document?: StructuralIndexDocument | undefined;
@@ -362,6 +467,22 @@ export interface SchemaOverlayUpdateResult {
   session: DocumentSessionRecord;
   affectedNodeIds: string[];
   diagnostics: SchemaDiagnosticDto[];
+}
+
+export interface ProjectionCreateResult {
+  session: DocumentSessionRecord;
+  projection: ProjectionDto;
+}
+
+export interface ProjectionDisposeResult {
+  session: DocumentSessionRecord;
+}
+
+export interface ProjectionSelectionChangeResult {
+  session: DocumentSessionRecord;
+  projectionId: string;
+  sourceNodeId?: string | undefined;
+  sourcePath?: string | undefined;
 }
 
 interface TransactionMutationResult {
@@ -975,6 +1096,9 @@ export class SessionRegistry {
       diagnostics: [],
       schemaDiagnostics: [],
       schemaMetadataByNodeId: {},
+      projectionsById: {},
+      tableProjectionsById: {},
+      projectionSelectionsById: {},
       undoStack: [],
       redoStack: [],
       ...(command.options !== undefined ? { options: command.options } : {})
@@ -1005,6 +1129,9 @@ export class SessionRegistry {
       schemaDiagnostics: [],
       schemaMetadataByNodeId: {},
       schemaAttachment: undefined,
+      projectionsById: {},
+      tableProjectionsById: {},
+      projectionSelectionsById: {},
       revealTargetNodeId: undefined,
       undoStack: [],
       redoStack: [],
@@ -1067,7 +1194,7 @@ export class SessionRegistry {
       return result;
     }
 
-    const updatedSession: InternalDocumentSessionRecord = {
+    let updatedSession: InternalDocumentSessionRecord = {
       ...result.session,
       undoStack: [...session.undoStack, ...result.session.undoStack.slice(session.undoStack.length)],
       redoStack: [],
@@ -1075,6 +1202,8 @@ export class SessionRegistry {
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+
+    updatedSession = this.rebuildProjections(updatedSession);
 
     this.sessions.set(command.sessionId, updatedSession);
     return {
@@ -1117,7 +1246,7 @@ export class SessionRegistry {
       return result;
     }
 
-    const updatedSession: InternalDocumentSessionRecord = {
+    let updatedSession: InternalDocumentSessionRecord = {
       ...result.session,
       undoStack: session.undoStack.slice(0, -1),
       redoStack: [...session.redoStack, historyEntry],
@@ -1125,6 +1254,8 @@ export class SessionRegistry {
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+
+    updatedSession = this.rebuildProjections(updatedSession);
 
     this.sessions.set(command.sessionId, updatedSession);
     return {
@@ -1159,7 +1290,7 @@ export class SessionRegistry {
       return result;
     }
 
-    const updatedSession: InternalDocumentSessionRecord = {
+    let updatedSession: InternalDocumentSessionRecord = {
       ...result.session,
       undoStack: [...session.undoStack, historyEntry],
       redoStack: session.redoStack.slice(0, -1),
@@ -1167,6 +1298,8 @@ export class SessionRegistry {
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+
+    updatedSession = this.rebuildProjections(updatedSession);
 
     this.sessions.set(command.sessionId, updatedSession);
     return {
@@ -1184,7 +1317,7 @@ export class SessionRegistry {
     }
 
     const overlay = resolveSchemaOverlay(session.document, session.text, command.schema);
-    const updatedSession: InternalDocumentSessionRecord = {
+    let updatedSession: InternalDocumentSessionRecord = {
       ...session,
       schemaAttachment: {
         schemaId: command.schemaId,
@@ -1194,6 +1327,8 @@ export class SessionRegistry {
       schemaMetadataByNodeId: overlay.metadataByNodeId,
       schemaDiagnostics: overlay.diagnostics
     };
+
+    updatedSession = this.rebuildProjections(updatedSession);
 
     this.sessions.set(command.sessionId, updatedSession);
     return {
@@ -1215,12 +1350,14 @@ export class SessionRegistry {
       };
     }
 
-    const updatedSession: InternalDocumentSessionRecord = {
+    let updatedSession: InternalDocumentSessionRecord = {
       ...session,
       schemaAttachment: undefined,
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+
+    updatedSession = this.rebuildProjections(updatedSession);
 
     this.sessions.set(command.sessionId, updatedSession);
     return {
@@ -1243,6 +1380,110 @@ export class SessionRegistry {
     }
 
     return session.schemaMetadataByNodeId[nodeId];
+  }
+
+  public createProjection(command: CreateProjectionCommand): ProjectionCreateResult {
+    const session = this.requireSession(command.sessionId);
+    if (session.projectionsById[command.projectionId] !== undefined) {
+      throw new Error(`Projection '${command.projectionId}' already exists.`);
+    }
+
+    const projection = buildProjection(session, command);
+    const updatedSession: InternalDocumentSessionRecord = {
+      ...session,
+      projectionsById: {
+        ...session.projectionsById,
+        [command.projectionId]: projection.projection
+      },
+      tableProjectionsById: {
+        ...session.tableProjectionsById,
+        [command.projectionId]: projection.table
+      }
+    };
+
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      session: updatedSession,
+      projection: projection.projection
+    };
+  }
+
+  public disposeProjection(command: DisposeProjectionCommand): ProjectionDisposeResult {
+    const session = this.requireSession(command.sessionId);
+    if (session.projectionsById[command.projectionId] === undefined) {
+      return { session };
+    }
+
+    const { [command.projectionId]: _, ...remainingProjections } = session.projectionsById;
+    const { [command.projectionId]: __, ...remainingTables } = session.tableProjectionsById;
+    const { [command.projectionId]: ___, ...remainingSelections } = session.projectionSelectionsById;
+    const updatedSession: InternalDocumentSessionRecord = {
+      ...session,
+      projectionsById: remainingProjections,
+      tableProjectionsById: remainingTables,
+      projectionSelectionsById: remainingSelections
+    };
+
+    this.sessions.set(command.sessionId, updatedSession);
+    return { session: updatedSession };
+  }
+
+  public selectProjectionItem(command: SelectProjectionItemCommand): ProjectionSelectionChangeResult {
+    const session = this.requireSession(command.sessionId);
+    const projection = session.projectionsById[command.projectionId];
+    if (projection === undefined) {
+      throw new Error(`Projection '${command.projectionId}' is not available.`);
+    }
+
+    const selectionSource = resolveProjectionSelectionSource(session, command.projectionId, command.selection);
+    const updatedSession: InternalDocumentSessionRecord = {
+      ...session,
+      projectionSelectionsById: {
+        ...session.projectionSelectionsById,
+        [command.projectionId]: command.selection
+      }
+    };
+
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      session: updatedSession,
+      projectionId: projection.projectionId,
+      sourceNodeId: selectionSource.sourceNodeId,
+      sourcePath: selectionSource.sourcePath
+    };
+  }
+
+  public editProjectionCell(command: EditProjectionCellCommand): TransactionCommandResult {
+    const session = this.requireSession(command.sessionId);
+    const tableProjection = session.tableProjectionsById[command.projectionId];
+    if (tableProjection === undefined) {
+      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Projection '${command.projectionId}' is not available.`);
+    }
+
+    const row = tableProjection.rows.find((entry) => entry.rowId === command.rowId);
+    if (row === undefined) {
+      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Row '${command.rowId}' is not available.`);
+    }
+
+    const cell = row.cells.find((entry) => entry.columnId === command.columnId);
+    if (cell === undefined) {
+      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Column '${command.columnId}' is not available for row '${command.rowId}'.`);
+    }
+
+    return this.applyTransaction({
+      sessionId: command.sessionId,
+      transaction: {
+        transactionId: `projection-edit-${session.revision + 1}`,
+        sessionId: command.sessionId,
+        baseRevision: session.revision,
+        kind: "setPropertyValue",
+        payload: {
+          objectNodeId: row.itemNodeId,
+          propertyName: cell.propertyName,
+          value: command.value
+        }
+      }
+    });
   }
 
   public clearRevealTarget(sessionId: string): DocumentSessionRecord {
@@ -1353,6 +1594,251 @@ export class SessionRegistry {
 
     return session;
   }
+
+  private rebuildProjections(session: InternalDocumentSessionRecord): InternalDocumentSessionRecord {
+    const projectionEntries = Object.values(session.projectionsById);
+    if (projectionEntries.length === 0) {
+      return session;
+    }
+
+    const projectionsById: Record<string, ProjectionDto> = {};
+    const tableProjectionsById: Record<string, TableProjectionDto> = {};
+    const projectionSelectionsById: Record<string, ProjectionSelectionDto> = {};
+
+    for (const projection of projectionEntries) {
+      try {
+        const rebuilt = buildProjection(session, projection);
+        projectionsById[projection.projectionId] = rebuilt.projection;
+        tableProjectionsById[projection.projectionId] = rebuilt.table;
+        const existingSelection = session.projectionSelectionsById[projection.projectionId];
+        if (existingSelection !== undefined) {
+          projectionSelectionsById[projection.projectionId] = existingSelection;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return {
+      ...session,
+      projectionsById,
+      tableProjectionsById,
+      projectionSelectionsById
+    };
+  }
+}
+
+interface ProjectionBuildResult {
+  projection: ProjectionDto;
+  table: TableProjectionDto;
+}
+
+interface ProjectionSelectionSourceResult {
+  sourceNodeId?: string | undefined;
+  sourcePath?: string | undefined;
+}
+
+function buildProjection(
+  session: Pick<DocumentSessionRecord, "document" | "text" | "schemaAttachment" | "schemaDiagnostics"> & {
+    sessionId: string;
+  },
+  command: Pick<CreateProjectionCommand, "projectionId" | "kind" | "sourcePath">
+): ProjectionBuildResult {
+  if (command.kind !== "table.arrayOfObjects") {
+    throw new Error(`Projection kind '${command.kind}' is not supported.`);
+  }
+
+  if (session.document === undefined || session.text === undefined) {
+    throw new Error(`Session '${session.sessionId}' does not have a loaded document.`);
+  }
+
+  const tableProjection = buildTableArrayOfObjectsProjection(
+    session.document,
+    session.text,
+    command.projectionId,
+    command.sourcePath,
+    session.schemaDiagnostics,
+    session.schemaAttachment?.schema
+  );
+
+  return {
+    projection: {
+      projectionId: command.projectionId,
+      sessionId: session.sessionId,
+      kind: command.kind,
+      sourcePath: command.sourcePath,
+      capabilities: ["readRows", "selectRow", "selectCell", "editCell"]
+    },
+    table: tableProjection
+  };
+}
+
+function buildTableArrayOfObjectsProjection(
+  document: StructuralIndexDocument,
+  text: string,
+  projectionId: string,
+  sourcePath: string,
+  schemaDiagnostics: SchemaDiagnosticDto[],
+  schema: object | undefined
+): TableProjectionDto {
+  const sourceNodeId = findNodeIdByPath(document, sourcePath);
+  if (sourceNodeId === undefined) {
+    throw new Error(`Projection source path '${sourcePath}' was not found.`);
+  }
+
+  const sourceNode = document.nodesById[sourceNodeId];
+  if (sourceNode === undefined || sourceNode.kind !== "array") {
+    throw new Error(`Projection source path '${sourcePath}' must resolve to an array node.`);
+  }
+
+  const rowNodeIds = listChildNodeIds(document, sourceNode.nodeId);
+  for (const rowNodeId of rowNodeIds) {
+    const rowNode = document.nodesById[rowNodeId];
+    if (rowNode === undefined || rowNode.kind !== "object") {
+      throw new Error(`Projection source path '${sourcePath}' must contain only object items.`);
+    }
+  }
+
+  const rootValue = parseJsonText(text);
+  if (rootValue === undefined) {
+    throw new Error("Projection source document is not valid JSON.");
+  }
+
+  const sourceValue = getJsonValueAtPath(rootValue, sourcePath);
+  if (!isJsonArrayDto(sourceValue) || !sourceValue.every((entry) => isJsonObjectDto(entry))) {
+    throw new Error(`Projection source path '${sourcePath}' must resolve to an array of objects.`);
+  }
+
+  const propertyNames = collectProjectionPropertyNames(document, rowNodeIds);
+  const columns = propertyNames.map((propertyName, index) =>
+    createTableColumn(sourcePath, propertyName, index, schema)
+  );
+  const columnByPropertyName = new Map(columns.map((column) => [column.propertyName, column]));
+  const rows: TableRowDto[] = rowNodeIds.map((rowNodeId, index) => {
+    const rowNode = document.nodesById[rowNodeId];
+    if (rowNode === undefined) {
+      throw new Error(`Projection row node '${rowNodeId}' is not available.`);
+    }
+
+    return {
+      rowId: `row-${index}`,
+      itemNodeId: rowNode.nodeId,
+      index,
+      cells: propertyNames.map((propertyName) => {
+        const column = columnByPropertyName.get(propertyName);
+        if (column === undefined) {
+          throw new Error(`Projection column '${propertyName}' is not available.`);
+        }
+
+        const cellPath = appendObjectPath(rowNode.path, propertyName);
+        const valueNodeId = findNodeIdByPath(document, cellPath);
+        const cellDiagnostics = schemaDiagnostics.filter(
+          (diagnostic) => diagnostic.path === cellPath || (valueNodeId !== undefined && diagnostic.nodeId === valueNodeId)
+        );
+        const value = getJsonValueAtPath(rootValue, cellPath);
+        return {
+          columnId: column.columnId,
+          propertyName,
+          ...(valueNodeId !== undefined ? { valueNodeId } : {}),
+          value,
+          ...(cellDiagnostics.length > 0 ? { diagnostics: cellDiagnostics } : {})
+        };
+      })
+    };
+  });
+
+  return {
+    projectionId,
+    sourcePath,
+    columns,
+    rows
+  };
+}
+
+function collectProjectionPropertyNames(document: StructuralIndexDocument, rowNodeIds: string[]): string[] {
+  const names: string[] = [];
+  const nameSet = new Set<string>();
+
+  for (const rowNodeId of rowNodeIds) {
+    for (const propertyNodeId of listChildNodeIds(document, rowNodeId)) {
+      const propertyNode = document.nodesById[propertyNodeId];
+      const propertyName = propertyNode?.propertyName;
+      if (propertyNode === undefined || propertyNode.kind !== "property" || propertyName === undefined || nameSet.has(propertyName)) {
+        continue;
+      }
+
+      nameSet.add(propertyName);
+      names.push(propertyName);
+    }
+  }
+
+  return names;
+}
+
+function createTableColumn(
+  sourcePath: string,
+  propertyName: string,
+  index: number,
+  schema: object | undefined
+): TableColumnDto {
+  const columnId = `column-${index}`;
+  if (schema === undefined) {
+    return {
+      columnId,
+      propertyName
+    };
+  }
+
+  const schemaResult = resolveSchemaForPath(schema, appendObjectPath(`${sourcePath}[0]`, propertyName));
+  const resolvedSchema = schemaResult.resolvedSchema;
+  if (resolvedSchema === undefined) {
+    return {
+      columnId,
+      propertyName
+    };
+  }
+
+  const expectedType = parseSchemaType(resolvedSchema.type);
+
+  return {
+    columnId,
+    propertyName,
+    ...(typeof resolvedSchema.title === "string" ? { title: resolvedSchema.title } : {}),
+    ...(expectedType !== undefined ? { expectedType } : {})
+  };
+}
+
+function resolveProjectionSelectionSource(
+  session: Pick<DocumentSessionRecord, "tableProjectionsById">,
+  projectionId: string,
+  selection: ProjectionSelectionDto
+): ProjectionSelectionSourceResult {
+  const tableProjection = session.tableProjectionsById[projectionId];
+  if (tableProjection === undefined) {
+    throw new Error(`Projection '${projectionId}' is not available.`);
+  }
+
+  const row = tableProjection.rows.find((entry) => entry.rowId === selection.rowId);
+  if (row === undefined) {
+    throw new Error(`Projection row '${selection.rowId}' is not available.`);
+  }
+
+  if (selection.kind === "row") {
+    return {
+      sourceNodeId: row.itemNodeId,
+      sourcePath: `${tableProjection.sourcePath}[${row.index}]`
+    };
+  }
+
+  const cell = row.cells.find((entry) => entry.columnId === selection.columnId);
+  if (cell === undefined) {
+    throw new Error(`Projection column '${selection.columnId}' is not available for row '${selection.rowId}'.`);
+  }
+
+  return {
+    sourceNodeId: cell.valueNodeId,
+    sourcePath: appendObjectPath(`${tableProjection.sourcePath}[${row.index}]`, cell.propertyName)
+  };
 }
 
 function appendObjectPath(parentPath: string, propertyName: string): string {

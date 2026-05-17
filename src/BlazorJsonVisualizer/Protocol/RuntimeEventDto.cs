@@ -45,6 +45,10 @@ public sealed record RuntimeEventDto(
     string? DocumentId = null,
     int? NodeCount = null,
     string? SchemaId = null,
+    string? ProjectionId = null,
+    string? Kind = null,
+    string? SourceNodeId = null,
+    string? SourcePath = null,
     IReadOnlyList<RuntimeDiagnosticDto>? Diagnostics = null,
     IReadOnlyList<SchemaDiagnosticDto>? SchemaDiagnostics = null,
     IReadOnlyList<string>? AffectedNodeIds = null,
@@ -66,6 +70,9 @@ public static class RuntimeEventTypes
     public const string SchemaAttached = "schemaAttached";
     public const string SchemaDiagnosticsChanged = "schemaDiagnosticsChanged";
     public const string SchemaMetadataChanged = "schemaMetadataChanged";
+    public const string ProjectionCreated = "projectionCreated";
+    public const string ProjectionChanged = "projectionChanged";
+    public const string ProjectionSelectionChanged = "projectionSelectionChanged";
     public const string TransactionApplied = "transactionApplied";
     public const string TransactionRejected = "transactionRejected";
 }

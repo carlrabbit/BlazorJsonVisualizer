@@ -115,6 +115,32 @@ Fields:
 - `sessionId: string`
 - `path: string`
 
+## Additional host-to-runtime messages for Milestone 006
+
+### `createProjection`
+
+Fields:
+
+- `sessionId: string`
+- `projectionId: string`
+- `kind: string`
+- `sourcePath: string`
+
+### `disposeProjection`
+
+Fields:
+
+- `sessionId: string`
+- `projectionId: string`
+
+### `selectProjectionItem`
+
+Fields:
+
+- `sessionId: string`
+- `projectionId: string`
+- `selection: ProjectionSelectionDto`
+
 ## Runtime-to-host events
 
 ### `sessionCreated`
@@ -211,6 +237,32 @@ Fields:
 
 - `sessionId: string`
 - `affectedNodeIds: string[]`
+
+## Additional runtime-to-host events for Milestone 006
+
+### `projectionCreated`
+
+Fields:
+
+- `sessionId: string`
+- `projectionId: string`
+- `kind: string`
+
+### `projectionChanged`
+
+Fields:
+
+- `sessionId: string`
+- `projectionId: string`
+
+### `projectionSelectionChanged`
+
+Fields:
+
+- `sessionId: string`
+- `projectionId: string`
+- `sourceNodeId?: string`
+- `sourcePath?: string`
 
 ## Versioning
 

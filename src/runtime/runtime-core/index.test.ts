@@ -624,6 +624,149 @@ function schemaOverlayIsInvalidatedAfterTransaction(): void {
   assert(updatedSession.schemaDiagnostics.length === 0, "schema diagnostics should be cleared after transaction");
 }
 
+function createProjectionAcceptsArrayOfObjectsSource(): void {
+  const registry = createLoadedSession('[{"name":"Alice","age":30},{"name":"Bob","active":true}]');
+  const sessionId = "session-1";
+
+  const result = registry.createProjection({
+    sessionId,
+    projectionId: "projection-1",
+    kind: "table.arrayOfObjects",
+    sourcePath: "$"
+  });
+
+  assert(result.projection.kind === "table.arrayOfObjects", "projection kind should be persisted");
+  const tableProjection = requireSession(registry.getSession(sessionId)).tableProjectionsById["projection-1"];
+  assert(tableProjection !== undefined, "table projection should be stored in the session");
+  assert(tableProjection?.columns.map((column) => column.propertyName).join(",") === "name,age,active", "columns should be derived from observed object properties");
+}
+
+function createProjectionRejectsUnsupportedSource(): void {
+  const registry = createLoadedSession('{"items":[1,2,3]}');
+
+  assertThrows(
+    () => registry.createProjection({
+      sessionId: "session-1",
+      projectionId: "projection-1",
+      kind: "table.arrayOfObjects",
+      sourcePath: "$.items"
+    }),
+    "projection source should reject non-object array items"
+  );
+}
+
+function tableProjectionMapsRowsAndCellsToNodesAndPaths(): void {
+  const registry = createLoadedSession('{"items":[{"name":"Alice","age":30},{"name":"Bob"}]}');
+  const sessionId = "session-1";
+  const result = registry.createProjection({
+    sessionId,
+    projectionId: "projection-1",
+    kind: "table.arrayOfObjects",
+    sourcePath: "$.items"
+  });
+
+  const tableProjection = requireSession(result.session).tableProjectionsById["projection-1"];
+  if (tableProjection === undefined) {
+    throw new Error("table projection should exist");
+  }
+
+  assert(tableProjection.rows.length === 2, "table projection should expose one row per array item");
+  const firstRow = tableProjection.rows[0];
+  if (firstRow === undefined) {
+    throw new Error("first row should exist");
+  }
+
+  assert(firstRow.itemNodeId.length > 0, "row should map to the source object node id");
+  const firstNameCell = firstRow.cells.find((cell) => cell.propertyName === "name");
+  if (firstNameCell === undefined) {
+    throw new Error("name cell should exist");
+  }
+
+  assert(firstNameCell.valueNodeId !== undefined, "existing property should map to a value node id");
+  assert(firstNameCell.value === "Alice", "cell value should resolve from source JSON");
+
+  const secondRow = tableProjection.rows[1];
+  if (secondRow === undefined) {
+    throw new Error("second row should exist");
+  }
+
+  const secondAgeCell = secondRow.cells.find((cell) => cell.propertyName === "age");
+  if (secondAgeCell === undefined) {
+    throw new Error("age cell should exist");
+  }
+
+  assert(secondAgeCell.valueNodeId === undefined, "missing properties should not have a value node id");
+  assert(secondAgeCell.value === undefined, "missing properties should expose undefined cell values");
+}
+
+function projectionCellEditProducesSetPropertyValueTransaction(): void {
+  const registry = createLoadedSession('{"items":[{"name":"Alice"}]}');
+  const sessionId = "session-1";
+  registry.createProjection({
+    sessionId,
+    projectionId: "projection-1",
+    kind: "table.arrayOfObjects",
+    sourcePath: "$.items"
+  });
+
+  const editResult = registry.editProjectionCell({
+    sessionId,
+    projectionId: "projection-1",
+    rowId: "row-0",
+    columnId: "column-0",
+    value: "Alicia"
+  });
+
+  const accepted = expectAccepted(editResult);
+  assert(accepted.patch.operations[0]?.kind === "setPropertyValue", "cell edits should produce setPropertyValue patch operations");
+  assert(accepted.patch.operations[0]?.path === "$.items[0].name", "cell edits should target the selected property path");
+}
+
+function projectionRebuildsAfterUnderlyingTransaction(): void {
+  const registry = createLoadedSession('{"items":[{"name":"Alice"}]}');
+  const sessionId = "session-1";
+  registry.createProjection({
+    sessionId,
+    projectionId: "projection-1",
+    kind: "table.arrayOfObjects",
+    sourcePath: "$.items"
+  });
+
+  const initialProjection = requireSession(registry.getSession(sessionId)).tableProjectionsById["projection-1"];
+  if (initialProjection === undefined) {
+    throw new Error("initial projection should exist");
+  }
+
+  const rowNodeId = initialProjection.rows[0]?.itemNodeId;
+  if (rowNodeId === undefined) {
+    throw new Error("projection row should exist");
+  }
+
+  expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-projection-refresh",
+      sessionId,
+      baseRevision: 0,
+      kind: "setPropertyValue",
+      payload: {
+        objectNodeId: rowNodeId,
+        propertyName: "status",
+        value: "todo"
+      }
+    }
+  }));
+
+  const refreshedProjection = requireSession(registry.getSession(sessionId)).tableProjectionsById["projection-1"];
+  if (refreshedProjection === undefined) {
+    throw new Error("refreshed projection should exist");
+  }
+
+  assert(refreshedProjection.columns.some((column) => column.propertyName === "status"), "projection should rebuild columns after document transactions");
+  const statusCell = refreshedProjection.rows[0]?.cells.find((cell) => cell.propertyName === "status");
+  assert(statusCell?.value === "todo", "rebuilt projection should expose the updated cell value");
+}
+
 function sessionRegistryTracksCreateAndDispose(): void {
   const registry = new SessionRegistry();
   const session = registry.createSession({
@@ -694,3 +837,8 @@ missingRequiredPropertyProducesSchemaDiagnostic();
 primitiveTypeMismatchProducesSchemaDiagnostic();
 enumMismatchProducesSchemaDiagnostic();
 schemaOverlayIsInvalidatedAfterTransaction();
+createProjectionAcceptsArrayOfObjectsSource();
+createProjectionRejectsUnsupportedSource();
+tableProjectionMapsRowsAndCellsToNodesAndPaths();
+projectionCellEditProducesSetPropertyValueTransaction();
+projectionRebuildsAfterUnderlyingTransaction();

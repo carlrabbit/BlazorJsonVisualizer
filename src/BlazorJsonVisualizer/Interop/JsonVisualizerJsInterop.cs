@@ -28,6 +28,24 @@ public sealed class JsonVisualizerJsInterop(IJSRuntime jsRuntime) : IAsyncDispos
         await module.InvokeVoidAsync("loadTextDocument", command);
     }
 
+    public async ValueTask CreateProjectionAsync(CreateProjectionCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("createProjection", command);
+    }
+
+    public async ValueTask DisposeProjectionAsync(DisposeProjectionCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("disposeProjection", command);
+    }
+
+    public async ValueTask SelectProjectionItemAsync(SelectProjectionItemCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("selectProjectionItem", command);
+    }
+
     public async ValueTask AttachSchemaAsync(AttachSchemaCommand command)
     {
         var module = await moduleTask.Value;

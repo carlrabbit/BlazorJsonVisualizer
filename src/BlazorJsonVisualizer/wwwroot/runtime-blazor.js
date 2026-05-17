@@ -1,5 +1,5 @@
 // ../runtime-core/index.ts
-var RUNTIME_PROTOCOL_VERSION = "0.5.0-milestone-005";
+var RUNTIME_PROTOCOL_VERSION = "0.6.0-milestone-006";
 var JsonParseError = class extends Error {
   constructor(message, startOffset, endOffset, code = "json-syntax-error") {
     super(message);
@@ -482,6 +482,9 @@ var SessionRegistry = class {
       diagnostics: [],
       schemaDiagnostics: [],
       schemaMetadataByNodeId: {},
+      projectionsById: {},
+      tableProjectionsById: {},
+      projectionSelectionsById: {},
       undoStack: [],
       redoStack: [],
       ...command.options !== void 0 ? { options: command.options } : {}
@@ -508,6 +511,9 @@ var SessionRegistry = class {
       schemaDiagnostics: [],
       schemaMetadataByNodeId: {},
       schemaAttachment: void 0,
+      projectionsById: {},
+      tableProjectionsById: {},
+      projectionSelectionsById: {},
       revealTargetNodeId: void 0,
       undoStack: [],
       redoStack: [],
@@ -562,7 +568,7 @@ var SessionRegistry = class {
     if (!result.accepted) {
       return result;
     }
-    const updatedSession = {
+    let updatedSession = {
       ...result.session,
       undoStack: [...session.undoStack, ...result.session.undoStack.slice(session.undoStack.length)],
       redoStack: [],
@@ -570,6 +576,7 @@ var SessionRegistry = class {
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+    updatedSession = this.rebuildProjections(updatedSession);
     this.sessions.set(command.sessionId, updatedSession);
     return {
       accepted: true,
@@ -604,7 +611,7 @@ var SessionRegistry = class {
     if (!result.accepted) {
       return result;
     }
-    const updatedSession = {
+    let updatedSession = {
       ...result.session,
       undoStack: session.undoStack.slice(0, -1),
       redoStack: [...session.redoStack, historyEntry],
@@ -612,6 +619,7 @@ var SessionRegistry = class {
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+    updatedSession = this.rebuildProjections(updatedSession);
     this.sessions.set(command.sessionId, updatedSession);
     return {
       accepted: true,
@@ -639,7 +647,7 @@ var SessionRegistry = class {
     if (!result.accepted) {
       return result;
     }
-    const updatedSession = {
+    let updatedSession = {
       ...result.session,
       undoStack: [...session.undoStack, historyEntry],
       redoStack: session.redoStack.slice(0, -1),
@@ -647,6 +655,7 @@ var SessionRegistry = class {
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+    updatedSession = this.rebuildProjections(updatedSession);
     this.sessions.set(command.sessionId, updatedSession);
     return {
       accepted: true,
@@ -660,7 +669,7 @@ var SessionRegistry = class {
       throw new Error(`Session '${command.sessionId}' does not have a loaded document.`);
     }
     const overlay = resolveSchemaOverlay(session.document, session.text, command.schema);
-    const updatedSession = {
+    let updatedSession = {
       ...session,
       schemaAttachment: {
         schemaId: command.schemaId,
@@ -670,6 +679,7 @@ var SessionRegistry = class {
       schemaMetadataByNodeId: overlay.metadataByNodeId,
       schemaDiagnostics: overlay.diagnostics
     };
+    updatedSession = this.rebuildProjections(updatedSession);
     this.sessions.set(command.sessionId, updatedSession);
     return {
       session: updatedSession,
@@ -687,12 +697,13 @@ var SessionRegistry = class {
         diagnostics: session.schemaDiagnostics
       };
     }
-    const updatedSession = {
+    let updatedSession = {
       ...session,
       schemaAttachment: void 0,
       schemaMetadataByNodeId: {},
       schemaDiagnostics: []
     };
+    updatedSession = this.rebuildProjections(updatedSession);
     this.sessions.set(command.sessionId, updatedSession);
     return {
       session: updatedSession,
@@ -711,6 +722,97 @@ var SessionRegistry = class {
       return void 0;
     }
     return session.schemaMetadataByNodeId[nodeId];
+  }
+  createProjection(command) {
+    const session = this.requireSession(command.sessionId);
+    if (session.projectionsById[command.projectionId] !== void 0) {
+      throw new Error(`Projection '${command.projectionId}' already exists.`);
+    }
+    const projection = buildProjection(session, command);
+    const updatedSession = {
+      ...session,
+      projectionsById: {
+        ...session.projectionsById,
+        [command.projectionId]: projection.projection
+      },
+      tableProjectionsById: {
+        ...session.tableProjectionsById,
+        [command.projectionId]: projection.table
+      }
+    };
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      session: updatedSession,
+      projection: projection.projection
+    };
+  }
+  disposeProjection(command) {
+    const session = this.requireSession(command.sessionId);
+    if (session.projectionsById[command.projectionId] === void 0) {
+      return { session };
+    }
+    const { [command.projectionId]: _, ...remainingProjections } = session.projectionsById;
+    const { [command.projectionId]: __, ...remainingTables } = session.tableProjectionsById;
+    const { [command.projectionId]: ___, ...remainingSelections } = session.projectionSelectionsById;
+    const updatedSession = {
+      ...session,
+      projectionsById: remainingProjections,
+      tableProjectionsById: remainingTables,
+      projectionSelectionsById: remainingSelections
+    };
+    this.sessions.set(command.sessionId, updatedSession);
+    return { session: updatedSession };
+  }
+  selectProjectionItem(command) {
+    const session = this.requireSession(command.sessionId);
+    const projection = session.projectionsById[command.projectionId];
+    if (projection === void 0) {
+      throw new Error(`Projection '${command.projectionId}' is not available.`);
+    }
+    const selectionSource = resolveProjectionSelectionSource(session, command.projectionId, command.selection);
+    const updatedSession = {
+      ...session,
+      projectionSelectionsById: {
+        ...session.projectionSelectionsById,
+        [command.projectionId]: command.selection
+      }
+    };
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      session: updatedSession,
+      projectionId: projection.projectionId,
+      sourceNodeId: selectionSource.sourceNodeId,
+      sourcePath: selectionSource.sourcePath
+    };
+  }
+  editProjectionCell(command) {
+    const session = this.requireSession(command.sessionId);
+    const tableProjection = session.tableProjectionsById[command.projectionId];
+    if (tableProjection === void 0) {
+      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Projection '${command.projectionId}' is not available.`);
+    }
+    const row = tableProjection.rows.find((entry) => entry.rowId === command.rowId);
+    if (row === void 0) {
+      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Row '${command.rowId}' is not available.`);
+    }
+    const cell = row.cells.find((entry) => entry.columnId === command.columnId);
+    if (cell === void 0) {
+      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Column '${command.columnId}' is not available for row '${command.rowId}'.`);
+    }
+    return this.applyTransaction({
+      sessionId: command.sessionId,
+      transaction: {
+        transactionId: `projection-edit-${session.revision + 1}`,
+        sessionId: command.sessionId,
+        baseRevision: session.revision,
+        kind: "setPropertyValue",
+        payload: {
+          objectNodeId: row.itemNodeId,
+          propertyName: cell.propertyName,
+          value: command.value
+        }
+      }
+    });
   }
   clearRevealTarget(sessionId) {
     return this.updateSession(sessionId, (session) => ({
@@ -799,7 +901,191 @@ var SessionRegistry = class {
     }
     return session;
   }
+  rebuildProjections(session) {
+    const projectionEntries = Object.values(session.projectionsById);
+    if (projectionEntries.length === 0) {
+      return session;
+    }
+    const projectionsById = {};
+    const tableProjectionsById = {};
+    const projectionSelectionsById = {};
+    for (const projection of projectionEntries) {
+      try {
+        const rebuilt = buildProjection(session, projection);
+        projectionsById[projection.projectionId] = rebuilt.projection;
+        tableProjectionsById[projection.projectionId] = rebuilt.table;
+        const existingSelection = session.projectionSelectionsById[projection.projectionId];
+        if (existingSelection !== void 0) {
+          projectionSelectionsById[projection.projectionId] = existingSelection;
+        }
+      } catch {
+        continue;
+      }
+    }
+    return {
+      ...session,
+      projectionsById,
+      tableProjectionsById,
+      projectionSelectionsById
+    };
+  }
 };
+function buildProjection(session, command) {
+  if (command.kind !== "table.arrayOfObjects") {
+    throw new Error(`Projection kind '${command.kind}' is not supported.`);
+  }
+  if (session.document === void 0 || session.text === void 0) {
+    throw new Error(`Session '${session.sessionId}' does not have a loaded document.`);
+  }
+  const tableProjection = buildTableArrayOfObjectsProjection(
+    session.document,
+    session.text,
+    command.projectionId,
+    command.sourcePath,
+    session.schemaDiagnostics,
+    session.schemaAttachment?.schema
+  );
+  return {
+    projection: {
+      projectionId: command.projectionId,
+      sessionId: session.sessionId,
+      kind: command.kind,
+      sourcePath: command.sourcePath,
+      capabilities: ["readRows", "selectRow", "selectCell", "editCell"]
+    },
+    table: tableProjection
+  };
+}
+function buildTableArrayOfObjectsProjection(document2, text, projectionId, sourcePath, schemaDiagnostics, schema) {
+  const sourceNodeId = findNodeIdByPath(document2, sourcePath);
+  if (sourceNodeId === void 0) {
+    throw new Error(`Projection source path '${sourcePath}' was not found.`);
+  }
+  const sourceNode = document2.nodesById[sourceNodeId];
+  if (sourceNode === void 0 || sourceNode.kind !== "array") {
+    throw new Error(`Projection source path '${sourcePath}' must resolve to an array node.`);
+  }
+  const rowNodeIds = listChildNodeIds(document2, sourceNode.nodeId);
+  for (const rowNodeId of rowNodeIds) {
+    const rowNode = document2.nodesById[rowNodeId];
+    if (rowNode === void 0 || rowNode.kind !== "object") {
+      throw new Error(`Projection source path '${sourcePath}' must contain only object items.`);
+    }
+  }
+  const rootValue = parseJsonText(text);
+  if (rootValue === void 0) {
+    throw new Error("Projection source document is not valid JSON.");
+  }
+  const sourceValue = getJsonValueAtPath(rootValue, sourcePath);
+  if (!isJsonArrayDto(sourceValue) || !sourceValue.every((entry) => isJsonObjectDto(entry))) {
+    throw new Error(`Projection source path '${sourcePath}' must resolve to an array of objects.`);
+  }
+  const propertyNames = collectProjectionPropertyNames(document2, rowNodeIds);
+  const columns = propertyNames.map(
+    (propertyName, index) => createTableColumn(sourcePath, propertyName, index, schema)
+  );
+  const columnByPropertyName = new Map(columns.map((column) => [column.propertyName, column]));
+  const rows = rowNodeIds.map((rowNodeId, index) => {
+    const rowNode = document2.nodesById[rowNodeId];
+    if (rowNode === void 0) {
+      throw new Error(`Projection row node '${rowNodeId}' is not available.`);
+    }
+    return {
+      rowId: `row-${index}`,
+      itemNodeId: rowNode.nodeId,
+      index,
+      cells: propertyNames.map((propertyName) => {
+        const column = columnByPropertyName.get(propertyName);
+        if (column === void 0) {
+          throw new Error(`Projection column '${propertyName}' is not available.`);
+        }
+        const cellPath = appendObjectPath(rowNode.path, propertyName);
+        const valueNodeId = findNodeIdByPath(document2, cellPath);
+        const cellDiagnostics = schemaDiagnostics.filter(
+          (diagnostic) => diagnostic.path === cellPath || valueNodeId !== void 0 && diagnostic.nodeId === valueNodeId
+        );
+        const value = getJsonValueAtPath(rootValue, cellPath);
+        return {
+          columnId: column.columnId,
+          propertyName,
+          ...valueNodeId !== void 0 ? { valueNodeId } : {},
+          value,
+          ...cellDiagnostics.length > 0 ? { diagnostics: cellDiagnostics } : {}
+        };
+      })
+    };
+  });
+  return {
+    projectionId,
+    sourcePath,
+    columns,
+    rows
+  };
+}
+function collectProjectionPropertyNames(document2, rowNodeIds) {
+  const names = [];
+  const nameSet = /* @__PURE__ */ new Set();
+  for (const rowNodeId of rowNodeIds) {
+    for (const propertyNodeId of listChildNodeIds(document2, rowNodeId)) {
+      const propertyNode = document2.nodesById[propertyNodeId];
+      const propertyName = propertyNode?.propertyName;
+      if (propertyNode === void 0 || propertyNode.kind !== "property" || propertyName === void 0 || nameSet.has(propertyName)) {
+        continue;
+      }
+      nameSet.add(propertyName);
+      names.push(propertyName);
+    }
+  }
+  return names;
+}
+function createTableColumn(sourcePath, propertyName, index, schema) {
+  const columnId = `column-${index}`;
+  if (schema === void 0) {
+    return {
+      columnId,
+      propertyName
+    };
+  }
+  const schemaResult = resolveSchemaForPath(schema, appendObjectPath(`${sourcePath}[0]`, propertyName));
+  const resolvedSchema = schemaResult.resolvedSchema;
+  if (resolvedSchema === void 0) {
+    return {
+      columnId,
+      propertyName
+    };
+  }
+  const expectedType = parseSchemaType(resolvedSchema.type);
+  return {
+    columnId,
+    propertyName,
+    ...typeof resolvedSchema.title === "string" ? { title: resolvedSchema.title } : {},
+    ...expectedType !== void 0 ? { expectedType } : {}
+  };
+}
+function resolveProjectionSelectionSource(session, projectionId, selection) {
+  const tableProjection = session.tableProjectionsById[projectionId];
+  if (tableProjection === void 0) {
+    throw new Error(`Projection '${projectionId}' is not available.`);
+  }
+  const row = tableProjection.rows.find((entry) => entry.rowId === selection.rowId);
+  if (row === void 0) {
+    throw new Error(`Projection row '${selection.rowId}' is not available.`);
+  }
+  if (selection.kind === "row") {
+    return {
+      sourceNodeId: row.itemNodeId,
+      sourcePath: `${tableProjection.sourcePath}[${row.index}]`
+    };
+  }
+  const cell = row.cells.find((entry) => entry.columnId === selection.columnId);
+  if (cell === void 0) {
+    throw new Error(`Projection column '${selection.columnId}' is not available for row '${selection.rowId}'.`);
+  }
+  return {
+    sourceNodeId: cell.valueNodeId,
+    sourcePath: appendObjectPath(`${tableProjection.sourcePath}[${row.index}]`, cell.propertyName)
+  };
+}
 function appendObjectPath(parentPath, propertyName) {
   if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(propertyName)) {
     return `${parentPath}.${propertyName}`;
@@ -1587,6 +1873,41 @@ var DomRuntimeControllerImpl = class {
       });
     }
   }
+  async createProjection(command) {
+    const result = this.sessionRegistry.createProjection(command);
+    this.render(command.sessionId);
+    await this.emit({
+      type: "projectionCreated",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId,
+      kind: result.projection.kind
+    });
+    await this.emit({
+      type: "projectionChanged",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId
+    });
+  }
+  async disposeProjection(command) {
+    this.sessionRegistry.disposeProjection(command);
+    this.render(command.sessionId);
+    await this.emit({
+      type: "projectionChanged",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId
+    });
+  }
+  async selectProjectionItem(command) {
+    const result = this.sessionRegistry.selectProjectionItem(command);
+    this.render(command.sessionId);
+    await this.emit({
+      type: "projectionSelectionChanged",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId,
+      sourceNodeId: result.sourceNodeId,
+      sourcePath: result.sourcePath
+    });
+  }
   async attachSchema(command) {
     const update = this.sessionRegistry.attachSchema(command);
     this.render(command.sessionId);
@@ -1675,6 +1996,9 @@ var DomRuntimeControllerImpl = class {
     }
     hostElement.replaceChildren(createRuntimeView(session, (nodeId) => {
       void this.toggleFold({ nodeId, sessionId });
+    }, {
+      selectProjectionItem: (projectionId, selection) => this.selectProjectionItem({ sessionId, projectionId, selection }),
+      editProjectionCell: (command) => this.editProjectionCell({ ...command, sessionId })
     }));
   }
   scrollToNode(sessionId, nodeId) {
@@ -1725,9 +2049,19 @@ var DomRuntimeControllerImpl = class {
       diagnostics: [],
       schemaDiagnostics: []
     });
+    for (const projectionId of Object.keys(result.session.projectionsById)) {
+      await this.emit({
+        type: "projectionChanged",
+        sessionId,
+        projectionId
+      });
+    }
+  }
+  async editProjectionCell(command) {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.editProjectionCell(command));
   }
 };
-function createRuntimeView(session, toggleFold2) {
+function createRuntimeView(session, toggleFold2, projectionHandlers) {
   const container = document.createElement("section");
   container.className = "bjv-runtime";
   container.append(createStyles());
@@ -1747,6 +2081,10 @@ function createRuntimeView(session, toggleFold2) {
   }
   if (session.schemaDiagnostics.length > 0) {
     container.append(createDiagnosticsPanel("Schema diagnostics", session.schemaDiagnostics.map((diagnostic) => `${diagnostic.message} (${diagnostic.path})`)));
+  }
+  for (const tableProjection of Object.values(session.tableProjectionsById)) {
+    const selection = session.projectionSelectionsById[tableProjection.projectionId];
+    container.append(createTableProjectionView(tableProjection, selection, projectionHandlers));
   }
   const documentContainer = document.createElement("div");
   documentContainer.className = "bjv-document";
@@ -2008,6 +2346,122 @@ function applySchemaMetadata(line, metadata, propertyName) {
     line.append(enumToken);
   }
 }
+function createTableProjectionView(projection, selection, handlers) {
+  const container = document.createElement("section");
+  container.className = "bjv-projection";
+  const heading = document.createElement("h2");
+  heading.className = "bjv-projection-title";
+  heading.textContent = `Projection: ${projection.projectionId} (${projection.sourcePath})`;
+  container.append(heading);
+  if (projection.columns.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "bjv-projection-empty";
+    empty.textContent = "No table columns were detected.";
+    container.append(empty);
+    return container;
+  }
+  const table = document.createElement("table");
+  table.className = "bjv-projection-table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const rowHeader = document.createElement("th");
+  rowHeader.textContent = "#";
+  headRow.append(rowHeader);
+  for (const column of projection.columns) {
+    const th = document.createElement("th");
+    th.textContent = column.title ?? column.propertyName;
+    if (column.expectedType !== void 0) {
+      th.title = Array.isArray(column.expectedType) ? column.expectedType.join(" | ") : column.expectedType;
+    }
+    headRow.append(th);
+  }
+  thead.append(headRow);
+  table.append(thead);
+  const tbody = document.createElement("tbody");
+  for (const row of projection.rows) {
+    const tr = document.createElement("tr");
+    if (selection?.kind === "row" && selection.rowId === row.rowId) {
+      tr.classList.add("bjv-projection-row-selected");
+    }
+    tr.addEventListener("click", () => {
+      void handlers.selectProjectionItem(projection.projectionId, {
+        kind: "row",
+        rowId: row.rowId
+      });
+    });
+    const indexCell = document.createElement("td");
+    indexCell.textContent = String(row.index);
+    tr.append(indexCell);
+    for (const cell of row.cells) {
+      const td = document.createElement("td");
+      const isSelectedCell = selection?.kind === "cell" && selection.rowId === row.rowId && selection.columnId === cell.columnId;
+      if (isSelectedCell) {
+        td.classList.add("bjv-projection-cell-selected");
+      }
+      td.textContent = cell.value === void 0 ? "\u2205" : JSON.stringify(cell.value);
+      if (cell.diagnostics !== void 0 && cell.diagnostics.length > 0) {
+        td.classList.add("bjv-projection-cell-error");
+        td.title = cell.diagnostics.map((diagnostic) => diagnostic.message).join("\n");
+      }
+      td.addEventListener("click", (event) => {
+        event.stopPropagation();
+        void handlers.selectProjectionItem(projection.projectionId, {
+          kind: "cell",
+          rowId: row.rowId,
+          columnId: cell.columnId
+        });
+      });
+      td.addEventListener("dblclick", (event) => {
+        event.stopPropagation();
+        const defaultValue = cell.value === void 0 ? "null" : JSON.stringify(cell.value);
+        const nextText = window.prompt(`Edit ${cell.propertyName}`, defaultValue);
+        if (nextText === null) {
+          return;
+        }
+        let parsedValue;
+        try {
+          parsedValue = JSON.parse(nextText);
+        } catch {
+          window.alert("Cell edits must be valid JSON values.");
+          return;
+        }
+        if (!isJsonValue(parsedValue)) {
+          window.alert("Cell edits must be JSON scalar/object/array values.");
+          return;
+        }
+        void handlers.editProjectionCell({
+          projectionId: projection.projectionId,
+          rowId: row.rowId,
+          columnId: cell.columnId,
+          value: parsedValue
+        });
+      });
+      tr.append(td);
+    }
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  container.append(table);
+  return container;
+}
+function isJsonValue(value) {
+  if (value === null) {
+    return true;
+  }
+  if (typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+  if (Array.isArray(value)) {
+    return value.every((entry) => isJsonValue(entry));
+  }
+  if (typeof value === "object") {
+    return Object.values(value).every((entry) => isJsonValue(entry));
+  }
+  return false;
+}
 function createDiagnosticsPanel(title, diagnostics) {
   const panel = document.createElement("section");
   panel.className = "bjv-diagnostics";
@@ -2093,6 +2547,58 @@ function createStyles() {
       font-family: system-ui, sans-serif;
     }
 
+    .bjv-projection {
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 0.75rem;
+      font-family: system-ui, sans-serif;
+    }
+
+    .bjv-projection-title {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .bjv-projection-empty {
+      margin: 0;
+      color: #64748b;
+    }
+
+    .bjv-projection-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      table-layout: fixed;
+    }
+
+    .bjv-projection-table th,
+    .bjv-projection-table td {
+      border: 1px solid #cbd5e1;
+      padding: 0.25rem 0.4rem;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bjv-projection-table td {
+      cursor: pointer;
+    }
+
+    .bjv-projection-row-selected {
+      background: #e0f2fe;
+    }
+
+    .bjv-projection-cell-selected {
+      outline: 2px solid #0284c7;
+      outline-offset: -2px;
+    }
+
+    .bjv-projection-cell-error {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
     .bjv-diagnostics-list {
       margin: 0;
       padding-left: 1.25rem;
@@ -2163,6 +2669,15 @@ async function disposeSession(command) {
 async function loadTextDocument(command) {
   await domRuntimeController.loadTextDocument(command);
 }
+async function createProjection(command) {
+  await domRuntimeController.createProjection(command);
+}
+async function disposeProjection(command) {
+  await domRuntimeController.disposeProjection(command);
+}
+async function selectProjectionItem(command) {
+  await domRuntimeController.selectProjectionItem(command);
+}
 async function attachSchema(command) {
   await domRuntimeController.attachSchema(command);
 }
@@ -2206,6 +2721,9 @@ var runtimeBlazorModule = {
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
+  createProjection,
+  disposeProjection,
+  selectProjectionItem,
   attachSchema,
   detachSchema,
   getSchemaMetadataForPath,
@@ -2222,14 +2740,17 @@ if (typeof window !== "undefined") {
 export {
   applyTransaction,
   attachSchema,
+  createProjection,
   createSession,
   detachSchema,
+  disposeProjection,
   disposeSession,
   getRuntimeProtocolVersion,
   getSchemaMetadataForPath,
   loadTextDocument,
   redo,
   revealPath,
+  selectProjectionItem,
   setViewport,
   toggleFold,
   undo

@@ -1,11 +1,14 @@
 import {
   type AttachSchemaCommand,
   type ApplyTransactionCommand,
+  type CreateProjectionCommand,
   RUNTIME_PROTOCOL_VERSION,
   type CreateSessionCommand,
+  type DisposeProjectionCommand,
   type DetachSchemaCommand,
   type DisposeSessionCommand,
   type GetSchemaMetadataForPathCommand,
+  type SelectProjectionItemCommand,
   type LoadTextDocumentCommand,
   type RedoCommand,
   type RevealPathCommand,
@@ -26,6 +29,9 @@ export interface RuntimeBlazorModule {
   disposeSession(command: DisposeSessionCommand): Promise<void>;
   getRuntimeProtocolVersion(): string;
   loadTextDocument(command: LoadTextDocumentCommand): Promise<void>;
+  createProjection(command: CreateProjectionCommand): Promise<void>;
+  disposeProjection(command: DisposeProjectionCommand): Promise<void>;
+  selectProjectionItem(command: SelectProjectionItemCommand): Promise<void>;
   attachSchema(command: AttachSchemaCommand): Promise<void>;
   detachSchema(command: DetachSchemaCommand): Promise<void>;
   getSchemaMetadataForPath(command: GetSchemaMetadataForPathCommand): Promise<SchemaNodeMetadataDto | undefined>;
@@ -52,6 +58,18 @@ export async function disposeSession(command: DisposeSessionCommand): Promise<vo
 
 export async function loadTextDocument(command: LoadTextDocumentCommand): Promise<void> {
   await domRuntimeController.loadTextDocument(command);
+}
+
+export async function createProjection(command: CreateProjectionCommand): Promise<void> {
+  await domRuntimeController.createProjection(command);
+}
+
+export async function disposeProjection(command: DisposeProjectionCommand): Promise<void> {
+  await domRuntimeController.disposeProjection(command);
+}
+
+export async function selectProjectionItem(command: SelectProjectionItemCommand): Promise<void> {
+  await domRuntimeController.selectProjectionItem(command);
 }
 
 export async function attachSchema(command: AttachSchemaCommand): Promise<void> {
@@ -109,6 +127,9 @@ const runtimeBlazorModule: RuntimeBlazorModule = {
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
+  createProjection,
+  disposeProjection,
+  selectProjectionItem,
   attachSchema,
   detachSchema,
   getSchemaMetadataForPath,

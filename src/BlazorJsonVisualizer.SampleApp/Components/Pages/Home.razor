@@ -4,9 +4,9 @@
 
 <PageTitle>BlazorJsonVisualizer Sample</PageTitle>
 
-<h1>Layer 2 schema overlay prototype</h1>
+<h1>Layer 3 projection plugin prototype</h1>
 
-<p>This sample loads a small JSON document, attaches a schema overlay, surfaces parse and schema diagnostics, and demonstrates schema-aware runtime hints.</p>
+<p>This sample loads a small JSON document, attaches a schema overlay, creates a table projection over <code>$.items</code>, and surfaces projection/schema/runtime events.</p>
 
 <JsonVisualizer @ref="_visualizer"
                 SessionId="sample-session"
@@ -51,6 +51,10 @@
         <p><strong>Session:</strong> @_latestEvent.SessionId</p>
         <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
         <p><strong>Transaction:</strong> @_latestEvent.TransactionId</p>
+        <p><strong>Projection:</strong> @_latestEvent.ProjectionId</p>
+        <p><strong>Projection kind:</strong> @_latestEvent.Kind</p>
+        <p><strong>Projection source path:</strong> @_latestEvent.SourcePath</p>
+        <p><strong>Projection source node:</strong> @_latestEvent.SourceNodeId</p>
         <p><strong>Base revision:</strong> @_latestEvent.BaseRevision</p>
         <p><strong>New revision:</strong> @_latestEvent.NewRevision</p>
         <p><strong>Node count:</strong> @_latestEvent.NodeCount</p>
@@ -124,7 +128,9 @@
     private int _currentRevision;
     private int _nextTransactionNumber = 1;
     private bool _schemaAttached;
+    private bool _projectionCreated;
     private const string SampleSchemaId = "sample-schema-1";
+    private const string SampleProjectionId = "sample-items-table";
 
     private const string SampleJson = """
 {
@@ -286,6 +292,12 @@
             using var document = JsonDocument.Parse(SampleSchemaJson);
             await _visualizer.AttachSchemaAsync(SampleSchemaId, document.RootElement.Clone());
             _schemaAttached = true;
+        }
+
+        if (runtimeEvent.Type == RuntimeEventTypes.DocumentLoaded && !_projectionCreated && _visualizer is not null)
+        {
+            await _visualizer.CreateProjectionAsync(SampleProjectionId, "table.arrayOfObjects", "$.items");
+            _projectionCreated = true;
         }
 
         await InvokeAsync(StateHasChanged);
