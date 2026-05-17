@@ -10,3 +10,7 @@
 ## Rule
 
 `runtime-core` must not import DOM, Blazor, or framework-specific modules.
+
+## Schema work
+
+Schema evaluation may initially run in the main runtime for small documents. Later milestones may move schema validation and metadata resolution into workers.

@@ -91,6 +91,30 @@ Fields:
 
 - `sessionId: string`
 
+## Additional host-to-runtime messages for Milestone 005
+
+### `attachSchema`
+
+Fields:
+
+- `sessionId: string`
+- `schemaId: string`
+- `schema: object`
+
+### `detachSchema`
+
+Fields:
+
+- `sessionId: string`
+- `schemaId: string`
+
+### `getSchemaMetadataForPath`
+
+Fields:
+
+- `sessionId: string`
+- `path: string`
+
 ## Runtime-to-host events
 
 ### `sessionCreated`
@@ -164,6 +188,29 @@ Fields:
 - `sessionId: string`
 - `transactionId: string`
 - `reason: string`
+
+## Additional runtime-to-host events for Milestone 005
+
+### `schemaAttached`
+
+Fields:
+
+- `sessionId: string`
+- `schemaId: string`
+
+### `schemaDiagnosticsChanged`
+
+Fields:
+
+- `sessionId: string`
+- `diagnostics: SchemaDiagnosticDto[]`
+
+### `schemaMetadataChanged`
+
+Fields:
+
+- `sessionId: string`
+- `affectedNodeIds: string[]`
 
 ## Versioning
 

@@ -1,4 +1,5 @@
 @using BlazorJsonVisualizer.Interop
+@using System.Text.Json
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
 
@@ -85,6 +86,36 @@
         }
 
         await _interop.ApplyTransactionAsync(new ApplyTransactionCommand(EffectiveSessionId, transaction));
+    }
+
+    public async Task AttachSchemaAsync(string schemaId, JsonElement schema)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(schemaId))
+        {
+            return;
+        }
+
+        await _interop.AttachSchemaAsync(new AttachSchemaCommand(EffectiveSessionId, schemaId, schema));
+    }
+
+    public async Task DetachSchemaAsync(string schemaId)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(schemaId))
+        {
+            return;
+        }
+
+        await _interop.DetachSchemaAsync(new DetachSchemaCommand(EffectiveSessionId, schemaId));
+    }
+
+    public async Task<SchemaNodeMetadataDto?> GetSchemaMetadataForPathAsync(string path)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        return await _interop.GetSchemaMetadataForPathAsync(new GetSchemaMetadataForPathCommand(EffectiveSessionId, path));
     }
 
     public async Task UndoAsync()

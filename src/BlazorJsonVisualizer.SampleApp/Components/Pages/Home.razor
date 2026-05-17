@@ -4,9 +4,9 @@
 
 <PageTitle>BlazorJsonVisualizer Sample</PageTitle>
 
-<h1>Layer 1 controlled editing prototype</h1>
+<h1>Layer 2 schema overlay prototype</h1>
 
-<p>This sample loads a small JSON document into the browser runtime, surfaces runtime events and diagnostics, and can trigger controlled transactions through Blazor interop.</p>
+<p>This sample loads a small JSON document, attaches a schema overlay, surfaces parse and schema diagnostics, and demonstrates schema-aware runtime hints.</p>
 
 <JsonVisualizer @ref="_visualizer"
                 SessionId="sample-session"
@@ -59,7 +59,7 @@
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
-        <h2 style="font-size: 1.1rem; margin-top: 0;">Diagnostics</h2>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Parse diagnostics</h2>
         @if (_diagnostics.Count == 0)
         {
             <p>No diagnostics.</p>
@@ -76,6 +76,34 @@
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Schema diagnostics</h2>
+        @if (_schemaDiagnostics.Count == 0)
+        {
+            <p>No schema diagnostics.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var diagnostic in _schemaDiagnostics)
+                {
+                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.Path)</li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Schema metadata lookup</h2>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_schemaPath"
+                   style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                   aria-label="Schema metadata path" />
+            <button @onclick="LookupSchemaMetadataAsync">Lookup</button>
+        </div>
+        <pre style="margin-top: 0.75rem; white-space: pre-wrap;">@_schemaMetadataJson</pre>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
         <h2 style="font-size: 1.1rem; margin-top: 0;">Latest patch</h2>
         <pre style="margin: 0; white-space: pre-wrap;">@_latestPatchJson</pre>
     </section>
@@ -89,9 +117,14 @@
     private string _revealPath = "$.owner.contact.email";
     private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, SampleSessionId, "Waiting for runtime event.");
     private List<RuntimeDiagnosticDto> _diagnostics = [];
+    private List<SchemaDiagnosticDto> _schemaDiagnostics = [];
     private string _latestPatchJson = "No patch emitted yet.";
+    private string _schemaPath = "$.items[0].status";
+    private string _schemaMetadataJson = "No schema metadata lookup yet.";
     private int _currentRevision;
     private int _nextTransactionNumber = 1;
+    private bool _schemaAttached;
+    private const string SampleSchemaId = "sample-schema-1";
 
     private const string SampleJson = """
 {
@@ -106,7 +139,7 @@
   "items": [
     {
       "name": "alpha",
-      "score": 12
+      "score": "12"
     },
     {
       "name": "beta",
@@ -115,6 +148,47 @@
   ],
   "active": true,
   "notes": null
+}
+""";
+
+    private const string SampleSchemaJson = """
+{
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "string",
+      "title": "Project name"
+    },
+    "milestone": {
+      "type": "number",
+      "title": "Milestone number"
+    },
+    "items": {
+      "type": "array",
+      "title": "Work items",
+      "items": {
+        "type": "object",
+        "required": ["name", "score", "status"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable item name"
+          },
+          "score": {
+            "type": "number",
+            "description": "Numeric score"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["todo", "done"],
+            "description": "Processing status",
+            "default": "todo"
+          }
+        }
+      }
+    }
+  },
+  "required": ["project", "milestone", "items"]
 }
 """;
 
@@ -165,18 +239,36 @@
         await _visualizer.RedoAsync();
     }
 
+    private async Task LookupSchemaMetadataAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        var metadata = await _visualizer.GetSchemaMetadataForPathAsync(_schemaPath);
+        _schemaMetadataJson = metadata is null
+            ? "No schema metadata for this path."
+            : JsonSerializer.Serialize(metadata, PatchJsonOptions);
+    }
+
     private void SetRevealPath(string path)
     {
         _revealPath = path;
     }
 
-    private Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
     {
         _latestEvent = runtimeEvent;
 
         if (runtimeEvent.Diagnostics is not null)
         {
             _diagnostics = runtimeEvent.Diagnostics.ToList();
+        }
+
+        if (runtimeEvent.SchemaDiagnostics is not null)
+        {
+            _schemaDiagnostics = runtimeEvent.SchemaDiagnostics.ToList();
         }
 
         if (runtimeEvent.NewRevision is not null)
@@ -189,6 +281,13 @@
             _latestPatchJson = JsonSerializer.Serialize(runtimeEvent.Patch, PatchJsonOptions);
         }
 
-        return InvokeAsync(StateHasChanged);
+        if (runtimeEvent.Type == RuntimeEventTypes.DocumentLoaded && !_schemaAttached && _visualizer is not null)
+        {
+            using var document = JsonDocument.Parse(SampleSchemaJson);
+            await _visualizer.AttachSchemaAsync(SampleSchemaId, document.RootElement.Clone());
+            _schemaAttached = true;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 }

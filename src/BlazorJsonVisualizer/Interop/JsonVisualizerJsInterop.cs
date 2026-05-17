@@ -28,6 +28,24 @@ public sealed class JsonVisualizerJsInterop(IJSRuntime jsRuntime) : IAsyncDispos
         await module.InvokeVoidAsync("loadTextDocument", command);
     }
 
+    public async ValueTask AttachSchemaAsync(AttachSchemaCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("attachSchema", command);
+    }
+
+    public async ValueTask DetachSchemaAsync(DetachSchemaCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("detachSchema", command);
+    }
+
+    public async ValueTask<SchemaNodeMetadataDto?> GetSchemaMetadataForPathAsync(GetSchemaMetadataForPathCommand command)
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<SchemaNodeMetadataDto?>("getSchemaMetadataForPath", command);
+    }
+
     public async ValueTask SetViewportAsync(SetViewportCommand command)
     {
         var module = await moduleTask.Value;

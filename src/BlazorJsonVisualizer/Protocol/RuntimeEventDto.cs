@@ -2,7 +2,30 @@ using System.Text.Json;
 
 namespace BlazorJsonVisualizer.Protocol;
 
-public sealed record RuntimeDiagnosticDto(string Code, string Message, string Severity, int StartOffset, int EndOffset);
+public sealed record RuntimeDiagnosticDto(
+    string Code = "",
+    string Message = "",
+    string Severity = "error",
+    int StartOffset = 0,
+    int EndOffset = 0);
+
+public sealed record SchemaDiagnosticDto(
+    string DiagnosticId,
+    string? NodeId,
+    string Path,
+    string Severity,
+    string Message,
+    string Source);
+
+public sealed record SchemaNodeMetadataDto(
+    string NodeId,
+    string SchemaPath,
+    string? Title = null,
+    string? Description = null,
+    JsonElement? ExpectedType = null,
+    IReadOnlyList<JsonElement>? EnumValues = null,
+    bool? Required = null,
+    JsonElement? DefaultValue = null);
 
 public sealed record RuntimePatchOperationDto(string Kind, string Path, JsonElement? Value = null);
 
@@ -21,7 +44,10 @@ public sealed record RuntimeEventDto(
     bool Recoverable = true,
     string? DocumentId = null,
     int? NodeCount = null,
+    string? SchemaId = null,
     IReadOnlyList<RuntimeDiagnosticDto>? Diagnostics = null,
+    IReadOnlyList<SchemaDiagnosticDto>? SchemaDiagnostics = null,
+    IReadOnlyList<string>? AffectedNodeIds = null,
     string? TransactionId = null,
     int? BaseRevision = null,
     int? NewRevision = null,
@@ -37,6 +63,9 @@ public static class RuntimeEventTypes
     public const string RuntimeError = "runtimeError";
     public const string SessionCreated = "sessionCreated";
     public const string SessionDisposed = "sessionDisposed";
+    public const string SchemaAttached = "schemaAttached";
+    public const string SchemaDiagnosticsChanged = "schemaDiagnosticsChanged";
+    public const string SchemaMetadataChanged = "schemaMetadataChanged";
     public const string TransactionApplied = "transactionApplied";
     public const string TransactionRejected = "transactionRejected";
 }
