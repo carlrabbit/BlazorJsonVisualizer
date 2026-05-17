@@ -133,7 +133,9 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
 
   private scrollToNode(sessionId: string, nodeId: string): void {
     const hostElement = this.hostElements.get(sessionId);
-    const targetElement = hostElement?.querySelector<HTMLElement>(`[data-node-id="${escapeSelectorValue(nodeId)}"]`);
+    const targetElement = [...(hostElement?.querySelectorAll<HTMLElement>("[data-node-id]") ?? [])].find(
+      (element) => element.dataset.nodeId === nodeId
+    );
     targetElement?.scrollIntoView({ block: "nearest" });
   }
 
@@ -146,14 +148,6 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
 
     await callback(event);
   }
-}
-
-function escapeSelectorValue(value: string): string {
-  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-    return CSS.escape(value);
-  }
-
-  return value.replace(/["\\]/g, "\\$&");
 }
 
 function createRuntimeView(session: DocumentSessionRecord, toggleFold: (nodeId: string) => void): HTMLElement {
@@ -260,7 +254,7 @@ function appendFoldableLines(
       const valueNodeId = propertyNode.firstChildId;
 
       if (valueNodeId === undefined) {
-        console.warn(`Property node ${propertyNode.nodeId} is missing its value node.`);
+        console.warn(`Property node ${propertyNode.nodeId} (${propertyNode.propertyName ?? "unknown"}) is missing its value node.`);
         return;
       }
 

@@ -533,7 +533,11 @@ class JsonStructuralParser {
     let value = "";
 
     while (this.position < this.text.length) {
-      const character = this.text[this.position]!;
+      const character = this.text[this.position];
+
+      if (character === undefined) {
+        break;
+      }
 
       if (character === '"') {
         this.position += 1;
@@ -557,7 +561,8 @@ class JsonStructuralParser {
         continue;
       }
 
-      if (character.charCodeAt(0) < 0x20) {
+      const characterCode = character.charCodeAt(0);
+      if (characterCode < 0x20) {
         throw new JsonParseError(
           "String literals may not contain unescaped control characters.",
           this.position,

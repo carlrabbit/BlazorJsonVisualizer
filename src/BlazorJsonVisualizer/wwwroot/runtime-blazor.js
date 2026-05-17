@@ -321,6 +321,9 @@ var JsonStructuralParser = class {
     let value = "";
     while (this.position < this.text.length) {
       const character = this.text[this.position];
+      if (character === void 0) {
+        break;
+      }
       if (character === '"') {
         this.position += 1;
         return {
@@ -339,7 +342,8 @@ var JsonStructuralParser = class {
         value += decodeEscape(escapeCharacter, this.readUnicodeEscape.bind(this));
         continue;
       }
-      if (character.charCodeAt(0) < 32) {
+      const characterCode = character.charCodeAt(0);
+      if (characterCode < 32) {
         throw new JsonParseError(
           "String literals may not contain unescaped control characters.",
           this.position,
@@ -746,7 +750,9 @@ var DomRuntimeControllerImpl = class {
   }
   scrollToNode(sessionId, nodeId) {
     const hostElement = this.hostElements.get(sessionId);
-    const targetElement = hostElement?.querySelector(`[data-node-id="${escapeSelectorValue(nodeId)}"]`);
+    const targetElement = [...hostElement?.querySelectorAll("[data-node-id]") ?? []].find(
+      (element) => element.dataset.nodeId === nodeId
+    );
     targetElement?.scrollIntoView({ block: "nearest" });
   }
   async emit(event) {
@@ -757,12 +763,6 @@ var DomRuntimeControllerImpl = class {
     await callback(event);
   }
 };
-function escapeSelectorValue(value) {
-  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-    return CSS.escape(value);
-  }
-  return value.replace(/["\\]/g, "\\$&");
-}
 function createRuntimeView(session, toggleFold2) {
   const container = document.createElement("section");
   container.className = "bjv-runtime";
@@ -837,7 +837,7 @@ function appendFoldableLines(container, document2, node, indentLevel, trailingCo
       const propertyNode = document2.nodesById[propertyNodeId];
       const valueNodeId = propertyNode.firstChildId;
       if (valueNodeId === void 0) {
-        console.warn(`Property node ${propertyNode.nodeId} is missing its value node.`);
+        console.warn(`Property node ${propertyNode.nodeId} (${propertyNode.propertyName ?? "unknown"}) is missing its value node.`);
         return;
       }
       appendValueLines(
