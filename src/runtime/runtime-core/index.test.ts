@@ -3,6 +3,7 @@ import {
   listChildNodeIds,
   parseJsonDocument,
   type DocumentSessionRecord,
+  type RuntimePatchDto,
   type StructuralIndexDocument,
   type StructuralNodeRecord,
   RUNTIME_PROTOCOL_VERSION,
@@ -61,6 +62,20 @@ function requireSession(session: DocumentSessionRecord | undefined): DocumentSes
   return session;
 }
 
+function expectAccepted(result: ReturnType<SessionRegistry["applyTransaction"]> | ReturnType<SessionRegistry["undo"]> | ReturnType<SessionRegistry["redo"]>): {
+  patch: RuntimePatchDto;
+  session: DocumentSessionRecord;
+} {
+  if (!result.accepted) {
+    throw new Error(`transaction should be accepted: ${result.reason}`);
+  }
+
+  return {
+    patch: result.patch,
+    session: result.session
+  };
+}
+
 function parserBuildsStructuralIndexForObjectDocument(): void {
   const result = parseJsonDocument('{"name":"Widget","active":true}');
   assert(result.document !== undefined, "object document should parse");
@@ -85,7 +100,7 @@ function parserBuildsStructuralIndexForObjectDocument(): void {
 }
 
 function parserBuildsStructuralIndexForArrayDocument(): void {
-  const result = parseJsonDocument('[1,false,null]');
+  const result = parseJsonDocument("[1,false,null]");
   assert(result.document !== undefined, "array document should parse");
 
   const document = requireDocument(result.document);
@@ -182,6 +197,259 @@ function revealPathExpandsFoldedAncestors(): void {
   assert(revealedSession.revealTargetNodeId === findNodeIdByPath(revealedDocument, "$.items[0].name"), "revealPath should record the target node");
 }
 
+function replacePrimitiveValueSupportsUndoRedoAndPatchRevisions(): void {
+  const registry = createLoadedSession('{"milestone":3,"active":true}');
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+  const milestoneNodeId = findNodeIdByPath(initialDocument, "$.milestone");
+  assert(milestoneNodeId !== undefined, "milestone node should exist");
+
+  const applyResult = expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-1",
+      sessionId,
+      baseRevision: 0,
+      kind: "replaceValue",
+      payload: {
+        nodeId: milestoneNodeId ?? "",
+        value: 4
+      }
+    }
+  }));
+
+  assert(applyResult.patch.baseRevision === 0, "patch should record the base revision");
+  assert(applyResult.patch.newRevision === 1, "patch should record the new revision");
+  assert(applyResult.patch.operations[0]?.path === "$.milestone", "patch should identify the updated path");
+  const updatedDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(updatedDocument, findNodeIdByPath(updatedDocument, "$.milestone"), "milestone node should exist").scalarValue === 4, "replaceValue should update the primitive");
+
+  const undoResult = expectAccepted(registry.undo({ sessionId }));
+  assert(undoResult.patch.baseRevision === 1, "undo should use the previous revision as its base revision");
+  assert(undoResult.patch.newRevision === 2, "undo should increment the revision");
+  const undoneDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(undoneDocument, findNodeIdByPath(undoneDocument, "$.milestone"), "milestone node should exist after undo").scalarValue === 3, "undo should restore the previous primitive value");
+
+  const redoResult = expectAccepted(registry.redo({ sessionId }));
+  assert(redoResult.patch.baseRevision === 2, "redo should use the latest revision as its base revision");
+  assert(redoResult.patch.newRevision === 3, "redo should increment the revision");
+  const redoneDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(redoneDocument, findNodeIdByPath(redoneDocument, "$.milestone"), "milestone node should exist after redo").scalarValue === 4, "redo should restore the replaced primitive value");
+}
+
+function setPropertyValueAddsObjectProperty(): void {
+  const registry = createLoadedSession('{"name":"Widget"}');
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  const result = expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-add-property",
+      sessionId,
+      baseRevision: initialSession.revision,
+      kind: "setPropertyValue",
+      payload: {
+        objectNodeId: initialDocument.rootNodeId,
+        propertyName: "active",
+        value: true
+      }
+    }
+  }));
+
+  assert(result.patch.operations[0]?.path === "$.active", "setPropertyValue should emit the added property path");
+  const updatedDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(updatedDocument, findNodeIdByPath(updatedDocument, "$.active"), "active node should exist").scalarValue === true, "setPropertyValue should add the property");
+}
+
+function setPropertyValueReplacesExistingObjectPropertyValue(): void {
+  const registry = createLoadedSession('{"name":"Widget"}');
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-replace-property",
+      sessionId,
+      baseRevision: initialSession.revision,
+      kind: "setPropertyValue",
+      payload: {
+        objectNodeId: initialDocument.rootNodeId,
+        propertyName: "name",
+        value: "Gadget"
+      }
+    }
+  }));
+
+  const updatedDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(updatedDocument, findNodeIdByPath(updatedDocument, "$.name"), "name node should exist").scalarValue === "Gadget", "setPropertyValue should replace an existing object property");
+}
+
+function removePropertyRemovesObjectProperty(): void {
+  const registry = createLoadedSession('{"name":"Widget","active":true}');
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-remove-property",
+      sessionId,
+      baseRevision: initialSession.revision,
+      kind: "removeProperty",
+      payload: {
+        objectNodeId: initialDocument.rootNodeId,
+        propertyName: "active"
+      }
+    }
+  }));
+
+  const updatedDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(findNodeIdByPath(updatedDocument, "$.active") === undefined, "removeProperty should remove the requested property");
+}
+
+function insertArrayItemInsertsArrayValue(): void {
+  const registry = createLoadedSession("[1,3]");
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-insert-array-item",
+      sessionId,
+      baseRevision: initialSession.revision,
+      kind: "insertArrayItem",
+      payload: {
+        arrayNodeId: initialDocument.rootNodeId,
+        index: 1,
+        value: 2
+      }
+    }
+  }));
+
+  const updatedDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(updatedDocument, findNodeIdByPath(updatedDocument, "$[1]"), "inserted item should exist").scalarValue === 2, "insertArrayItem should insert the requested value");
+  assert(requireNode(updatedDocument, findNodeIdByPath(updatedDocument, "$[2]"), "shifted item should exist").scalarValue === 3, "insertArrayItem should shift later values");
+}
+
+function removeArrayItemRemovesArrayValue(): void {
+  const registry = createLoadedSession("[1,2,3]");
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-remove-array-item",
+      sessionId,
+      baseRevision: initialSession.revision,
+      kind: "removeArrayItem",
+      payload: {
+        arrayNodeId: initialDocument.rootNodeId,
+        index: 1
+      }
+    }
+  }));
+
+  const updatedDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  assert(requireNode(updatedDocument, findNodeIdByPath(updatedDocument, "$[1]"), "shifted item should exist").scalarValue === 3, "removeArrayItem should shift later values");
+  assert(findNodeIdByPath(updatedDocument, "$[2]") === undefined, "removeArrayItem should shorten the array");
+}
+
+function staleBaseRevisionIsRejectedDeterministically(): void {
+  const registry = createLoadedSession('{"milestone":3}');
+  const sessionId = "session-1";
+  const initialDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+  const milestoneNodeId = findNodeIdByPath(initialDocument, "$.milestone");
+  assert(milestoneNodeId !== undefined, "milestone node should exist");
+
+  const result = registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-stale",
+      sessionId,
+      baseRevision: 1,
+      kind: "replaceValue",
+      payload: {
+        nodeId: milestoneNodeId ?? "",
+        value: 4
+      }
+    }
+  });
+
+  assert(result.accepted === false, "stale revisions should be rejected");
+  if (result.accepted) {
+    throw new Error("stale revision transaction should be rejected");
+  }
+
+  assert(result.reason === "Transaction base revision 1 does not match current revision 0.", "stale revision rejection should be deterministic");
+}
+
+function invalidTargetNodeKindIsRejectedDeterministically(): void {
+  const registry = createLoadedSession('{"milestone":3}');
+  const sessionId = "session-1";
+  const initialDocument = requireDocument(requireSession(registry.getSession(sessionId)).document);
+
+  const result = registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-invalid-target",
+      sessionId,
+      baseRevision: 0,
+      kind: "replaceValue",
+      payload: {
+        nodeId: initialDocument.rootNodeId,
+        value: 4
+      }
+    }
+  });
+
+  assert(result.accepted === false, "invalid node kinds should be rejected");
+  if (result.accepted) {
+    throw new Error("invalid target transaction should be rejected");
+  }
+
+  assert(result.reason === "Target node 'node-1' must be a primitive value node, but was 'object'.", "invalid target rejection should be deterministic");
+}
+
+function unsupportedUndoIsExplicit(): void {
+  const registry = createLoadedSession('{"name":"Widget"}');
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  expectAccepted(registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-unsupported-undo",
+      sessionId,
+      baseRevision: 0,
+      kind: "setPropertyValue",
+      payload: {
+        objectNodeId: initialDocument.rootNodeId,
+        propertyName: "name",
+        value: "Gadget"
+      }
+    }
+  }));
+
+  const result = registry.undo({ sessionId });
+  assert(result.accepted === false, "unsupported undo should be rejected explicitly");
+  if (result.accepted) {
+    throw new Error("unsupported undo should be rejected");
+  }
+
+  assert(result.reason === "Undo is only supported for replaceValue transactions in Milestone 004.", "unsupported undo reason should be explicit");
+}
+
 function sessionRegistryTracksCreateAndDispose(): void {
   const registry = new SessionRegistry();
   const session = registry.createSession({
@@ -193,6 +461,7 @@ function sessionRegistryTracksCreateAndDispose(): void {
   });
 
   assert(session.lifecycleState === "created", "session should start in the created state");
+  assert(session.revision === 0, "new sessions should start at revision zero");
   assert(registry.listSessionIds().length === 1, "registry should contain a created session");
 
   registry.mountSession("session-1");
@@ -215,11 +484,33 @@ function runtimeProtocolVersionIsExported(): void {
   assert(RUNTIME_PROTOCOL_VERSION.length > 0, "protocol version should be a non-empty string");
 }
 
+function createLoadedSession(text: string): SessionRegistry {
+  const registry = new SessionRegistry();
+  registry.createSession({ hostElementId: "host-1", sessionId: "session-1" });
+  registry.mountSession("session-1");
+  registry.loadTextDocument({
+    contentType: "application/json",
+    documentId: "document-1",
+    sessionId: "session-1",
+    text
+  });
+  return registry;
+}
+
 parserBuildsStructuralIndexForObjectDocument();
 parserBuildsStructuralIndexForArrayDocument();
 parserBuildsStructuralIndexForNestedDocument();
 invalidJsonProducesDeterministicDiagnostic();
 foldStateCanBeToggledForObjectAndArrayNodes();
 revealPathExpandsFoldedAncestors();
+replacePrimitiveValueSupportsUndoRedoAndPatchRevisions();
+setPropertyValueAddsObjectProperty();
+setPropertyValueReplacesExistingObjectPropertyValue();
+removePropertyRemovesObjectProperty();
+insertArrayItemInsertsArrayValue();
+removeArrayItemRemovesArrayValue();
+staleBaseRevisionIsRejectedDeterministically();
+invalidTargetNodeKindIsRejectedDeterministically();
+unsupportedUndoIsExplicit();
 sessionRegistryTracksCreateAndDispose();
 runtimeProtocolVersionIsExported();

@@ -1,11 +1,12 @@
 @page "/"
 @rendermode InteractiveServer
+@using System.Text.Json
 
 <PageTitle>BlazorJsonVisualizer Sample</PageTitle>
 
-<h1>Layer 1 JSON viewer prototype</h1>
+<h1>Layer 1 controlled editing prototype</h1>
 
-<p>This sample loads a small JSON document into the browser runtime, surfaces runtime events and diagnostics, and can reveal a nested path through Blazor interop.</p>
+<p>This sample loads a small JSON document into the browser runtime, surfaces runtime events and diagnostics, and can trigger controlled transactions through Blazor interop.</p>
 
 <JsonVisualizer @ref="_visualizer"
                 SessionId="sample-session"
@@ -33,12 +34,28 @@
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Transactions</h2>
+        <p style="margin-top: 0;">Apply a deterministic <code>replaceValue</code> transaction against the sample document, then exercise minimal undo/redo support.</p>
+        <p><strong>Current revision:</strong> @_currentRevision</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button @onclick='() => ReplaceMilestoneAsync(4)'>Set milestone to 4</button>
+            <button @onclick='() => ReplaceMilestoneAsync(5)'>Set milestone to 5</button>
+            <button @onclick="UndoAsync">Undo</button>
+            <button @onclick="RedoAsync">Redo</button>
+        </div>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
         <h2 style="font-size: 1.1rem; margin-top: 0;">Latest runtime event</h2>
         <p><strong>Type:</strong> @_latestEvent.Type</p>
         <p><strong>Session:</strong> @_latestEvent.SessionId</p>
         <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
+        <p><strong>Transaction:</strong> @_latestEvent.TransactionId</p>
+        <p><strong>Base revision:</strong> @_latestEvent.BaseRevision</p>
+        <p><strong>New revision:</strong> @_latestEvent.NewRevision</p>
         <p><strong>Node count:</strong> @_latestEvent.NodeCount</p>
         <p><strong>Message:</strong> @_latestEvent.Message</p>
+        <p><strong>Reason:</strong> @_latestEvent.Reason</p>
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
@@ -57,13 +74,24 @@
             </ul>
         }
     </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Latest patch</h2>
+        <pre style="margin: 0; white-space: pre-wrap;">@_latestPatchJson</pre>
+    </section>
 </section>
 
 @code {
+    private const string SampleSessionId = "sample-session";
+    private const string MilestoneValueNodeId = "node-5";
+    private static readonly JsonSerializerOptions PatchJsonOptions = new() { WriteIndented = true };
     private JsonVisualizer? _visualizer;
     private string _revealPath = "$.owner.contact.email";
-    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "sample-session", "Waiting for runtime event.");
+    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, SampleSessionId, "Waiting for runtime event.");
     private List<RuntimeDiagnosticDto> _diagnostics = [];
+    private string _latestPatchJson = "No patch emitted yet.";
+    private int _currentRevision;
+    private int _nextTransactionNumber = 1;
 
     private const string SampleJson = """
 {
@@ -100,6 +128,43 @@
         await _visualizer.RevealPathAsync(_revealPath);
     }
 
+    private async Task ReplaceMilestoneAsync(int milestone)
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.ApplyTransactionAsync(new RuntimeTransactionDto(
+            $"sample-replace-milestone-{_nextTransactionNumber++}",
+            SampleSessionId,
+            _currentRevision,
+            RuntimeTransactionKinds.ReplaceValue,
+            new RuntimeTransactionPayloadDto(
+                NodeId: MilestoneValueNodeId,
+                Value: JsonSerializer.SerializeToElement(milestone))));
+    }
+
+    private async Task UndoAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.UndoAsync();
+    }
+
+    private async Task RedoAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.RedoAsync();
+    }
+
     private void SetRevealPath(string path)
     {
         _revealPath = path;
@@ -112,6 +177,16 @@
         if (runtimeEvent.Diagnostics is not null)
         {
             _diagnostics = runtimeEvent.Diagnostics.ToList();
+        }
+
+        if (runtimeEvent.NewRevision is not null)
+        {
+            _currentRevision = runtimeEvent.NewRevision.Value;
+        }
+
+        if (runtimeEvent.Patch is not null)
+        {
+            _latestPatchJson = JsonSerializer.Serialize(runtimeEvent.Patch, PatchJsonOptions);
         }
 
         return InvokeAsync(StateHasChanged);

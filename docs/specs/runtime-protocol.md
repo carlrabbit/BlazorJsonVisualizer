@@ -70,6 +70,27 @@ Fields:
 - `sessionId: string`
 - `path: string`
 
+## Additional host-to-runtime messages for Milestone 004
+
+### `applyTransaction`
+
+Fields:
+
+- `sessionId: string`
+- `transaction: RuntimeTransactionDto`
+
+### `undo`
+
+Fields:
+
+- `sessionId: string`
+
+### `redo`
+
+Fields:
+
+- `sessionId: string`
+
 ## Runtime-to-host events
 
 ### `sessionCreated`
@@ -117,6 +138,32 @@ Fields:
 
 - `sessionId: string`
 - `diagnostics: RuntimeDiagnosticDto[]`
+
+## Additional runtime-to-host events for Milestone 004
+
+### `transactionApplied`
+
+Fields:
+
+- `sessionId: string`
+- `transactionId: string`
+- `baseRevision: number`
+- `newRevision: number`
+
+### `documentPatchProduced`
+
+Fields:
+
+- `sessionId: string`
+- `patch: RuntimePatchDto`
+
+### `transactionRejected`
+
+Fields:
+
+- `sessionId: string`
+- `transactionId: string`
+- `reason: string`
 
 ## Versioning
 

@@ -39,3 +39,9 @@ Each structural node has:
 - Chunked structural indexes.
 - Stable IDs across edits.
 - Schema metadata.
+
+## Edit invalidation rules
+
+After a successful transaction, the runtime must update or rebuild the affected structural index.
+
+Milestone 004 may rebuild the full index for small documents after each transaction. This is acceptable only as a prototype constraint. Fold state may be preserved only for nodes whose exact paths survive the rebuild.

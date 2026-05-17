@@ -1,14 +1,18 @@
 import {
+  type ApplyTransactionCommand,
   type CreateSessionCommand,
   type DisposeSessionCommand,
   type DocumentSessionRecord,
   type LoadTextDocumentCommand,
+  type RedoCommand,
   type RevealPathCommand,
   type RuntimeDiagnosticDto,
   type RuntimeEventDto,
   type StructuralIndexDocument,
   type StructuralNodeRecord,
+  type TransactionCommandResult,
   type ToggleFoldCommand,
+  type UndoCommand,
   type SetViewportCommand,
   SessionRegistry,
   listChildNodeIds
@@ -22,6 +26,9 @@ export interface DomRuntimeController {
   setViewport(command: SetViewportCommand): Promise<void>;
   toggleFold(command: ToggleFoldCommand): Promise<void>;
   revealPath(command: RevealPathCommand): Promise<void>;
+  applyTransaction(command: ApplyTransactionCommand): Promise<void>;
+  undo(command: UndoCommand): Promise<void>;
+  redo(command: RedoCommand): Promise<void>;
   disposeSession(command: DisposeSessionCommand): Promise<void>;
 }
 
@@ -95,6 +102,18 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
     }
   }
 
+  public async applyTransaction(command: ApplyTransactionCommand): Promise<void> {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.applyTransaction(command));
+  }
+
+  public async undo(command: UndoCommand): Promise<void> {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.undo(command));
+  }
+
+  public async redo(command: RedoCommand): Promise<void> {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.redo(command));
+  }
+
   public async disposeSession(command: DisposeSessionCommand): Promise<void> {
     const hostElement = this.hostElements.get(command.sessionId);
 
@@ -147,6 +166,32 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
     }
 
     await callback(event);
+  }
+
+  private async handleTransactionResult(sessionId: string, result: TransactionCommandResult): Promise<void> {
+    if (!result.accepted) {
+      await this.emit({
+        type: "transactionRejected",
+        sessionId: result.sessionId,
+        transactionId: result.transactionId,
+        reason: result.reason
+      });
+      return;
+    }
+
+    this.render(sessionId);
+    await this.emit({
+      type: "transactionApplied",
+      sessionId,
+      transactionId: result.patch.transactionId,
+      baseRevision: result.patch.baseRevision,
+      newRevision: result.patch.newRevision
+    });
+    await this.emit({
+      type: "documentPatchProduced",
+      sessionId,
+      patch: result.patch
+    });
   }
 }
 
