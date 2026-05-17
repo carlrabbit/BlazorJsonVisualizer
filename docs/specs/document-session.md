@@ -1,11 +1,29 @@
-# Document Session
+# Document Session Spec
 
 ## Purpose
 
-Define the lifecycle and state model for one loaded structural JSON document in the runtime.
+Defines the lifecycle of one document runtime instance.
 
-## Initial direction
+## Session identity
 
-- A session owns one document, its revision, viewport state, and change state.
-- Session behavior must support deterministic transactions.
-- Session boundaries must remain host-agnostic inside the runtime core.
+A session has:
+
+- `sessionId`
+- optional `documentId`
+- lifecycle state
+- runtime options
+- host callback target
+
+## Lifecycle states
+
+- `created`
+- `mounted`
+- `document-loaded`
+- `disposed`
+
+## Rules
+
+- A disposed session must reject further commands.
+- Runtime internals must not depend on Blazor component instances.
+- The session API must be testable without Blazor.
+- Milestone 002 may use placeholder rendering only.

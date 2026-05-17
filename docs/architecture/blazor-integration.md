@@ -1,3 +1,16 @@
-# Blazor Integration
+# Blazor Integration Architecture
 
-Blazor is the primary host and packaging surface. Integration code is responsible for mounting, configuration, and runtime communication, while the runtime remains framework-agnostic internally.
+BlazorJsonVisualizer exposes a Blazor component that mounts the TypeScript runtime into a DOM element.
+
+Blazor responsibilities:
+
+- provide component parameters
+- provide initial document data
+- receive runtime callbacks
+- dispose runtime sessions
+
+Blazor non-responsibilities:
+
+- no direct ownership of structural index
+- no direct DOM rendering of JSON internals
+- no browser runtime state machine

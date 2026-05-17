@@ -1,0 +1,41 @@
+@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>BlazorJsonVisualizer Sample</PageTitle>
+
+<h1>Runtime shell sample</h1>
+
+<p>This sample mounts the Milestone 002 placeholder runtime and shows the latest runtime event received by Blazor.</p>
+
+<JsonVisualizer SessionId="sample-session"
+                DocumentId="sample-document"
+                Text="@SampleJson"
+                Options="@_options"
+                RuntimeEvent="HandleRuntimeEvent" />
+
+<section style="margin-top: 1.5rem;">
+    <h2 style="font-size: 1.25rem;">Latest runtime event</h2>
+    <p><strong>Type:</strong> @_latestEvent.Type</p>
+    <p><strong>Session:</strong> @_latestEvent.SessionId</p>
+    <p><strong>Message:</strong> @_latestEvent.Message</p>
+</section>
+
+@code {
+    private readonly RuntimeOptionsDto _options = new("Milestone 002 runtime placeholder");
+
+    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "sample-session", "Waiting for runtime event.");
+
+    private const string SampleJson = """
+{
+  \"project\": \"BlazorJsonVisualizer\",
+  \"milestone\": 2,
+  \"status\": \"placeholder runtime shell\"
+}
+""";
+
+    private Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    {
+        _latestEvent = runtimeEvent;
+        return InvokeAsync(StateHasChanged);
+    }
+}
