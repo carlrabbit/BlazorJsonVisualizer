@@ -8,6 +8,12 @@ public sealed record DisposeSessionCommand(string SessionId);
 
 public sealed record LoadTextDocumentCommand(string SessionId, string DocumentId, string Text, string ContentType = RuntimeConstants.JsonContentType);
 
+public sealed record AttachSchemaCommand(string SessionId, string SchemaId, JsonElement Schema);
+
+public sealed record DetachSchemaCommand(string SessionId, string SchemaId);
+
+public sealed record GetSchemaMetadataForPathCommand(string SessionId, string Path);
+
 public sealed record SetViewportCommand(string SessionId, double Width, double Height);
 
 public sealed record ToggleFoldCommand(string SessionId, string NodeId);

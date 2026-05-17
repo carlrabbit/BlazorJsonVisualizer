@@ -1,12 +1,16 @@
 import {
+  type AttachSchemaCommand,
   type ApplyTransactionCommand,
   RUNTIME_PROTOCOL_VERSION,
   type CreateSessionCommand,
+  type DetachSchemaCommand,
   type DisposeSessionCommand,
+  type GetSchemaMetadataForPathCommand,
   type LoadTextDocumentCommand,
   type RedoCommand,
   type RevealPathCommand,
   type RuntimeEventDto,
+  type SchemaNodeMetadataDto,
   type SetViewportCommand,
   type ToggleFoldCommand,
   type UndoCommand
@@ -22,6 +26,9 @@ export interface RuntimeBlazorModule {
   disposeSession(command: DisposeSessionCommand): Promise<void>;
   getRuntimeProtocolVersion(): string;
   loadTextDocument(command: LoadTextDocumentCommand): Promise<void>;
+  attachSchema(command: AttachSchemaCommand): Promise<void>;
+  detachSchema(command: DetachSchemaCommand): Promise<void>;
+  getSchemaMetadataForPath(command: GetSchemaMetadataForPathCommand): Promise<SchemaNodeMetadataDto | undefined>;
   setViewport(command: SetViewportCommand): Promise<void>;
   toggleFold(command: ToggleFoldCommand): Promise<void>;
   revealPath(command: RevealPathCommand): Promise<void>;
@@ -45,6 +52,18 @@ export async function disposeSession(command: DisposeSessionCommand): Promise<vo
 
 export async function loadTextDocument(command: LoadTextDocumentCommand): Promise<void> {
   await domRuntimeController.loadTextDocument(command);
+}
+
+export async function attachSchema(command: AttachSchemaCommand): Promise<void> {
+  await domRuntimeController.attachSchema(command);
+}
+
+export async function detachSchema(command: DetachSchemaCommand): Promise<void> {
+  await domRuntimeController.detachSchema(command);
+}
+
+export async function getSchemaMetadataForPath(command: GetSchemaMetadataForPathCommand): Promise<SchemaNodeMetadataDto | undefined> {
+  return domRuntimeController.getSchemaMetadataForPath(command);
 }
 
 export async function setViewport(command: SetViewportCommand): Promise<void> {
@@ -90,6 +109,9 @@ const runtimeBlazorModule: RuntimeBlazorModule = {
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
+  attachSchema,
+  detachSchema,
+  getSchemaMetadataForPath,
   setViewport,
   toggleFold,
   revealPath,

@@ -1,4 +1,4 @@
-export const RUNTIME_PROTOCOL_VERSION = "0.4.0-milestone-004";
+export const RUNTIME_PROTOCOL_VERSION = "0.5.0-milestone-005";
 
 export type JsonContentType = "application/json";
 export type DocumentSessionLifecycleState = "created" | "mounted" | "document-loaded" | "disposed";
@@ -109,6 +109,22 @@ export interface RedoCommand {
   sessionId: string;
 }
 
+export interface AttachSchemaCommand {
+  sessionId: string;
+  schemaId: string;
+  schema: object;
+}
+
+export interface DetachSchemaCommand {
+  sessionId: string;
+  schemaId: string;
+}
+
+export interface GetSchemaMetadataForPathCommand {
+  sessionId: string;
+  path: string;
+}
+
 export interface RuntimePatchOperationDto {
   kind: RuntimeTransactionKind;
   path: string;
@@ -135,6 +151,28 @@ export interface RuntimeDiagnosticDto {
   severity: RuntimeDiagnosticSeverity;
   startOffset: number;
   endOffset: number;
+}
+
+export type SchemaDiagnosticSeverity = "info" | "warning" | "error";
+
+export interface SchemaDiagnosticDto {
+  diagnosticId: string;
+  nodeId?: string | undefined;
+  path: string;
+  severity: SchemaDiagnosticSeverity;
+  message: string;
+  source: "schema";
+}
+
+export interface SchemaNodeMetadataDto {
+  nodeId: string;
+  schemaPath: string;
+  title?: string | undefined;
+  description?: string | undefined;
+  expectedType?: string | string[] | undefined;
+  enumValues?: JsonValueDto[] | undefined;
+  required?: boolean | undefined;
+  defaultValue?: JsonValueDto | undefined;
 }
 
 export interface StructuralNodeRecord {
@@ -174,7 +212,16 @@ export interface DocumentSessionRecord {
   viewport?: ViewportDto | undefined;
   document?: StructuralIndexDocument | undefined;
   diagnostics: RuntimeDiagnosticDto[];
+  schemaDiagnostics: SchemaDiagnosticDto[];
+  schemaMetadataByNodeId: Record<string, SchemaNodeMetadataDto>;
+  schemaAttachment?: SchemaAttachmentRecord | undefined;
   revealTargetNodeId?: string | undefined;
+}
+
+export interface SchemaAttachmentRecord {
+  schemaId: string;
+  documentId: string;
+  schema: object;
 }
 
 export interface SessionCreatedEventDto {
@@ -234,6 +281,25 @@ export interface TransactionRejectedEventDto {
   reason: string;
 }
 
+export interface SchemaAttachedEventDto {
+  type: "schemaAttached";
+  sessionId: string;
+  schemaId: string;
+}
+
+export interface SchemaDiagnosticsChangedEventDto {
+  type: "schemaDiagnosticsChanged";
+  sessionId: string;
+  diagnostics: SchemaDiagnosticDto[];
+  schemaDiagnostics?: SchemaDiagnosticDto[] | undefined;
+}
+
+export interface SchemaMetadataChangedEventDto {
+  type: "schemaMetadataChanged";
+  sessionId: string;
+  affectedNodeIds: string[];
+}
+
 export type RuntimeEventDto =
   | SessionCreatedEventDto
   | SessionDisposedEventDto
@@ -243,7 +309,10 @@ export type RuntimeEventDto =
   | DiagnosticsChangedEventDto
   | TransactionAppliedEventDto
   | DocumentPatchProducedEventDto
-  | TransactionRejectedEventDto;
+  | TransactionRejectedEventDto
+  | SchemaAttachedEventDto
+  | SchemaDiagnosticsChangedEventDto
+  | SchemaMetadataChangedEventDto;
 
 export interface ParseJsonDocumentResult {
   document?: StructuralIndexDocument | undefined;
@@ -287,6 +356,12 @@ interface SessionHistoryEntry {
 interface InternalDocumentSessionRecord extends DocumentSessionRecord {
   undoStack: SessionHistoryEntry[];
   redoStack: SessionHistoryEntry[];
+}
+
+export interface SchemaOverlayUpdateResult {
+  session: DocumentSessionRecord;
+  affectedNodeIds: string[];
+  diagnostics: SchemaDiagnosticDto[];
 }
 
 interface TransactionMutationResult {
@@ -898,6 +973,8 @@ export class SessionRegistry {
       revision: 0,
       sessionId: command.sessionId,
       diagnostics: [],
+      schemaDiagnostics: [],
+      schemaMetadataByNodeId: {},
       undoStack: [],
       redoStack: [],
       ...(command.options !== undefined ? { options: command.options } : {})
@@ -925,6 +1002,9 @@ export class SessionRegistry {
       revision: 0,
       text: command.text,
       diagnostics: parseResult.diagnostics,
+      schemaDiagnostics: [],
+      schemaMetadataByNodeId: {},
+      schemaAttachment: undefined,
       revealTargetNodeId: undefined,
       undoStack: [],
       redoStack: [],
@@ -990,7 +1070,10 @@ export class SessionRegistry {
     const updatedSession: InternalDocumentSessionRecord = {
       ...result.session,
       undoStack: [...session.undoStack, ...result.session.undoStack.slice(session.undoStack.length)],
-      redoStack: []
+      redoStack: [],
+      schemaAttachment: undefined,
+      schemaMetadataByNodeId: {},
+      schemaDiagnostics: []
     };
 
     this.sessions.set(command.sessionId, updatedSession);
@@ -1037,7 +1120,10 @@ export class SessionRegistry {
     const updatedSession: InternalDocumentSessionRecord = {
       ...result.session,
       undoStack: session.undoStack.slice(0, -1),
-      redoStack: [...session.redoStack, historyEntry]
+      redoStack: [...session.redoStack, historyEntry],
+      schemaAttachment: undefined,
+      schemaMetadataByNodeId: {},
+      schemaDiagnostics: []
     };
 
     this.sessions.set(command.sessionId, updatedSession);
@@ -1076,7 +1162,10 @@ export class SessionRegistry {
     const updatedSession: InternalDocumentSessionRecord = {
       ...result.session,
       undoStack: [...session.undoStack, historyEntry],
-      redoStack: session.redoStack.slice(0, -1)
+      redoStack: session.redoStack.slice(0, -1),
+      schemaAttachment: undefined,
+      schemaMetadataByNodeId: {},
+      schemaDiagnostics: []
     };
 
     this.sessions.set(command.sessionId, updatedSession);
@@ -1085,6 +1174,75 @@ export class SessionRegistry {
       session: updatedSession,
       patch: result.patch
     };
+  }
+
+  public attachSchema(command: AttachSchemaCommand): SchemaOverlayUpdateResult {
+    const session = this.requireSession(command.sessionId);
+
+    if (session.document === undefined || session.documentId === undefined || session.text === undefined) {
+      throw new Error(`Session '${command.sessionId}' does not have a loaded document.`);
+    }
+
+    const overlay = resolveSchemaOverlay(session.document, session.text, command.schema);
+    const updatedSession: InternalDocumentSessionRecord = {
+      ...session,
+      schemaAttachment: {
+        schemaId: command.schemaId,
+        documentId: session.documentId,
+        schema: command.schema
+      },
+      schemaMetadataByNodeId: overlay.metadataByNodeId,
+      schemaDiagnostics: overlay.diagnostics
+    };
+
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      session: updatedSession,
+      affectedNodeIds: Object.keys(overlay.metadataByNodeId),
+      diagnostics: overlay.diagnostics
+    };
+  }
+
+  public detachSchema(command: DetachSchemaCommand): SchemaOverlayUpdateResult {
+    const session = this.requireSession(command.sessionId);
+    const previousNodeIds = Object.keys(session.schemaMetadataByNodeId);
+
+    if (session.schemaAttachment === undefined || session.schemaAttachment.schemaId !== command.schemaId) {
+      return {
+        session,
+        affectedNodeIds: [],
+        diagnostics: session.schemaDiagnostics
+      };
+    }
+
+    const updatedSession: InternalDocumentSessionRecord = {
+      ...session,
+      schemaAttachment: undefined,
+      schemaMetadataByNodeId: {},
+      schemaDiagnostics: []
+    };
+
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      session: updatedSession,
+      affectedNodeIds: previousNodeIds,
+      diagnostics: []
+    };
+  }
+
+  public getSchemaMetadataForPath(command: GetSchemaMetadataForPathCommand): SchemaNodeMetadataDto | undefined {
+    const session = this.requireSession(command.sessionId);
+    const document = session.document;
+    if (document === undefined) {
+      return undefined;
+    }
+
+    const nodeId = findNodeIdByPath(document, command.path);
+    if (nodeId === undefined) {
+      return undefined;
+    }
+
+    return session.schemaMetadataByNodeId[nodeId];
   }
 
   public clearRevealTarget(sessionId: string): DocumentSessionRecord {
@@ -1770,6 +1928,284 @@ function isJsonObjectDto(value: unknown): value is JsonObjectDto {
 
 function isJsonValueDto(value: unknown): value is JsonValueDto {
   return isJsonScalarValue(value) || isJsonArrayDto(value) || isJsonObjectDto(value);
+}
+
+interface SchemaOverlayResolution {
+  metadataByNodeId: Record<string, SchemaNodeMetadataDto>;
+  diagnostics: SchemaDiagnosticDto[];
+}
+
+interface SchemaTypeMismatchExpectation {
+  expectedType: string | string[];
+  allowedTypes: Array<"string" | "number" | "integer" | "boolean" | "null">;
+}
+
+function resolveSchemaOverlay(document: StructuralIndexDocument, text: string, schema: object): SchemaOverlayResolution {
+  const metadataByNodeId: Record<string, SchemaNodeMetadataDto> = {};
+  const diagnostics: SchemaDiagnosticDto[] = [];
+  const rootValue = parseJsonText(text);
+
+  if (rootValue === undefined) {
+    return { metadataByNodeId, diagnostics };
+  }
+
+  for (const nodeId of document.nodeOrder) {
+    const node = document.nodesById[nodeId];
+    if (node === undefined || node.kind === "property") {
+      continue;
+    }
+
+    const resolution = resolveSchemaForPath(schema, node.path);
+    if (resolution.resolvedSchema === undefined) {
+      continue;
+    }
+
+    const nodeValue = getJsonValueAtPath(rootValue, node.path);
+    if (nodeValue === undefined) {
+      continue;
+    }
+
+    const metadata = createSchemaNodeMetadata(nodeId, resolution.schemaPath, resolution.resolvedSchema, resolution.required);
+    metadataByNodeId[nodeId] = metadata;
+    collectSchemaDiagnostics(diagnostics, node, nodeValue, metadata, resolution.resolvedSchema);
+  }
+
+  return {
+    metadataByNodeId,
+    diagnostics
+  };
+}
+
+function createSchemaNodeMetadata(
+  nodeId: string,
+  schemaPath: string,
+  schema: JsonObjectDto,
+  required: boolean
+): SchemaNodeMetadataDto {
+  const metadata: SchemaNodeMetadataDto = {
+    nodeId,
+    schemaPath
+  };
+
+  if (typeof schema.title === "string") {
+    metadata.title = schema.title;
+  }
+
+  if (typeof schema.description === "string") {
+    metadata.description = schema.description;
+  }
+
+  const expectedType = parseSchemaType(schema.type);
+  if (expectedType !== undefined) {
+    metadata.expectedType = expectedType;
+  }
+
+  if (Array.isArray(schema.enum) && schema.enum.every((value) => isJsonValueDto(value))) {
+    metadata.enumValues = schema.enum.map((value) => cloneJsonValue(value));
+  }
+
+  if (required) {
+    metadata.required = true;
+  }
+
+  if (schema.default !== undefined && isJsonValueDto(schema.default)) {
+    metadata.defaultValue = cloneJsonValue(schema.default);
+  }
+
+  return metadata;
+}
+
+function collectSchemaDiagnostics(
+  diagnostics: SchemaDiagnosticDto[],
+  node: StructuralNodeRecord,
+  nodeValue: JsonValueDto,
+  metadata: SchemaNodeMetadataDto,
+  schema: JsonObjectDto
+): void {
+  const typeExpectation = getPrimitiveTypeExpectation(metadata.expectedType);
+  if (typeExpectation !== undefined) {
+    const actualType = getSchemaTypeForValue(nodeValue);
+    if (isPrimitiveSchemaType(actualType) && !typeExpectation.allowedTypes.some((expected) => matchesPrimitiveSchemaType(expected, actualType))) {
+      diagnostics.push({
+        diagnosticId: createSchemaDiagnosticId(node.nodeId, "type-mismatch"),
+        nodeId: node.nodeId,
+        path: node.path,
+        severity: "error",
+        message: `Expected type ${formatExpectedType(typeExpectation.expectedType)} but found '${actualType}'.`,
+        source: "schema"
+      });
+    }
+  }
+
+  if (Array.isArray(metadata.enumValues) && !metadata.enumValues.some((value) => areJsonValuesEqual(value, nodeValue))) {
+    diagnostics.push({
+      diagnosticId: createSchemaDiagnosticId(node.nodeId, "enum-mismatch"),
+      nodeId: node.nodeId,
+      path: node.path,
+      severity: "error",
+      message: "Value is not in the allowed enum set.",
+      source: "schema"
+    });
+  }
+
+  const requiredNames = parseRequiredProperties(schema.required);
+  if (requiredNames.length === 0 || !isJsonObjectDto(nodeValue) || node.kind !== "object") {
+    return;
+  }
+
+  for (const propertyName of requiredNames) {
+    if (Object.prototype.hasOwnProperty.call(nodeValue, propertyName)) {
+      continue;
+    }
+
+    const missingPath = appendObjectPath(node.path, propertyName);
+    diagnostics.push({
+      diagnosticId: createSchemaDiagnosticId(node.nodeId, `missing-required-${propertyName}`),
+      nodeId: node.nodeId,
+      path: missingPath,
+      severity: "error",
+      message: `Missing required property '${propertyName}'.`,
+      source: "schema"
+    });
+  }
+}
+
+function resolveSchemaForPath(
+  rootSchema: object,
+  path: string
+): { resolvedSchema?: JsonObjectDto | undefined; schemaPath: string; required: boolean } {
+  if (!isJsonObjectDto(rootSchema)) {
+    return { resolvedSchema: undefined, schemaPath: "#", required: false };
+  }
+
+  let currentSchema: JsonObjectDto | undefined = rootSchema;
+  let schemaPath = "#";
+  let required = false;
+  const segments = parseStructuralPath(path);
+
+  for (const segment of segments) {
+    if (currentSchema === undefined) {
+      break;
+    }
+
+    if (typeof segment === "number") {
+      const itemsCandidate: unknown = currentSchema["items"];
+      if (!isJsonObjectDto(itemsCandidate)) {
+        currentSchema = undefined;
+        break;
+      }
+
+      currentSchema = itemsCandidate;
+      schemaPath += "/items";
+      required = false;
+      continue;
+    }
+
+    const propertiesCandidate: unknown = currentSchema["properties"];
+    const propertySchema = isJsonObjectDto(propertiesCandidate) ? propertiesCandidate[segment] : undefined;
+    if (!isJsonObjectDto(propertySchema)) {
+      currentSchema = undefined;
+      break;
+    }
+
+    required = parseRequiredProperties(currentSchema.required).includes(segment);
+    currentSchema = propertySchema;
+    schemaPath += `/properties/${escapeJsonPointerSegment(segment)}`;
+  }
+
+  return {
+    resolvedSchema: currentSchema,
+    schemaPath,
+    required
+  };
+}
+
+function parseSchemaType(value: unknown): string | string[] | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
+    return [...value];
+  }
+
+  return undefined;
+}
+
+function parseRequiredProperties(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function getPrimitiveTypeExpectation(expectedType: string | string[] | undefined): SchemaTypeMismatchExpectation | undefined {
+  if (expectedType === undefined) {
+    return undefined;
+  }
+
+  const allowedTypes = (Array.isArray(expectedType) ? expectedType : [expectedType]).filter(isPrimitiveSchemaType);
+  if (allowedTypes.length === 0) {
+    return undefined;
+  }
+
+  return {
+    expectedType,
+    allowedTypes
+  };
+}
+
+function isPrimitiveSchemaType(value: string): value is "string" | "number" | "integer" | "boolean" | "null" {
+  return value === "string" || value === "number" || value === "integer" || value === "boolean" || value === "null";
+}
+
+function matchesPrimitiveSchemaType(expected: "string" | "number" | "integer" | "boolean" | "null", actual: "string" | "number" | "integer" | "boolean" | "null"): boolean {
+  if (expected === "number" && actual === "integer") {
+    return true;
+  }
+
+  return expected === actual;
+}
+
+function getSchemaTypeForValue(value: JsonValueDto): string {
+  if (value === null) {
+    return "null";
+  }
+
+  if (Array.isArray(value)) {
+    return "array";
+  }
+
+  if (typeof value === "boolean") {
+    return "boolean";
+  }
+
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "integer" : "number";
+  }
+
+  if (typeof value === "string") {
+    return "string";
+  }
+
+  return "object";
+}
+
+function formatExpectedType(expectedType: string | string[]): string {
+  return Array.isArray(expectedType) ? expectedType.map((entry) => `'${entry}'`).join(" or ") : `'${expectedType}'`;
+}
+
+function areJsonValuesEqual(left: JsonValueDto, right: JsonValueDto): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function createSchemaDiagnosticId(nodeId: string, suffix: string): string {
+  return `${nodeId}:${suffix}`;
+}
+
+function escapeJsonPointerSegment(segment: string): string {
+  return segment.replace(/~/gu, "~0").replace(/\//gu, "~1");
 }
 
 function isReplaceValuePayload(payload: RuntimeTransactionPayload): payload is ReplaceValueTransactionPayload {

@@ -450,6 +450,180 @@ function unsupportedUndoIsExplicit(): void {
   assert(result.reason === "Undo is only supported for replaceValue transactions in Milestone 004.", "unsupported undo reason should be explicit");
 }
 
+function resolvesPropertySchemaMetadata(): void {
+  const registry = createLoadedSession('{"project":"BlazorJsonVisualizer"}');
+  const sessionId = "session-1";
+
+  registry.attachSchema({
+    sessionId,
+    schemaId: "schema-1",
+    schema: {
+      type: "object",
+      properties: {
+        project: {
+          type: "string",
+          title: "Project",
+          description: "Project display name"
+        }
+      },
+      required: ["project"]
+    }
+  });
+
+  const metadata = registry.getSchemaMetadataForPath({
+    sessionId,
+    path: "$.project"
+  });
+
+  assert(metadata !== undefined, "property schema metadata should resolve");
+  assert(metadata?.title === "Project", "property metadata should include title");
+  assert(metadata?.required === true, "required metadata should be propagated");
+}
+
+function resolvesArrayItemSchemaMetadata(): void {
+  const registry = createLoadedSession('{"items":[{"status":"todo"}]}');
+  const sessionId = "session-1";
+
+  registry.attachSchema({
+    sessionId,
+    schemaId: "schema-1",
+    schema: {
+      type: "object",
+      properties: {
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              status: {
+                type: "string",
+                enum: ["todo", "done"]
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const metadata = registry.getSchemaMetadataForPath({
+    sessionId,
+    path: "$.items[0].status"
+  });
+
+  assert(metadata !== undefined, "array item schema metadata should resolve");
+  assert(Array.isArray(metadata?.enumValues), "enum metadata should include enum values");
+  assert(metadata?.schemaPath === "#/properties/items/items/properties/status", "schema path should track array item traversal");
+}
+
+function missingRequiredPropertyProducesSchemaDiagnostic(): void {
+  const registry = createLoadedSession('{"project":"BlazorJsonVisualizer"}');
+  const sessionId = "session-1";
+
+  const result = registry.attachSchema({
+    sessionId,
+    schemaId: "schema-1",
+    schema: {
+      type: "object",
+      required: ["project", "items"],
+      properties: {
+        project: {
+          type: "string"
+        },
+        items: {
+          type: "array"
+        }
+      }
+    }
+  });
+
+  assert(result.diagnostics.some((diagnostic) => diagnostic.message === "Missing required property 'items'."), "missing required property should produce a schema diagnostic");
+}
+
+function primitiveTypeMismatchProducesSchemaDiagnostic(): void {
+  const registry = createLoadedSession('{"score":"12"}');
+  const sessionId = "session-1";
+
+  const result = registry.attachSchema({
+    sessionId,
+    schemaId: "schema-1",
+    schema: {
+      type: "object",
+      properties: {
+        score: {
+          type: "number"
+        }
+      }
+    }
+  });
+
+  assert(result.diagnostics.some((diagnostic) => diagnostic.path === "$.score" && diagnostic.message.includes("Expected type")), "primitive type mismatch should produce a schema diagnostic");
+}
+
+function enumMismatchProducesSchemaDiagnostic(): void {
+  const registry = createLoadedSession('{"status":"blocked"}');
+  const sessionId = "session-1";
+
+  const result = registry.attachSchema({
+    sessionId,
+    schemaId: "schema-1",
+    schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["todo", "done"]
+        }
+      }
+    }
+  });
+
+  assert(result.diagnostics.some((diagnostic) => diagnostic.path === "$.status" && diagnostic.message === "Value is not in the allowed enum set."), "enum mismatch should produce a schema diagnostic");
+}
+
+function schemaOverlayIsInvalidatedAfterTransaction(): void {
+  const registry = createLoadedSession('{"milestone":3}');
+  const sessionId = "session-1";
+  const initialSession = requireSession(registry.getSession(sessionId));
+  const initialDocument = requireDocument(initialSession.document);
+
+  registry.attachSchema({
+    sessionId,
+    schemaId: "schema-1",
+    schema: {
+      type: "object",
+      properties: {
+        milestone: {
+          type: "number"
+        }
+      }
+    }
+  });
+
+  const milestoneNodeId = findNodeIdByPath(initialDocument, "$.milestone");
+  assert(milestoneNodeId !== undefined, "milestone node should exist");
+
+  const applyResult = registry.applyTransaction({
+    sessionId,
+    transaction: {
+      transactionId: "tx-schema-invalidate",
+      sessionId,
+      baseRevision: 0,
+      kind: "replaceValue",
+      payload: {
+        nodeId: milestoneNodeId ?? "",
+        value: 4
+      }
+    }
+  });
+
+  assert(applyResult.accepted, "transaction should be accepted");
+  const updatedSession = requireSession(registry.getSession(sessionId));
+  assert(updatedSession.schemaAttachment === undefined, "schema attachment should be invalidated after transaction");
+  assert(Object.keys(updatedSession.schemaMetadataByNodeId).length === 0, "schema metadata should be cleared after transaction");
+  assert(updatedSession.schemaDiagnostics.length === 0, "schema diagnostics should be cleared after transaction");
+}
+
 function sessionRegistryTracksCreateAndDispose(): void {
   const registry = new SessionRegistry();
   const session = registry.createSession({
@@ -514,3 +688,9 @@ invalidTargetNodeKindIsRejectedDeterministically();
 unsupportedUndoIsExplicit();
 sessionRegistryTracksCreateAndDispose();
 runtimeProtocolVersionIsExported();
+resolvesPropertySchemaMetadata();
+resolvesArrayItemSchemaMetadata();
+missingRequiredPropertyProducesSchemaDiagnostic();
+primitiveTypeMismatchProducesSchemaDiagnostic();
+enumMismatchProducesSchemaDiagnostic();
+schemaOverlayIsInvalidatedAfterTransaction();

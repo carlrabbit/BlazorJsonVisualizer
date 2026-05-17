@@ -9,3 +9,4 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/structural-index.md`
 - `docs/specs/viewport-model.md`
 - `docs/specs/transaction-model.md`
+- `docs/specs/schema-overlay-model.md`
