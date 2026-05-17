@@ -57,6 +57,26 @@
         await RuntimeEvent.InvokeAsync(runtimeEvent);
     }
 
+    public async Task ToggleFoldAsync(string nodeId)
+    {
+        if (_interop is null || !_sessionCreated)
+        {
+            return;
+        }
+
+        await _interop.ToggleFoldAsync(new ToggleFoldCommand(EffectiveSessionId, nodeId));
+    }
+
+    public async Task RevealPathAsync(string path)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        await _interop.RevealPathAsync(new RevealPathCommand(EffectiveSessionId, path));
+    }
+
     public async ValueTask DisposeAsync()
     {
         try

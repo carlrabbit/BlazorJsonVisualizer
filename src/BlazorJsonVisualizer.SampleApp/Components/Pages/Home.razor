@@ -3,39 +3,117 @@
 
 <PageTitle>BlazorJsonVisualizer Sample</PageTitle>
 
-<h1>Runtime shell sample</h1>
+<h1>Layer 1 JSON viewer prototype</h1>
 
-<p>This sample mounts the Milestone 002 placeholder runtime and shows the latest runtime event received by Blazor.</p>
+<p>This sample loads a small JSON document into the browser runtime, surfaces runtime events and diagnostics, and can reveal a nested path through Blazor interop.</p>
 
-<JsonVisualizer SessionId="sample-session"
+<JsonVisualizer @ref="_visualizer"
+                SessionId="sample-session"
                 DocumentId="sample-document"
                 Text="@SampleJson"
-                Options="@_options"
                 RuntimeEvent="HandleRuntimeEvent" />
 
-<section style="margin-top: 1.5rem;">
-    <h2 style="font-size: 1.25rem;">Latest runtime event</h2>
-    <p><strong>Type:</strong> @_latestEvent.Type</p>
-    <p><strong>Session:</strong> @_latestEvent.SessionId</p>
-    <p><strong>Message:</strong> @_latestEvent.Message</p>
+<section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Reveal path</h2>
+        <p style="margin-top: 0;">Enter an indexed path such as <code>$.owner.contact.email</code> or <code>$.items[1].score</code>.</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_revealPath"
+                   style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                   aria-label="Reveal path" />
+            <button @onclick="RevealPathAsync"
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                Reveal path
+            </button>
+        </div>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button @onclick='() => SetRevealPath("$.owner.contact.email")'>Reveal email</button>
+            <button @onclick='() => SetRevealPath("$.items[1].score")'>Reveal second score</button>
+        </div>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Latest runtime event</h2>
+        <p><strong>Type:</strong> @_latestEvent.Type</p>
+        <p><strong>Session:</strong> @_latestEvent.SessionId</p>
+        <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
+        <p><strong>Node count:</strong> @_latestEvent.NodeCount</p>
+        <p><strong>Message:</strong> @_latestEvent.Message</p>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Diagnostics</h2>
+        @if (_diagnostics.Count == 0)
+        {
+            <p>No diagnostics.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var diagnostic in _diagnostics)
+                {
+                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.StartOffset-@diagnostic.EndOffset)</li>
+                }
+            </ul>
+        }
+    </section>
 </section>
 
 @code {
-    private readonly RuntimeOptionsDto _options = new("Milestone 002 runtime placeholder");
-
+    private JsonVisualizer? _visualizer;
+    private string _revealPath = "$.owner.contact.email";
     private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "sample-session", "Waiting for runtime event.");
+    private List<RuntimeDiagnosticDto> _diagnostics = [];
 
     private const string SampleJson = """
 {
-  \"project\": \"BlazorJsonVisualizer\",
-  \"milestone\": 2,
-  \"status\": \"placeholder runtime shell\"
+  "project": "BlazorJsonVisualizer",
+  "milestone": 3,
+  "owner": {
+    "name": "Carl Rabbit",
+    "contact": {
+      "email": "carl@example.invalid"
+    }
+  },
+  "items": [
+    {
+      "name": "alpha",
+      "score": 12
+    },
+    {
+      "name": "beta",
+      "score": 34
+    }
+  ],
+  "active": true,
+  "notes": null
 }
 """;
+
+    private async Task RevealPathAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.RevealPathAsync(_revealPath);
+    }
+
+    private void SetRevealPath(string path)
+    {
+        _revealPath = path;
+    }
 
     private Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
     {
         _latestEvent = runtimeEvent;
+
+        if (runtimeEvent.Diagnostics is not null)
+        {
+            _diagnostics = runtimeEvent.Diagnostics.ToList();
+        }
+
         return InvokeAsync(StateHasChanged);
     }
 }

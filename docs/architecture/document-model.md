@@ -1,3 +1,5 @@
-# Document Model
+# Document Model Architecture
 
-The canonical document model is structure-first. Runtime behavior should operate on indexed JSON structure and document sessions rather than treating the document as an opaque text buffer.
+The canonical Layer 1 model is structure-first. Raw text is retained, but navigation, folding, and later semantic features depend on the structural index.
+
+Milestone 003 uses full-text input and a complete in-memory structural index for small documents. This is a prototype constraint, not the final large-document model.

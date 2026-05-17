@@ -54,6 +54,22 @@ Fields:
 - `width: number`
 - `height: number`
 
+## Additional host-to-runtime messages for Milestone 003
+
+### `toggleFold`
+
+Fields:
+
+- `sessionId: string`
+- `nodeId: string`
+
+### `revealPath`
+
+Fields:
+
+- `sessionId: string`
+- `path: string`
+
 ## Runtime-to-host events
 
 ### `sessionCreated`
@@ -84,6 +100,23 @@ Fields:
 
 - `sessionId: string`
 - `message: string`
+
+## Additional runtime-to-host events for Milestone 003
+
+### `documentLoaded`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+- `nodeCount: number`
+
+### `diagnosticsChanged`
+
+Fields:
+
+- `sessionId: string`
+- `diagnostics: RuntimeDiagnosticDto[]`
 
 ## Versioning
 

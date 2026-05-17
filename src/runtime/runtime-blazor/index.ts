@@ -3,8 +3,10 @@ import {
   type CreateSessionCommand,
   type DisposeSessionCommand,
   type LoadTextDocumentCommand,
+  type RevealPathCommand,
   type RuntimeEventDto,
-  type SetViewportCommand
+  type SetViewportCommand,
+  type ToggleFoldCommand
 } from "../runtime-core/index.js";
 import { createDomRuntimeController } from "../runtime-dom/index.js";
 
@@ -18,6 +20,8 @@ export interface RuntimeBlazorModule {
   getRuntimeProtocolVersion(): string;
   loadTextDocument(command: LoadTextDocumentCommand): Promise<void>;
   setViewport(command: SetViewportCommand): Promise<void>;
+  toggleFold(command: ToggleFoldCommand): Promise<void>;
+  revealPath(command: RevealPathCommand): Promise<void>;
 }
 
 const domRuntimeController = createDomRuntimeController();
@@ -41,6 +45,14 @@ export async function setViewport(command: SetViewportCommand): Promise<void> {
   await domRuntimeController.setViewport(command);
 }
 
+export async function toggleFold(command: ToggleFoldCommand): Promise<void> {
+  await domRuntimeController.toggleFold(command);
+}
+
+export async function revealPath(command: RevealPathCommand): Promise<void> {
+  await domRuntimeController.revealPath(command);
+}
+
 export function getRuntimeProtocolVersion(): string {
   return RUNTIME_PROTOCOL_VERSION;
 }
@@ -60,7 +72,9 @@ const runtimeBlazorModule: RuntimeBlazorModule = {
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
-  setViewport
+  setViewport,
+  toggleFold,
+  revealPath
 };
 
 if (typeof window !== "undefined") {
