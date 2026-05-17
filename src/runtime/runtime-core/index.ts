@@ -370,8 +370,6 @@ class JsonStructuralParser {
         throw new JsonParseError("Unterminated array.", this.position, this.position);
       }
 
-      const _childNode = this.nodesById[childNodeId];
-      void _childNode;
     }
   }
 
@@ -674,6 +672,10 @@ export function listChildNodeIds(document: StructuralIndexDocument, nodeId: stri
   return childNodeIds;
 }
 
+function getDocumentNode(document: StructuralIndexDocument, nodeId: string): StructuralNodeRecord | undefined {
+  return document.nodesById[nodeId];
+}
+
 export function findNodeIdByPath(document: StructuralIndexDocument, path: string): string | undefined {
   const nodeIds = document.pathToNodeIds[path];
   return nodeIds?.[nodeIds.length - 1];
@@ -700,7 +702,7 @@ export function revealPathInDocument(document: StructuralIndexDocument, path: st
   let currentNodeId: string | undefined = targetNodeId;
 
   while (currentNodeId !== undefined) {
-    const currentNode: StructuralNodeRecord | undefined = updatedDocument.nodesById[currentNodeId];
+    const currentNode = getDocumentNode(updatedDocument, currentNodeId);
 
     if (currentNode === undefined) {
       break;
