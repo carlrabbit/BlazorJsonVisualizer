@@ -1,0 +1,82 @@
+@using BlazorJsonVisualizer.Interop
+@implements IAsyncDisposable
+@inject IJSRuntime JSRuntime
+
+<div class="json-visualizer-shell">
+    <div id="@_hostElementId"></div>
+</div>
+
+@code {
+    private readonly string _hostElementId = $"bjv-{Guid.NewGuid():N}";
+    private readonly string _generatedSessionId = Guid.NewGuid().ToString("N");
+    private JsonVisualizerJsInterop? _interop;
+    private DotNetObjectReference<JsonVisualizer>? _callbackReference;
+    private bool _sessionCreated;
+
+    [Parameter]
+    public string? SessionId { get; set; }
+
+    [Parameter]
+    public string? DocumentId { get; set; }
+
+    [Parameter]
+    public string Text { get; set; } = "{}";
+
+    [Parameter]
+    public RuntimeOptionsDto? Options { get; set; }
+
+    [Parameter]
+    public EventCallback<RuntimeEventDto> RuntimeEvent { get; set; }
+
+    private string EffectiveSessionId => string.IsNullOrWhiteSpace(SessionId) ? _generatedSessionId : SessionId;
+
+    private string EffectiveDocumentId => string.IsNullOrWhiteSpace(DocumentId) ? $"{EffectiveSessionId}-document" : DocumentId;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _interop = new JsonVisualizerJsInterop(JSRuntime);
+        _callbackReference = DotNetObjectReference.Create(this);
+
+        await _interop.CreateSessionAsync(new CreateSessionCommand(_hostElementId, EffectiveSessionId, Options), _callbackReference);
+        _sessionCreated = true;
+
+        if (!string.IsNullOrWhiteSpace(Text))
+        {
+            await _interop.LoadTextDocumentAsync(new LoadTextDocumentCommand(EffectiveSessionId, EffectiveDocumentId, Text));
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    {
+        await RuntimeEvent.InvokeAsync(runtimeEvent);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_interop is not null && _sessionCreated)
+            {
+                await _interop.DisposeSessionAsync(new DisposeSessionCommand(EffectiveSessionId));
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        finally
+        {
+            if (_interop is not null)
+            {
+                await _interop.DisposeAsync();
+            }
+
+            _callbackReference?.Dispose();
+        }
+    }
+}
