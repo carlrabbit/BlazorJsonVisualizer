@@ -1,5 +1,5 @@
 // ../runtime-core/index.ts
-var RUNTIME_PROTOCOL_VERSION = "0.3.0-milestone-003";
+var RUNTIME_PROTOCOL_VERSION = "0.4.0-milestone-004";
 var JsonParseError = class extends Error {
   constructor(message, startOffset, endOffset, code = "json-syntax-error") {
     super(message);
@@ -150,7 +150,6 @@ var JsonStructuralParser = class {
         );
       }
     }
-    throw new JsonParseError("Unterminated object.", this.position, this.position);
   }
   parseArray(parentId, depth, path, registerPath) {
     const startOffset = this.position;
@@ -177,7 +176,7 @@ var JsonStructuralParser = class {
     let index = 0;
     while (this.position < this.text.length) {
       this.skipWhitespace();
-      const childNodeId = this.parseValue(nodeId, depth + 1, `${path}[${index}]`, true);
+      this.parseValue(nodeId, depth + 1, `${path}[${index}]`, true);
       this.skipWhitespace();
       if (this.consumeIf("]")) {
         this.updateNode(nodeId, { endOffset: this.position });
@@ -478,8 +477,11 @@ var SessionRegistry = class {
     const session = {
       hostElementId: command.hostElementId,
       lifecycleState: "created",
+      revision: 0,
       sessionId: command.sessionId,
       diagnostics: [],
+      undoStack: [],
+      redoStack: [],
       ...command.options !== void 0 ? { options: command.options } : {}
     };
     this.sessions.set(command.sessionId, session);
@@ -498,9 +500,12 @@ var SessionRegistry = class {
       contentType: command.contentType,
       documentId: command.documentId,
       lifecycleState: "document-loaded",
+      revision: 0,
       text: command.text,
       diagnostics: parseResult.diagnostics,
       revealTargetNodeId: void 0,
+      undoStack: [],
+      redoStack: [],
       ...parseResult.document !== void 0 ? { document: parseResult.document } : { document: void 0 }
     }));
   }
@@ -536,6 +541,105 @@ var SessionRegistry = class {
       };
     });
   }
+  applyTransaction(command) {
+    const session = this.sessions.get(command.sessionId);
+    if (session === void 0) {
+      return rejectTransaction(command.sessionId, command.transaction.transactionId, `Session '${command.sessionId}' is not available.`);
+    }
+    if (command.transaction.sessionId !== command.sessionId) {
+      return rejectTransaction(
+        command.sessionId,
+        command.transaction.transactionId,
+        "Transaction sessionId must match the command sessionId."
+      );
+    }
+    const result = this.executeTransaction(session, command.transaction);
+    if (!result.accepted) {
+      return result;
+    }
+    const updatedSession = {
+      ...result.session,
+      undoStack: [...session.undoStack, ...result.session.undoStack.slice(session.undoStack.length)],
+      redoStack: []
+    };
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      accepted: true,
+      session: updatedSession,
+      patch: result.patch
+    };
+  }
+  undo(command) {
+    const session = this.sessions.get(command.sessionId);
+    if (session === void 0) {
+      return rejectTransaction(command.sessionId, createSyntheticTransactionId("undo", 0), `Session '${command.sessionId}' is not available.`);
+    }
+    const transactionId = createSyntheticTransactionId("undo", session.revision + 1);
+    const historyEntry = session.undoStack[session.undoStack.length - 1];
+    if (historyEntry === void 0) {
+      return rejectTransaction(command.sessionId, transactionId, "Undo stack is empty.");
+    }
+    if (historyEntry.reverse === void 0) {
+      return rejectTransaction(
+        command.sessionId,
+        transactionId,
+        historyEntry.unsupportedUndoReason ?? "Undo is not supported for the latest transaction."
+      );
+    }
+    const result = this.executeTransaction(session, {
+      transactionId,
+      sessionId: command.sessionId,
+      baseRevision: session.revision,
+      kind: historyEntry.reverse.kind,
+      payload: historyEntry.reverse.payload
+    });
+    if (!result.accepted) {
+      return result;
+    }
+    const updatedSession = {
+      ...result.session,
+      undoStack: session.undoStack.slice(0, -1),
+      redoStack: [...session.redoStack, historyEntry]
+    };
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      accepted: true,
+      session: updatedSession,
+      patch: result.patch
+    };
+  }
+  redo(command) {
+    const session = this.sessions.get(command.sessionId);
+    if (session === void 0) {
+      return rejectTransaction(command.sessionId, createSyntheticTransactionId("redo", 0), `Session '${command.sessionId}' is not available.`);
+    }
+    const transactionId = createSyntheticTransactionId("redo", session.revision + 1);
+    const historyEntry = session.redoStack[session.redoStack.length - 1];
+    if (historyEntry === void 0) {
+      return rejectTransaction(command.sessionId, transactionId, "Redo stack is empty.");
+    }
+    const result = this.executeTransaction(session, {
+      transactionId,
+      sessionId: command.sessionId,
+      baseRevision: session.revision,
+      kind: historyEntry.forward.kind,
+      payload: historyEntry.forward.payload
+    });
+    if (!result.accepted) {
+      return result;
+    }
+    const updatedSession = {
+      ...result.session,
+      undoStack: [...session.undoStack, historyEntry],
+      redoStack: session.redoStack.slice(0, -1)
+    };
+    this.sessions.set(command.sessionId, updatedSession);
+    return {
+      accepted: true,
+      session: updatedSession,
+      patch: result.patch
+    };
+  }
   clearRevealTarget(sessionId) {
     return this.updateSession(sessionId, (session) => ({
       ...session,
@@ -556,6 +660,56 @@ var SessionRegistry = class {
   }
   listSessionIds() {
     return [...this.sessions.keys()];
+  }
+  executeTransaction(session, transaction) {
+    if (session.document === void 0 || session.documentId === void 0 || session.text === void 0) {
+      return rejectTransaction(session.sessionId, transaction.transactionId, "Session does not have a loaded document.");
+    }
+    if (transaction.baseRevision !== session.revision) {
+      return rejectTransaction(
+        session.sessionId,
+        transaction.transactionId,
+        `Transaction base revision ${transaction.baseRevision} does not match current revision ${session.revision}.`
+      );
+    }
+    const currentRootValue = parseJsonText(session.text);
+    if (currentRootValue === void 0) {
+      return rejectTransaction(session.sessionId, transaction.transactionId, "Current document text is not valid JSON.");
+    }
+    const mutationResult = applyTransactionMutation(session.document, currentRootValue, transaction);
+    if (!("nextRootValue" in mutationResult)) {
+      return mutationResult;
+    }
+    const nextText = serializeJsonValue(mutationResult.nextRootValue);
+    if (nextText === void 0) {
+      return rejectTransaction(session.sessionId, transaction.transactionId, "Updated document is not representable as valid JSON.");
+    }
+    const parseResult = parseJsonDocument(nextText);
+    if (parseResult.document === void 0) {
+      return rejectTransaction(session.sessionId, transaction.transactionId, "Updated document could not be re-indexed.");
+    }
+    const updatedSession = {
+      ...session,
+      revision: session.revision + 1,
+      text: nextText,
+      document: preserveFoldState(session.document, parseResult.document),
+      diagnostics: parseResult.diagnostics,
+      revealTargetNodeId: void 0,
+      undoStack: [...session.undoStack, mutationResult.historyEntry],
+      redoStack: [...session.redoStack]
+    };
+    return {
+      accepted: true,
+      session: updatedSession,
+      patch: {
+        sessionId: session.sessionId,
+        documentId: session.documentId,
+        baseRevision: session.revision,
+        newRevision: updatedSession.revision,
+        transactionId: transaction.transactionId,
+        operations: [mutationResult.operation]
+      }
+    };
   }
   updateSession(sessionId, update) {
     const session = this.requireSession(sessionId);
@@ -580,6 +734,259 @@ function appendObjectPath(parentPath, propertyName) {
   }
   return `${parentPath}[${JSON.stringify(propertyName)}]`;
 }
+function applyTransactionMutation(document2, rootValue, transaction) {
+  switch (transaction.kind) {
+    case "replaceValue":
+      return applyReplaceValueTransaction(document2, rootValue, transaction);
+    case "setPropertyValue":
+      return applySetPropertyValueTransaction(document2, rootValue, transaction);
+    case "removeProperty":
+      return applyRemovePropertyTransaction(document2, rootValue, transaction);
+    case "insertArrayItem":
+      return applyInsertArrayItemTransaction(document2, rootValue, transaction);
+    case "removeArrayItem":
+      return applyRemoveArrayItemTransaction(document2, rootValue, transaction);
+  }
+}
+function applyReplaceValueTransaction(document2, rootValue, transaction) {
+  if (!isReplaceValuePayload(transaction.payload)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "replaceValue payload is invalid.");
+  }
+  if (!isJsonScalarValue(transaction.payload.value)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "replaceValue requires a primitive JSON value.");
+  }
+  const node = document2.nodesById[transaction.payload.nodeId];
+  if (node === void 0) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target node '${transaction.payload.nodeId}' was not found.`);
+  }
+  if (!isPrimitiveNodeKind(node.kind)) {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${node.nodeId}' must be a primitive value node, but was '${node.kind}'.`
+    );
+  }
+  const previousValue = getJsonValueAtPath(rootValue, node.path);
+  if (!isJsonScalarValue(previousValue)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${node.path}' did not resolve to a primitive value.`);
+  }
+  const nextRootValue = setJsonValueAtPath(rootValue, node.path, cloneJsonValue(transaction.payload.value));
+  return {
+    nextRootValue,
+    operation: {
+      kind: "replaceValue",
+      path: node.path,
+      value: cloneJsonValue(transaction.payload.value)
+    },
+    historyEntry: {
+      forward: {
+        kind: transaction.kind,
+        payload: {
+          nodeId: node.nodeId,
+          value: cloneJsonValue(transaction.payload.value)
+        }
+      },
+      reverse: {
+        kind: "replaceValue",
+        payload: {
+          nodeId: node.nodeId,
+          value: cloneJsonValue(previousValue)
+        }
+      }
+    }
+  };
+}
+function applySetPropertyValueTransaction(document2, rootValue, transaction) {
+  if (!isSetPropertyValuePayload(transaction.payload)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "setPropertyValue payload is invalid.");
+  }
+  if (!isJsonValueDto(transaction.payload.value)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "setPropertyValue requires a valid JSON value.");
+  }
+  const objectNode = document2.nodesById[transaction.payload.objectNodeId];
+  if (objectNode === void 0) {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${transaction.payload.objectNodeId}' was not found.`
+    );
+  }
+  if (objectNode.kind !== "object") {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${objectNode.nodeId}' must be an object node, but was '${objectNode.kind}'.`
+    );
+  }
+  const objectValue = getJsonValueAtPath(rootValue, objectNode.path);
+  if (!isJsonObjectDto(objectValue)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${objectNode.path}' did not resolve to an object.`);
+  }
+  objectValue[transaction.payload.propertyName] = cloneJsonValue(transaction.payload.value);
+  return {
+    nextRootValue: rootValue,
+    operation: {
+      kind: "setPropertyValue",
+      path: appendObjectPath(objectNode.path, transaction.payload.propertyName),
+      value: cloneJsonValue(transaction.payload.value)
+    },
+    historyEntry: {
+      forward: {
+        kind: transaction.kind,
+        payload: {
+          objectNodeId: objectNode.nodeId,
+          propertyName: transaction.payload.propertyName,
+          value: cloneJsonValue(transaction.payload.value)
+        }
+      },
+      unsupportedUndoReason: "Undo is only supported for replaceValue transactions in Milestone 004."
+    }
+  };
+}
+function applyRemovePropertyTransaction(document2, rootValue, transaction) {
+  if (!isRemovePropertyPayload(transaction.payload)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "removeProperty payload is invalid.");
+  }
+  const objectNode = document2.nodesById[transaction.payload.objectNodeId];
+  if (objectNode === void 0) {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${transaction.payload.objectNodeId}' was not found.`
+    );
+  }
+  if (objectNode.kind !== "object") {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${objectNode.nodeId}' must be an object node, but was '${objectNode.kind}'.`
+    );
+  }
+  const objectValue = getJsonValueAtPath(rootValue, objectNode.path);
+  if (!isJsonObjectDto(objectValue)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${objectNode.path}' did not resolve to an object.`);
+  }
+  if (!(transaction.payload.propertyName in objectValue)) {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Property '${transaction.payload.propertyName}' was not found on object path '${objectNode.path}'.`
+    );
+  }
+  delete objectValue[transaction.payload.propertyName];
+  return {
+    nextRootValue: rootValue,
+    operation: {
+      kind: "removeProperty",
+      path: appendObjectPath(objectNode.path, transaction.payload.propertyName)
+    },
+    historyEntry: {
+      forward: {
+        kind: transaction.kind,
+        payload: {
+          objectNodeId: objectNode.nodeId,
+          propertyName: transaction.payload.propertyName
+        }
+      },
+      unsupportedUndoReason: "Undo is only supported for replaceValue transactions in Milestone 004."
+    }
+  };
+}
+function applyInsertArrayItemTransaction(document2, rootValue, transaction) {
+  if (!isInsertArrayItemPayload(transaction.payload)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "insertArrayItem payload is invalid.");
+  }
+  if (!isJsonValueDto(transaction.payload.value)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "insertArrayItem requires a valid JSON value.");
+  }
+  const arrayNode = document2.nodesById[transaction.payload.arrayNodeId];
+  if (arrayNode === void 0) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target node '${transaction.payload.arrayNodeId}' was not found.`);
+  }
+  if (arrayNode.kind !== "array") {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${arrayNode.nodeId}' must be an array node, but was '${arrayNode.kind}'.`
+    );
+  }
+  const arrayValue = getJsonValueAtPath(rootValue, arrayNode.path);
+  if (!isJsonArrayDto(arrayValue)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${arrayNode.path}' did not resolve to an array.`);
+  }
+  if (!Number.isInteger(transaction.payload.index) || transaction.payload.index < 0 || transaction.payload.index > arrayValue.length) {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Array insertion index ${transaction.payload.index} is out of range for path '${arrayNode.path}'.`
+    );
+  }
+  arrayValue.splice(transaction.payload.index, 0, cloneJsonValue(transaction.payload.value));
+  return {
+    nextRootValue: rootValue,
+    operation: {
+      kind: "insertArrayItem",
+      path: `${arrayNode.path}[${transaction.payload.index}]`,
+      value: cloneJsonValue(transaction.payload.value)
+    },
+    historyEntry: {
+      forward: {
+        kind: transaction.kind,
+        payload: {
+          arrayNodeId: arrayNode.nodeId,
+          index: transaction.payload.index,
+          value: cloneJsonValue(transaction.payload.value)
+        }
+      },
+      unsupportedUndoReason: "Undo is only supported for replaceValue transactions in Milestone 004."
+    }
+  };
+}
+function applyRemoveArrayItemTransaction(document2, rootValue, transaction) {
+  if (!isRemoveArrayItemPayload(transaction.payload)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, "removeArrayItem payload is invalid.");
+  }
+  const arrayNode = document2.nodesById[transaction.payload.arrayNodeId];
+  if (arrayNode === void 0) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target node '${transaction.payload.arrayNodeId}' was not found.`);
+  }
+  if (arrayNode.kind !== "array") {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${arrayNode.nodeId}' must be an array node, but was '${arrayNode.kind}'.`
+    );
+  }
+  const arrayValue = getJsonValueAtPath(rootValue, arrayNode.path);
+  if (!isJsonArrayDto(arrayValue)) {
+    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${arrayNode.path}' did not resolve to an array.`);
+  }
+  if (!Number.isInteger(transaction.payload.index) || transaction.payload.index < 0 || transaction.payload.index >= arrayValue.length) {
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Array removal index ${transaction.payload.index} is out of range for path '${arrayNode.path}'.`
+    );
+  }
+  arrayValue.splice(transaction.payload.index, 1);
+  return {
+    nextRootValue: rootValue,
+    operation: {
+      kind: "removeArrayItem",
+      path: `${arrayNode.path}[${transaction.payload.index}]`
+    },
+    historyEntry: {
+      forward: {
+        kind: transaction.kind,
+        payload: {
+          arrayNodeId: arrayNode.nodeId,
+          index: transaction.payload.index
+        }
+      },
+      unsupportedUndoReason: "Undo is only supported for replaceValue transactions in Milestone 004."
+    }
+  };
+}
 function updateDocumentNode(document2, nodeId, update) {
   const existingNode = document2.nodesById[nodeId];
   if (existingNode === void 0) {
@@ -595,6 +1002,204 @@ function updateDocumentNode(document2, nodeId, update) {
       }
     }
   };
+}
+function preserveFoldState(previousDocument, nextDocument) {
+  let updatedDocument = nextDocument;
+  for (const nodeId of previousDocument.nodeOrder) {
+    const node = previousDocument.nodesById[nodeId];
+    if (node === void 0 || !node.foldable || !node.folded) {
+      continue;
+    }
+    const nextNodeId = findNodeIdByPath(updatedDocument, node.path);
+    if (nextNodeId === void 0) {
+      continue;
+    }
+    updatedDocument = updateDocumentNode(updatedDocument, nextNodeId, { folded: true });
+  }
+  return updatedDocument;
+}
+function rejectTransaction(sessionId, transactionId, reason) {
+  return {
+    accepted: false,
+    sessionId,
+    transactionId,
+    reason
+  };
+}
+function createSyntheticTransactionId(prefix, revision) {
+  return `${prefix}-${revision}`;
+}
+function parseJsonText(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return isJsonValueDto(parsed) ? parsed : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function serializeJsonValue(value) {
+  if (!isJsonValueDto(value)) {
+    return void 0;
+  }
+  return JSON.stringify(value, void 0, 2);
+}
+function getJsonValueAtPath(rootValue, path) {
+  const segments = parseStructuralPath(path);
+  let currentValue = rootValue;
+  for (const segment of segments) {
+    if (typeof segment === "number") {
+      if (!isJsonArrayDto(currentValue)) {
+        return void 0;
+      }
+      currentValue = currentValue[segment];
+      continue;
+    }
+    if (!isJsonObjectDto(currentValue)) {
+      return void 0;
+    }
+    currentValue = currentValue[segment];
+  }
+  return currentValue;
+}
+function setJsonValueAtPath(rootValue, path, nextValue) {
+  const segments = parseStructuralPath(path);
+  if (segments.length === 0) {
+    return cloneJsonValue(nextValue);
+  }
+  const parentValue = getJsonValueAtPath(rootValue, formatStructuralPath(segments.slice(0, -1)));
+  const lastSegment = segments[segments.length - 1];
+  if (lastSegment === void 0) {
+    return cloneJsonValue(nextValue);
+  }
+  if (typeof lastSegment === "number") {
+    if (!isJsonArrayDto(parentValue)) {
+      throw new Error(`Path '${path}' does not resolve to an array item parent.`);
+    }
+    parentValue[lastSegment] = cloneJsonValue(nextValue);
+    return rootValue;
+  }
+  if (!isJsonObjectDto(parentValue)) {
+    throw new Error(`Path '${path}' does not resolve to an object property parent.`);
+  }
+  parentValue[lastSegment] = cloneJsonValue(nextValue);
+  return rootValue;
+}
+function parseStructuralPath(path) {
+  if (path === "$") {
+    return [];
+  }
+  if (!path.startsWith("$")) {
+    throw new Error(`Unsupported structural path '${path}'.`);
+  }
+  const segments = [];
+  let index = 1;
+  while (index < path.length) {
+    const character = path[index];
+    if (character === ".") {
+      index += 1;
+      const start = index;
+      while (index < path.length && isIdentifierPathCharacter(path[index])) {
+        index += 1;
+      }
+      if (start === index) {
+        throw new Error(`Unsupported structural path '${path}'.`);
+      }
+      segments.push(path.slice(start, index));
+      continue;
+    }
+    if (character === "[") {
+      const closingIndex = findBracketEnd(path, index);
+      const rawSegment = path.slice(index + 1, closingIndex);
+      if (/^\d+$/u.test(rawSegment)) {
+        segments.push(Number(rawSegment));
+      } else {
+        segments.push(JSON.parse(rawSegment));
+      }
+      index = closingIndex + 1;
+      continue;
+    }
+    throw new Error(`Unsupported structural path '${path}'.`);
+  }
+  return segments;
+}
+function formatStructuralPath(segments) {
+  let path = "$";
+  for (const segment of segments) {
+    if (typeof segment === "number") {
+      path += `[${segment}]`;
+      continue;
+    }
+    path = appendObjectPath(path, segment);
+  }
+  return path;
+}
+function findBracketEnd(path, startIndex) {
+  let index = startIndex + 1;
+  let inString = false;
+  let escaped = false;
+  while (index < path.length) {
+    const character = path[index];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      index += 1;
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      index += 1;
+      continue;
+    }
+    if (character === "]") {
+      return index;
+    }
+    index += 1;
+  }
+  throw new Error(`Unsupported structural path '${path}'.`);
+}
+function cloneJsonValue(value) {
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+function isPrimitiveNodeKind(kind) {
+  return kind === "string" || kind === "number" || kind === "boolean" || kind === "null";
+}
+function isJsonScalarValue(value) {
+  return value === null || typeof value === "string" || typeof value === "boolean" || typeof value === "number" && Number.isFinite(value);
+}
+function isJsonArrayDto(value) {
+  return Array.isArray(value) && value.every((item) => isJsonValueDto(item));
+}
+function isJsonObjectDto(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && Object.values(value).every((item) => isJsonValueDto(item));
+}
+function isJsonValueDto(value) {
+  return isJsonScalarValue(value) || isJsonArrayDto(value) || isJsonObjectDto(value);
+}
+function isReplaceValuePayload(payload) {
+  return "nodeId" in payload && "value" in payload;
+}
+function isSetPropertyValuePayload(payload) {
+  return "objectNodeId" in payload && "propertyName" in payload && "value" in payload;
+}
+function isRemovePropertyPayload(payload) {
+  return "objectNodeId" in payload && "propertyName" in payload && !("value" in payload);
+}
+function isInsertArrayItemPayload(payload) {
+  return "arrayNodeId" in payload && "index" in payload && "value" in payload;
+}
+function isRemoveArrayItemPayload(payload) {
+  return "arrayNodeId" in payload && "index" in payload && !("value" in payload);
+}
+function isIdentifierPathCharacter(character) {
+  return character !== void 0 && /[A-Za-z0-9_]/u.test(character);
 }
 function toDiagnostic(error, textLength) {
   if (error instanceof JsonParseError) {
@@ -721,6 +1326,15 @@ var DomRuntimeControllerImpl = class {
       this.sessionRegistry.clearRevealTarget(command.sessionId);
     }
   }
+  async applyTransaction(command) {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.applyTransaction(command));
+  }
+  async undo(command) {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.undo(command));
+  }
+  async redo(command) {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.redo(command));
+  }
   async disposeSession(command) {
     const hostElement = this.hostElements.get(command.sessionId);
     if (hostElement !== void 0) {
@@ -761,6 +1375,30 @@ var DomRuntimeControllerImpl = class {
       return;
     }
     await callback(event);
+  }
+  async handleTransactionResult(sessionId, result) {
+    if (!result.accepted) {
+      await this.emit({
+        type: "transactionRejected",
+        sessionId: result.sessionId,
+        transactionId: result.transactionId,
+        reason: result.reason
+      });
+      return;
+    }
+    this.render(sessionId);
+    await this.emit({
+      type: "transactionApplied",
+      sessionId,
+      transactionId: result.patch.transactionId,
+      baseRevision: result.patch.baseRevision,
+      newRevision: result.patch.newRevision
+    });
+    await this.emit({
+      type: "documentPatchProduced",
+      sessionId,
+      patch: result.patch
+    });
   }
 };
 function createRuntimeView(session, toggleFold2) {
@@ -1060,6 +1698,15 @@ async function toggleFold(command) {
 async function revealPath(command) {
   await domRuntimeController.revealPath(command);
 }
+async function applyTransaction(command) {
+  await domRuntimeController.applyTransaction(command);
+}
+async function undo(command) {
+  await domRuntimeController.undo(command);
+}
+async function redo(command) {
+  await domRuntimeController.redo(command);
+}
 function getRuntimeProtocolVersion() {
   return RUNTIME_PROTOCOL_VERSION;
 }
@@ -1078,17 +1725,23 @@ var runtimeBlazorModule = {
   loadTextDocument,
   setViewport,
   toggleFold,
-  revealPath
+  revealPath,
+  applyTransaction,
+  undo,
+  redo
 };
 if (typeof window !== "undefined") {
   window.BlazorJsonVisualizerRuntime = runtimeBlazorModule;
 }
 export {
+  applyTransaction,
   createSession,
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
+  redo,
   revealPath,
   setViewport,
-  toggleFold
+  toggleFold,
+  undo
 };

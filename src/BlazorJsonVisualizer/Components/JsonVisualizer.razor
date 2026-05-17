@@ -77,6 +77,36 @@
         await _interop.RevealPathAsync(new RevealPathCommand(EffectiveSessionId, path));
     }
 
+    public async Task ApplyTransactionAsync(RuntimeTransactionDto transaction)
+    {
+        if (_interop is null || !_sessionCreated)
+        {
+            return;
+        }
+
+        await _interop.ApplyTransactionAsync(new ApplyTransactionCommand(EffectiveSessionId, transaction));
+    }
+
+    public async Task UndoAsync()
+    {
+        if (_interop is null || !_sessionCreated)
+        {
+            return;
+        }
+
+        await _interop.UndoAsync(new UndoCommand(EffectiveSessionId));
+    }
+
+    public async Task RedoAsync()
+    {
+        if (_interop is null || !_sessionCreated)
+        {
+            return;
+        }
+
+        await _interop.RedoAsync(new RedoCommand(EffectiveSessionId));
+    }
+
     public async ValueTask DisposeAsync()
     {
         try

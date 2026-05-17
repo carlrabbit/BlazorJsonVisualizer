@@ -46,6 +46,24 @@ public sealed class JsonVisualizerJsInterop(IJSRuntime jsRuntime) : IAsyncDispos
         await module.InvokeVoidAsync("revealPath", command);
     }
 
+    public async ValueTask ApplyTransactionAsync(ApplyTransactionCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("applyTransaction", command);
+    }
+
+    public async ValueTask UndoAsync(UndoCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("undo", command);
+    }
+
+    public async ValueTask RedoAsync(RedoCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("redo", command);
+    }
+
     public async ValueTask DisposeSessionAsync(DisposeSessionCommand command)
     {
         var module = await moduleTask.Value;

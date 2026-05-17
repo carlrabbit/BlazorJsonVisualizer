@@ -1,12 +1,15 @@
 import {
+  type ApplyTransactionCommand,
   RUNTIME_PROTOCOL_VERSION,
   type CreateSessionCommand,
   type DisposeSessionCommand,
   type LoadTextDocumentCommand,
+  type RedoCommand,
   type RevealPathCommand,
   type RuntimeEventDto,
   type SetViewportCommand,
-  type ToggleFoldCommand
+  type ToggleFoldCommand,
+  type UndoCommand
 } from "../runtime-core/index.js";
 import { createDomRuntimeController } from "../runtime-dom/index.js";
 
@@ -22,6 +25,9 @@ export interface RuntimeBlazorModule {
   setViewport(command: SetViewportCommand): Promise<void>;
   toggleFold(command: ToggleFoldCommand): Promise<void>;
   revealPath(command: RevealPathCommand): Promise<void>;
+  applyTransaction(command: ApplyTransactionCommand): Promise<void>;
+  undo(command: UndoCommand): Promise<void>;
+  redo(command: RedoCommand): Promise<void>;
 }
 
 const domRuntimeController = createDomRuntimeController();
@@ -53,6 +59,18 @@ export async function revealPath(command: RevealPathCommand): Promise<void> {
   await domRuntimeController.revealPath(command);
 }
 
+export async function applyTransaction(command: ApplyTransactionCommand): Promise<void> {
+  await domRuntimeController.applyTransaction(command);
+}
+
+export async function undo(command: UndoCommand): Promise<void> {
+  await domRuntimeController.undo(command);
+}
+
+export async function redo(command: RedoCommand): Promise<void> {
+  await domRuntimeController.redo(command);
+}
+
 export function getRuntimeProtocolVersion(): string {
   return RUNTIME_PROTOCOL_VERSION;
 }
@@ -74,7 +92,10 @@ const runtimeBlazorModule: RuntimeBlazorModule = {
   loadTextDocument,
   setViewport,
   toggleFold,
-  revealPath
+  revealPath,
+  applyTransaction,
+  undo,
+  redo
 };
 
 if (typeof window !== "undefined") {
