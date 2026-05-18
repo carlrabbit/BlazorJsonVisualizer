@@ -11,11 +11,54 @@ LAYER3_PORT=5140
 # Use 0.0.0.0 by default so forwarded ports work in dev containers/workspaces.
 # Override with SAMPLES_BIND_HOST=127.0.0.1 for loopback-only local runs.
 BIND_HOST="${SAMPLES_BIND_HOST:-0.0.0.0}"
+STATE_DIR="${TMPDIR:-/tmp}/blazor-json-visualizer-samples"
+INDEX_PID_FILE="$STATE_DIR/index.pid"
+BASIC_PID_FILE="$STATE_DIR/basic.pid"
+DETACH_MODE=0
+LOG_FILE=""
 
 INDEX_DIR="$REPO_ROOT/samples/index"
 BASIC_SAMPLE_PROJECT="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj"
 
 pids=()
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/dev/start-samples.sh [--detach] [--log-file PATH]
+
+  --detach         Start the sample processes in the background and exit.
+  --log-file PATH  Append detached process output to PATH.
+EOF
+}
+
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --detach)
+        DETACH_MODE=1
+        shift
+        ;;
+      --log-file)
+        if [[ $# -lt 2 ]]; then
+          echo "Missing value for --log-file" >&2
+          usage >&2
+          exit 1
+        fi
+        LOG_FILE="$2"
+        shift 2
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        echo "Unknown argument: $1" >&2
+        usage >&2
+        exit 1
+        ;;
+    esac
+  done
+}
 
 require_command() {
   local name="$1"
@@ -53,7 +96,78 @@ cleanup() {
   done
 }
 
-trap cleanup EXIT INT TERM
+is_pid_running() {
+  local pid="$1"
+  [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1
+}
+
+read_pid_file() {
+  local pid_file="$1"
+  if [[ -f "$pid_file" ]]; then
+    tr -d '[:space:]' < "$pid_file"
+  fi
+}
+
+clear_stale_pid_file() {
+  local pid_file="$1"
+  local pid
+  pid="$(read_pid_file "$pid_file")"
+
+  if [[ -z "$pid" ]]; then
+    rm -f "$pid_file"
+    return
+  fi
+
+  if ! is_pid_running "$pid"; then
+    rm -f "$pid_file"
+  fi
+}
+
+prepare_detached_state() {
+  mkdir -p "$STATE_DIR"
+  clear_stale_pid_file "$INDEX_PID_FILE"
+  clear_stale_pid_file "$BASIC_PID_FILE"
+}
+
+ensure_detached_not_running() {
+  local index_pid basic_pid
+  index_pid="$(read_pid_file "$INDEX_PID_FILE")"
+  basic_pid="$(read_pid_file "$BASIC_PID_FILE")"
+
+  if is_pid_running "$index_pid" && is_pid_running "$basic_pid"; then
+    echo "Samples are already running in detached mode." >&2
+    echo "Samples index URL: http://localhost:$INDEX_PORT" >&2
+    return 1
+  fi
+
+  if is_pid_running "$index_pid" || is_pid_running "$basic_pid"; then
+    echo "A detached sample process is already running, but the full sample set is not healthy." >&2
+    echo "Remove stale processes before starting samples again." >&2
+    exit 1
+  fi
+}
+
+start_index() {
+  if (( DETACH_MODE )); then
+    nohup python3 -m http.server "$INDEX_PORT" --bind "$BIND_HOST" --directory "$INDEX_DIR" >>"$LOG_FILE" 2>&1 &
+    echo "$!" > "$INDEX_PID_FILE"
+  else
+    python3 -m http.server "$INDEX_PORT" --bind "$BIND_HOST" --directory "$INDEX_DIR" &
+    pids+=("$!")
+  fi
+}
+
+start_basic_sample() {
+  if (( DETACH_MODE )); then
+    nohup dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT" >>"$LOG_FILE" 2>&1 &
+    echo "$!" > "$BASIC_PID_FILE"
+  else
+    dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT" &
+    pids+=("$!")
+  fi
+}
+
+parse_args "$@"
 
 require_command dotnet
 require_command python3
@@ -61,6 +175,17 @@ require_command python3
 if [[ ! -d "$INDEX_DIR" ]]; then
   echo "Missing static sample index directory: $INDEX_DIR" >&2
   exit 1
+fi
+
+if (( DETACH_MODE )); then
+  if [[ -z "$LOG_FILE" ]]; then
+    LOG_FILE="$STATE_DIR/samples.log"
+  fi
+
+  prepare_detached_state
+  if ! ensure_detached_not_running; then
+    exit 0
+  fi
 fi
 
 check_port_free "$INDEX_PORT"
@@ -82,15 +207,22 @@ dotnet restore "$BASIC_SAMPLE_PROJECT"
 dotnet build "$BASIC_SAMPLE_PROJECT" --no-restore
 
 echo "Starting static sample index on http://$BIND_HOST:$INDEX_PORT"
-python3 -m http.server "$INDEX_PORT" --bind "$BIND_HOST" --directory "$INDEX_DIR" &
-pids+=("$!")
+start_index
 
 echo "Starting basic sample on http://$BIND_HOST:$BASIC_SAMPLE_PORT"
-dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT" &
-pids+=("$!")
+start_basic_sample
 
 echo
 echo "Samples index URL: http://localhost:$INDEX_PORT"
+
+if (( DETACH_MODE )); then
+  echo "Detached sample processes are running."
+  echo "Log file: $LOG_FILE"
+  exit 0
+fi
+
+trap cleanup EXIT INT TERM
+
 echo "Press Ctrl+C to stop all sample processes."
 
 remaining=${#pids[@]}

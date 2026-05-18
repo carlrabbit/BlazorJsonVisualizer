@@ -139,6 +139,7 @@ This dev-container variant should:
 - install/build required dependencies
 - forward all sample ports
 - run the sample launcher after container creation or startup
+- keep dev-container startup hooks non-blocking and safe to re-run on repeated container starts
 - clearly document that it is the sample-launching container variant
 
 ## Non-goals
