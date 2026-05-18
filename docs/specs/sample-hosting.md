@@ -120,6 +120,7 @@ The script should:
 - restore/build required projects where appropriate
 - start the static index on port 5100
 - start each implemented sample on its fixed port
+- check port availability for the index and implemented samples only
 - print the sample index URL and sample port table
 - fail clearly when a port is already in use
 - not start long-running tests
@@ -141,6 +142,7 @@ This dev-container variant should:
 - run the sample launcher after container creation or startup
 - keep dev-container startup hooks non-blocking and safe to re-run on repeated container starts
 - clearly document that it is the sample-launching container variant
+- document that only implemented samples are expected to be reachable (currently 5100 and 5110)
 
 ## Non-goals
 

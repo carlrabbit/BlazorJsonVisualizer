@@ -24,6 +24,20 @@ Then open the static samples index on port `5100`.
 
 The sample dev-container/Codespaces variant uses detached startup so repeated starts do not block the container startup hook.
 
+## Codespaces usage
+
+Use the sample-focused devcontainer entry:
+
+```text
+.devcontainer/samples/devcontainer.json
+```
+
+Current sample status for forwarded ports:
+
+- `5100`: static samples index (implemented)
+- `5110`: basic Blazor host/sample (implemented)
+- `5120`, `5130`, `5140`: reserved for planned samples (not running yet)
+
 ## Rules
 
 - Each sample app must use a fixed port.

@@ -193,9 +193,6 @@ fi
 
 check_port_free "$INDEX_PORT"
 check_port_free "$BASIC_SAMPLE_PORT"
-check_port_free "$LAYER1_PORT"
-check_port_free "$LAYER2_PORT"
-check_port_free "$LAYER3_PORT"
 
 echo "== Sample ports =="
 echo "  5100  Static samples index"
