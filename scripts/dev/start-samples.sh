@@ -14,6 +14,7 @@ BIND_HOST="${SAMPLES_BIND_HOST:-0.0.0.0}"
 STATE_DIR="${TMPDIR:-/tmp}/blazor-json-visualizer-samples"
 INDEX_PID_FILE="$STATE_DIR/index.pid"
 BASIC_PID_FILE="$STATE_DIR/basic.pid"
+DEFAULT_LOG_FILE="$STATE_DIR/samples.log"
 DETACH_MODE=0
 LOG_FILE=""
 
@@ -179,7 +180,7 @@ fi
 
 if (( DETACH_MODE )); then
   if [[ -z "$LOG_FILE" ]]; then
-    LOG_FILE="$STATE_DIR/samples.log"
+    LOG_FILE="$DEFAULT_LOG_FILE"
   fi
 
   prepare_detached_state
