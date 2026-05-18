@@ -138,14 +138,14 @@ ensure_detached_not_running() {
   basic_pid="$(read_pid_file "$BASIC_PID_FILE")"
 
   if is_pid_running "$index_pid" && is_pid_running "$basic_pid"; then
-    echo "Samples are already running in detached mode. Nothing to do." >&2
-    echo "Samples index URL: http://localhost:$INDEX_PORT" >&2
+    echo "Samples are already running in detached mode. Nothing to do."
+    echo "Samples index URL: http://localhost:$INDEX_PORT"
     return 1
   fi
 
   if is_pid_running "$index_pid" || is_pid_running "$basic_pid"; then
-    echo "Some detached sample processes are still running, but the full sample set is incomplete." >&2
-    echo "Manually stop the remaining sample processes (for example: kill <pid>) and delete the PID files in $STATE_DIR (for example: rm -f $STATE_DIR/*.pid) before starting samples again." >&2
+    echo "Some detached sample processes are still running (check $STATE_DIR/*.pid), but the full sample set is incomplete." >&2
+    echo "Manually stop the remaining sample processes using the PIDs from $STATE_DIR/*.pid files (for example: kill \$(cat $STATE_DIR/index.pid)) and remove the PID files (rm -f $STATE_DIR/*.pid) before starting samples again." >&2
     exit 1
   fi
 }
