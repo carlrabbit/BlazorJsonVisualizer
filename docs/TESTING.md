@@ -30,3 +30,7 @@ Examples:
 ## Agent rule
 
 Agents may create and run fast tests. Agents must not create or run long-running tests unless explicitly requested.
+
+## Sample launch checks
+
+Starting sample applications is a developer-experience check, not a general fast test. The sample launcher may be used manually and by dedicated workflow/dev-container setup, but normal fast-test workflows should not start all samples unless explicitly configured to do so.

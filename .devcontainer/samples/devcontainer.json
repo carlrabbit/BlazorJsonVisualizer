@@ -1,0 +1,21 @@
+{
+  "name": "BlazorJsonVisualizer Samples",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-10.0-bookworm",
+  "forwardPorts": [5100, 5110, 5120, 5130, 5140],
+  "portsAttributes": {
+    "5100": { "label": "Samples Index" },
+    "5110": { "label": "Basic Sample" },
+    "5120": { "label": "Layer 1 Sample" },
+    "5130": { "label": "Layer 2 Sample" },
+    "5140": { "label": "Layer 3 Sample" }
+  },
+  "postCreateCommand": "dotnet restore src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj",
+  "postStartCommand": "nohup bash scripts/dev/start-samples.sh > /tmp/blazor-json-visualizer-samples.log 2>&1 &",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "dotnet.defaultSolution": ""
+      }
+    }
+  }
+}
