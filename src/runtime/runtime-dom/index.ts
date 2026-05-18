@@ -1,19 +1,26 @@
 import {
   type AttachSchemaCommand,
   type ApplyTransactionCommand,
+  type CreateProjectionCommand,
   type CreateSessionCommand,
+  type DisposeProjectionCommand,
   type DetachSchemaCommand,
   type DisposeSessionCommand,
   type DocumentSessionRecord,
+  type EditProjectionCellCommand,
   type GetSchemaMetadataForPathCommand,
+  type JsonValueDto,
+  type ProjectionSelectionDto,
   type LoadTextDocumentCommand,
   type RedoCommand,
   type RevealPathCommand,
   type RuntimeEventDto,
   type SchemaDiagnosticDto,
   type SchemaNodeMetadataDto,
+  type SelectProjectionItemCommand,
   type StructuralIndexDocument,
   type StructuralNodeRecord,
+  type TableProjectionDto,
   type TransactionCommandResult,
   type ToggleFoldCommand,
   type UndoCommand,
@@ -27,6 +34,9 @@ export type HostEventCallback = (event: RuntimeEventDto) => void | Promise<void>
 export interface DomRuntimeController {
   createSession(command: CreateSessionCommand, eventCallback?: HostEventCallback): Promise<void>;
   loadTextDocument(command: LoadTextDocumentCommand): Promise<void>;
+  createProjection(command: CreateProjectionCommand): Promise<void>;
+  disposeProjection(command: DisposeProjectionCommand): Promise<void>;
+  selectProjectionItem(command: SelectProjectionItemCommand): Promise<void>;
   attachSchema(command: AttachSchemaCommand): Promise<void>;
   detachSchema(command: DetachSchemaCommand): Promise<void>;
   getSchemaMetadataForPath(command: GetSchemaMetadataForPathCommand): Promise<SchemaNodeMetadataDto | undefined>;
@@ -87,6 +97,44 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
         nodeCount: session.document.nodeCount
       });
     }
+  }
+
+  public async createProjection(command: CreateProjectionCommand): Promise<void> {
+    const result = this.sessionRegistry.createProjection(command);
+    this.render(command.sessionId);
+    await this.emit({
+      type: "projectionCreated",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId,
+      kind: result.projection.kind
+    });
+    await this.emit({
+      type: "projectionChanged",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId
+    });
+  }
+
+  public async disposeProjection(command: DisposeProjectionCommand): Promise<void> {
+    this.sessionRegistry.disposeProjection(command);
+    this.render(command.sessionId);
+    await this.emit({
+      type: "projectionChanged",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId
+    });
+  }
+
+  public async selectProjectionItem(command: SelectProjectionItemCommand): Promise<void> {
+    const result = this.sessionRegistry.selectProjectionItem(command);
+    this.render(command.sessionId);
+    await this.emit({
+      type: "projectionSelectionChanged",
+      sessionId: command.sessionId,
+      projectionId: command.projectionId,
+      sourceNodeId: result.sourceNodeId,
+      sourcePath: result.sourcePath
+    });
   }
 
   public async attachSchema(command: AttachSchemaCommand): Promise<void> {
@@ -195,6 +243,9 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
 
     hostElement.replaceChildren(createRuntimeView(session, (nodeId) => {
       void this.toggleFold({ nodeId, sessionId });
+    }, {
+      selectProjectionItem: (projectionId, selection) => this.selectProjectionItem({ sessionId, projectionId, selection }),
+      editProjectionCell: (command) => this.editProjectionCell({ ...command, sessionId })
     }));
   }
 
@@ -251,10 +302,31 @@ class DomRuntimeControllerImpl implements DomRuntimeController {
       diagnostics: [],
       schemaDiagnostics: []
     });
+
+    for (const projectionId of Object.keys(result.session.projectionsById)) {
+      await this.emit({
+        type: "projectionChanged",
+        sessionId,
+        projectionId
+      });
+    }
+  }
+
+  private async editProjectionCell(command: EditProjectionCellCommand): Promise<void> {
+    await this.handleTransactionResult(command.sessionId, this.sessionRegistry.editProjectionCell(command));
   }
 }
 
-function createRuntimeView(session: DocumentSessionRecord, toggleFold: (nodeId: string) => void): HTMLElement {
+interface ProjectionInteractionHandlers {
+  selectProjectionItem: (projectionId: string, selection: ProjectionSelectionDto) => Promise<void>;
+  editProjectionCell: (command: Omit<EditProjectionCellCommand, "sessionId">) => Promise<void>;
+}
+
+function createRuntimeView(
+  session: DocumentSessionRecord,
+  toggleFold: (nodeId: string) => void,
+  projectionHandlers: ProjectionInteractionHandlers
+): HTMLElement {
   const container = document.createElement("section");
   container.className = "bjv-runtime";
   container.append(createStyles());
@@ -278,6 +350,11 @@ function createRuntimeView(session: DocumentSessionRecord, toggleFold: (nodeId: 
 
   if (session.schemaDiagnostics.length > 0) {
     container.append(createDiagnosticsPanel("Schema diagnostics", session.schemaDiagnostics.map((diagnostic) => `${diagnostic.message} (${diagnostic.path})`)));
+  }
+
+  for (const tableProjection of Object.values(session.tableProjectionsById)) {
+    const selection = session.projectionSelectionsById[tableProjection.projectionId];
+    container.append(createTableProjectionView(tableProjection, selection, projectionHandlers));
   }
 
   const documentContainer = document.createElement("div");
@@ -599,6 +676,151 @@ function applySchemaMetadata(line: HTMLElement, metadata: SchemaNodeMetadataDto 
   }
 }
 
+function createTableProjectionView(
+  projection: TableProjectionDto,
+  selection: ProjectionSelectionDto | undefined,
+  handlers: ProjectionInteractionHandlers
+): HTMLElement {
+  const container = document.createElement("section");
+  container.className = "bjv-projection";
+
+  const heading = document.createElement("h2");
+  heading.className = "bjv-projection-title";
+  heading.textContent = `Projection: ${projection.projectionId} (${projection.sourcePath})`;
+  container.append(heading);
+
+  if (projection.columns.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "bjv-projection-empty";
+    empty.textContent = "No table columns were detected.";
+    container.append(empty);
+    return container;
+  }
+
+  const table = document.createElement("table");
+  table.className = "bjv-projection-table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const rowHeader = document.createElement("th");
+  rowHeader.textContent = "#";
+  headRow.append(rowHeader);
+
+  for (const column of projection.columns) {
+    const th = document.createElement("th");
+    th.textContent = column.title ?? column.propertyName;
+    if (column.expectedType !== undefined) {
+      th.title = Array.isArray(column.expectedType) ? column.expectedType.join(" | ") : column.expectedType;
+    }
+    headRow.append(th);
+  }
+
+  thead.append(headRow);
+  table.append(thead);
+
+  const tbody = document.createElement("tbody");
+  for (const row of projection.rows) {
+    const tr = document.createElement("tr");
+    if (selection?.kind === "row" && selection.rowId === row.rowId) {
+      tr.classList.add("bjv-projection-row-selected");
+    }
+
+    tr.addEventListener("click", () => {
+      void handlers.selectProjectionItem(projection.projectionId, {
+        kind: "row",
+        rowId: row.rowId
+      });
+    });
+
+    const indexCell = document.createElement("td");
+    indexCell.textContent = String(row.index);
+    tr.append(indexCell);
+
+    for (const cell of row.cells) {
+      const td = document.createElement("td");
+      const isSelectedCell = selection?.kind === "cell" && selection.rowId === row.rowId && selection.columnId === cell.columnId;
+      if (isSelectedCell) {
+        td.classList.add("bjv-projection-cell-selected");
+      }
+
+      td.textContent = cell.value === undefined ? "∅" : JSON.stringify(cell.value);
+      if (cell.diagnostics !== undefined && cell.diagnostics.length > 0) {
+        td.classList.add("bjv-projection-cell-error");
+        td.title = cell.diagnostics.map((diagnostic) => diagnostic.message).join("\n");
+      }
+
+      td.addEventListener("click", (event) => {
+        event.stopPropagation();
+        void handlers.selectProjectionItem(projection.projectionId, {
+          kind: "cell",
+          rowId: row.rowId,
+          columnId: cell.columnId
+        });
+      });
+
+      td.addEventListener("dblclick", (event) => {
+        event.stopPropagation();
+        const defaultValue = cell.value === undefined ? "null" : JSON.stringify(cell.value);
+        const nextText = window.prompt(`Edit ${cell.propertyName}`, defaultValue);
+        if (nextText === null) {
+          return;
+        }
+
+        let parsedValue: unknown;
+        try {
+          parsedValue = JSON.parse(nextText);
+        } catch {
+          window.alert("Cell edits must be valid JSON values.");
+          return;
+        }
+
+        if (!isJsonValue(parsedValue)) {
+          window.alert("Cell edits must be JSON scalar/object/array values.");
+          return;
+        }
+
+        void handlers.editProjectionCell({
+          projectionId: projection.projectionId,
+          rowId: row.rowId,
+          columnId: cell.columnId,
+          value: parsedValue
+        });
+      });
+
+      tr.append(td);
+    }
+
+    tbody.append(tr);
+  }
+
+  table.append(tbody);
+  container.append(table);
+  return container;
+}
+
+function isJsonValue(value: unknown): value is JsonValueDto {
+  if (value === null) {
+    return true;
+  }
+
+  if (typeof value === "string" || typeof value === "boolean") {
+    return true;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.every((entry) => isJsonValue(entry));
+  }
+
+  if (typeof value === "object") {
+    return Object.values(value).every((entry) => isJsonValue(entry));
+  }
+
+  return false;
+}
+
 function createDiagnosticsPanel(title: string, diagnostics: string[]): HTMLElement {
   const panel = document.createElement("section");
   panel.className = "bjv-diagnostics";
@@ -688,6 +910,58 @@ function createStyles(): HTMLElement {
       border-bottom: 1px solid #e2e8f0;
       padding-bottom: 0.75rem;
       font-family: system-ui, sans-serif;
+    }
+
+    .bjv-projection {
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 0.75rem;
+      font-family: system-ui, sans-serif;
+    }
+
+    .bjv-projection-title {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .bjv-projection-empty {
+      margin: 0;
+      color: #64748b;
+    }
+
+    .bjv-projection-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      table-layout: fixed;
+    }
+
+    .bjv-projection-table th,
+    .bjv-projection-table td {
+      border: 1px solid #cbd5e1;
+      padding: 0.25rem 0.4rem;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bjv-projection-table td {
+      cursor: pointer;
+    }
+
+    .bjv-projection-row-selected {
+      background: #e0f2fe;
+    }
+
+    .bjv-projection-cell-selected {
+      outline: 2px solid #0284c7;
+      outline-offset: -2px;
+    }
+
+    .bjv-projection-cell-error {
+      background: #fef2f2;
+      color: #991b1b;
     }
 
     .bjv-diagnostics-list {

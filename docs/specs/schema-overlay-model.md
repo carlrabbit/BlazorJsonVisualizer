@@ -77,3 +77,7 @@ Milestone 005 should support:
 - Large-document partitioned validation.
 - Schema-driven form rendering.
 - Projection plugins.
+
+## Projection metadata use
+
+Projection plugins may use schema overlay metadata to improve labels, expected types, enum hints, and diagnostics. Projection plugins must still function without schema metadata when the source shape is structurally supported.

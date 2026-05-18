@@ -98,6 +98,36 @@
         await _interop.AttachSchemaAsync(new AttachSchemaCommand(EffectiveSessionId, schemaId, schema));
     }
 
+    public async Task CreateProjectionAsync(string projectionId, string kind, string sourcePath)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(projectionId) || string.IsNullOrWhiteSpace(kind) || string.IsNullOrWhiteSpace(sourcePath))
+        {
+            return;
+        }
+
+        await _interop.CreateProjectionAsync(new CreateProjectionCommand(EffectiveSessionId, projectionId, kind, sourcePath));
+    }
+
+    public async Task DisposeProjectionAsync(string projectionId)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(projectionId))
+        {
+            return;
+        }
+
+        await _interop.DisposeProjectionAsync(new DisposeProjectionCommand(EffectiveSessionId, projectionId));
+    }
+
+    public async Task SelectProjectionItemAsync(string projectionId, ProjectionSelectionDto selection)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(projectionId))
+        {
+            return;
+        }
+
+        await _interop.SelectProjectionItemAsync(new SelectProjectionItemCommand(EffectiveSessionId, projectionId, selection));
+    }
+
     public async Task DetachSchemaAsync(string schemaId)
     {
         if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(schemaId))
