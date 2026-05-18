@@ -99,6 +99,8 @@ cleanup() {
 
 is_pid_running() {
   local pid="$1"
+  # Detached sample processes are started by this script under the current user,
+  # so any kill -0 failure is treated as "not running" for launcher purposes.
   [[ -n "$pid" ]] && kill -0 "$pid" >/dev/null 2>&1
 }
 
@@ -143,7 +145,7 @@ ensure_detached_not_running() {
 
   if is_pid_running "$index_pid" || is_pid_running "$basic_pid"; then
     echo "Some detached sample processes are still running, but the full sample set is incomplete." >&2
-    echo "Manually stop the remaining sample process and delete the PID files in $STATE_DIR before starting samples again." >&2
+    echo "Manually stop the remaining sample processes and delete the PID files in $STATE_DIR before starting samples again." >&2
     exit 1
   fi
 }
