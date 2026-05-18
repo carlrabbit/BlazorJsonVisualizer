@@ -43,6 +43,8 @@ function sampleUrl(port) {
   }
 
   const host = current.hostname;
+  // Supports forwarded hostnames such as "<name>-5100-<suffix>" where the port
+  // segment is encoded between hyphens (for example GitHub workspace/Codespaces URLs).
   const replaced = host.replace(/(^|-)\d{4,5}(?=-)/, `$1${port}`);
 
   if (replaced !== host) {

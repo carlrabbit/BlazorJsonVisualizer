@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress.
+Closed. This milestone is implemented in the repository.
 
 ## Goal
 
@@ -63,3 +63,11 @@ Create a workspace-friendly sample execution setup where all sample applications
 - launcher script starts static index and implemented sample concurrently
 - sample-focused dev-container variant forwards sample ports and starts launcher
 - docs/specs/workflow/testing references are aligned
+
+
+## Completion notes
+
+- Added `docs/specs/sample-hosting.md`, `samples/SAMPLES.md`, and static index assets under `samples/index` with workspace-aware link generation.
+- Added `scripts/dev/start-samples.sh` to launch the static index and implemented sample on fixed ports with process cleanup and port checks.
+- Added `.devcontainer/samples/devcontainer.json` to forward sample ports and start the shared launcher.
+- Updated `docs/WORKFLOWS.md`, `docs/TESTING.md`, and sample `launchSettings.json` to align with fixed sample hosting behavior.

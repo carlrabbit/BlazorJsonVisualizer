@@ -8,6 +8,9 @@ BASIC_SAMPLE_PORT=5110
 LAYER1_PORT=5120
 LAYER2_PORT=5130
 LAYER3_PORT=5140
+# Use 0.0.0.0 by default so forwarded ports work in dev containers/workspaces.
+# Override with SAMPLES_BIND_HOST=127.0.0.1 for loopback-only local runs.
+BIND_HOST="${SAMPLES_BIND_HOST:-0.0.0.0}"
 
 INDEX_DIR="$REPO_ROOT/samples/index"
 BASIC_SAMPLE_PROJECT="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj"
@@ -24,16 +27,17 @@ require_command() {
 
 check_port_free() {
   local port="$1"
-  python3 - "$port" <<'PY'
+  python3 - "$port" "$BIND_HOST" <<'PY'
 import socket
 import sys
 
 port = int(sys.argv[1])
+host = sys.argv[2]
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
-    sock.bind(("0.0.0.0", port))
+    sock.bind((host, port))
 except OSError:
-    print(f"Port {port} is already in use.", file=sys.stderr)
+    print(f"Port {port} is already in use on host {host}.", file=sys.stderr)
     sys.exit(1)
 finally:
     sock.close()
@@ -77,16 +81,24 @@ echo "Building implemented sample projects..."
 dotnet restore "$BASIC_SAMPLE_PROJECT"
 dotnet build "$BASIC_SAMPLE_PROJECT" --no-restore
 
-echo "Starting static sample index on http://0.0.0.0:$INDEX_PORT"
-python3 -m http.server "$INDEX_PORT" --bind 0.0.0.0 --directory "$INDEX_DIR" &
+echo "Starting static sample index on http://$BIND_HOST:$INDEX_PORT"
+python3 -m http.server "$INDEX_PORT" --bind "$BIND_HOST" --directory "$INDEX_DIR" &
 pids+=("$!")
 
-echo "Starting basic sample on http://0.0.0.0:$BASIC_SAMPLE_PORT"
-dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://0.0.0.0:$BASIC_SAMPLE_PORT" &
+echo "Starting basic sample on http://$BIND_HOST:$BASIC_SAMPLE_PORT"
+dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT" &
 pids+=("$!")
 
 echo
 echo "Samples index URL: http://localhost:$INDEX_PORT"
 echo "Press Ctrl+C to stop all sample processes."
 
-wait
+remaining=${#pids[@]}
+while (( remaining > 0 )); do
+  if ! wait -n; then
+    echo "A sample process exited unexpectedly. Stopping all samples..." >&2
+    cleanup
+    exit 1
+  fi
+  ((remaining--))
+done
