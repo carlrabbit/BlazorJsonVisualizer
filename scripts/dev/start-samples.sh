@@ -142,7 +142,7 @@ ensure_detached_not_running() {
 
   if is_pid_running "$index_pid" || is_pid_running "$basic_pid"; then
     echo "A detached sample process is already running, but the full sample set is not healthy." >&2
-    echo "Remove stale processes before starting samples again." >&2
+    echo "Stop the remaining process and remove stale PID files in $STATE_DIR before starting samples again." >&2
     exit 1
   fi
 }
