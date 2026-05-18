@@ -138,7 +138,7 @@ ensure_detached_not_running() {
   basic_pid="$(read_pid_file "$BASIC_PID_FILE")"
 
   if is_pid_running "$index_pid" && is_pid_running "$basic_pid"; then
-    echo "Samples are already running in detached mode." >&2
+    echo "Samples are already running in detached mode. Nothing to do." >&2
     echo "Samples index URL: http://localhost:$INDEX_PORT" >&2
     return 1
   fi
