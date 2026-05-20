@@ -15,8 +15,9 @@
     "build:runtime-dom": "npm --workspace runtime-dom run build",
     "build:runtime-worker": "npm --workspace runtime-worker run build",
     "build:runtime-blazor": "npm --workspace runtime-blazor run build",
-    "test": "npm run test:runtime-core",
-    "test:runtime-core": "npm --workspace runtime-core run test"
+    "test": "npm run test:runtime-core && npm run test:layer1",
+    "test:runtime-core": "npm --workspace runtime-core run test",
+    "test:layer1": "cd ../../tests/runtime && npm install && npm test"
   },
   "devDependencies": {
     "esbuild": "^0.28.0",
