@@ -14,6 +14,19 @@ The project targets three layers:
 
 The TypeScript browser runtime is a first-class subsystem. Blazor is the primary user-facing host and packaging surface, but it does not own the runtime internals.
 
+## Layer 1 runtime modules
+
+Milestone 009 introduced modular Layer 1 source files under `src/runtime/*/src/`:
+
+```text
+src/runtime/runtime-core/src/json/          — tokenizer
+src/runtime/runtime-core/src/document/      — structural index, document session
+src/runtime/runtime-core/src/viewport/      — viewport model
+src/runtime/runtime-core/src/navigation/    — path navigation
+src/runtime/runtime-dom/src/rendering/      — DOM renderer, folding controller
+src/runtime/runtime-blazor/src/             — Layer 1 Blazor host
+```
+
 ## Non-goals
 
 - General-purpose code editing.
@@ -34,3 +47,17 @@ scripts/dev/start-samples.sh
 ```
 
 Then open the samples index on port `5100`.
+
+## Running tests
+
+Fast tests (Layer 1):
+
+```bash
+cd tests/runtime && npm test
+```
+
+Full runtime test suite:
+
+```bash
+cd src/runtime && npm test
+```

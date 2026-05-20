@@ -11,3 +11,9 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/transaction-model.md`
 - `docs/specs/schema-overlay-model.md`
 - `docs/specs/projection-plugin-model.md`
+
+## Layer 1 specs (Milestone 009)
+
+- `docs/specs/json-tokenizer.md`
+- `docs/specs/layer1-rendering.md`
+- `docs/specs/path-navigation.md`

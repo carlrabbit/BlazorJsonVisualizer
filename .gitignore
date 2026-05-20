@@ -3,3 +3,4 @@ obj/
 node_modules/
 src/runtime/*/dist/
 src/runtime/*/*.d.ts
+tests/runtime/dist/

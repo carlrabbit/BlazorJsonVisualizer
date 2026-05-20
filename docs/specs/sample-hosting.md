@@ -144,6 +144,21 @@ This dev-container variant should:
 - clearly document that it is the sample-launching container variant
 - document that only implemented samples are expected to be reachable (currently 5100 and 5110)
 
+## Layer 1 Sample
+
+The Layer 1 sample app (`samples/BlazorJsonVisualizer.Layer1Sample`) demonstrates the read-only JSON viewer core.
+
+It:
+
+- runs on port 5120
+- loads a small built-in JSON example
+- displays the read-only JSON view via the `BlazorJsonVisualizer` component
+- exposes folding interaction
+- exposes a path reveal input using `$`-prefixed paths (existing runtime path format)
+- avoids schema features
+- avoids projection features
+- avoids fake editing features
+
 ## Non-goals
 
 - Production hosting.

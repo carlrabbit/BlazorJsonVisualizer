@@ -32,6 +32,18 @@ A runtime instance representing one loaded document, its revision, viewport stat
 
 The currently visible rendered portion of the document.
 
+## Render Row
+
+A single visible row in the viewport, derived from the structural index and folding state. Each render row maps to a structural node and carries display text and metadata.
+
+## JSON Tokenizer
+
+The Layer 1 component that converts JSON source text into a flat sequence of typed token ranges without building a parse tree or JavaScript object.
+
+## JSON Pointer
+
+A path syntax (RFC 6901) used to identify nodes within a JSON document. Segments are separated by `/`. `~0` encodes `~`; `~1` encodes `/`.
+
 ## Overlay
 
 Metadata displayed over the JSON document without owning the canonical document model.

@@ -267,3 +267,18 @@ Fields:
 ## Versioning
 
 Every runtime entry point must expose a runtime protocol version string. Breaking protocol changes must update this spec.
+
+## Layer 1 Modular Commands (Milestone 009)
+
+The Layer 1 modular host (`runtime-blazor/src/layer1Host.ts`) exposes these functions:
+
+```ts
+function layer1CreateSession(sessionId: string, sourceText: string): void
+function layer1SetViewport(sessionId: string, firstVisibleRow: number, visibleRowCount: number): void
+function layer1ToggleFold(sessionId: string, nodeId: string): void
+function layer1RevealPath(sessionId: string, path: string): { success: boolean; nodeId?: string; reason?: string }
+function layer1Render(sessionId: string, containerElement: Element): void
+function layer1DisposeSession(sessionId: string): void
+```
+
+These functions operate on the Layer 1 `DocumentSession` model and are independent of the full `SessionRegistry`-based runtime.

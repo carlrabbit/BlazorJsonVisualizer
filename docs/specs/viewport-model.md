@@ -1,36 +1,85 @@
-# Viewport Model Spec
+# Viewport Model Specification
 
-## Purpose
+## Goal
 
-Defines how Layer 1 renders a document portion and reacts to folding/navigation.
+Define the Layer 1 viewport model used to render a read-only JSON document view.
 
-## Scope
+The viewport model maps a document session and structural index to a list of visible render rows.
 
-Milestone 003 may use simple DOM rendering. True endless scrolling or chunked virtualization can be deferred.
+## Authority
 
-## Concepts
+This document is authoritative for:
 
-- Rendered line: a visual row derived from the JSON text and structural index.
-- Folded node: a structural node whose children are hidden from the rendered view.
-- Reveal path: operation that makes a JSON path visible by expanding ancestors and scrolling/rendering to the target.
+- viewport state
+- visible row semantics
+- folding state interaction
+- reveal-by-node behavior
+- render row identity
 
-## Required operations
+This document is not authoritative for:
 
-### `renderDocument`
+- DOM implementation details
+- CSS styling
+- schema overlays
+- editing
+- browser scroll performance guarantees
 
-Renders loaded JSON text with syntax classes and structural indentation.
+## Viewport State
 
-### `toggleFold`
+```ts
+interface ViewportState {
+  sessionId: DocumentSessionId;
+  firstVisibleRow: number;
+  visibleRowCount: number;
+  focusedNodeId?: NodeId;
+}
+```
 
-Toggles folding for an object or array node.
+## Render Row Model
 
-### `revealPath`
+```ts
+type RenderRowKind = "node" | "foldPlaceholder" | "diagnostic";
 
-Expands ancestors of the target path and makes the target visible.
+interface RenderRow {
+  rowIndex: number;
+  kind: RenderRowKind;
+  nodeId?: NodeId;
+  depth: number;
+  text: string;
+  folded?: boolean;
+}
+```
 
-## Rules
+## Visible Rows
 
-- Folded child content must not be visible.
-- Folding must be driven by the structural index, not regex matching.
-- Rendering must tolerate documents with no schema.
-- Rendering must not require Blazor to render JSON internals.
+Visible rows are derived from the structural index and folding state.
+
+Collapsed descendants of folded object/array nodes must not appear as normal visible rows.
+
+A folded object/array renders as a single node row with `folded: true` and no children rows. The row text shows `{ ... }` or `[ ... ]` to indicate folded content.
+
+## Initial Scope
+
+The first implementation renders all rows and then slices them for viewport calculation.
+
+True large-file virtualization is not required in this milestone, but the public model must not prevent it.
+
+## Reveal Semantics
+
+Reveal by node/path adjusts viewport state so the target node appears in the visible row range.
+
+If the target node is inside a folded ancestor, the reveal operation expands required ancestors.
+
+## Non-Goals
+
+This milestone does not require:
+
+- pixel-perfect virtualization
+- variable row height support
+- horizontal virtualization
+- browser scroll anchoring correctness under edits
+- editing cursor semantics
+
+## Legacy Note
+
+Earlier milestones used `ViewportDto` with `width` and `height` properties in the monolithic runtime-core. The Layer 1 modular viewport uses row-based `ViewportState` with `firstVisibleRow` and `visibleRowCount`.

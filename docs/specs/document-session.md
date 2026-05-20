@@ -1,36 +1,90 @@
-# Document Session Spec
+# Document Session Specification
 
-## Purpose
+## Goal
 
-Defines the lifecycle of one document runtime instance.
+Define the Layer 1 document session model.
 
-## Session identity
+A document session groups source text, tokenizer output, structural index, viewport state, folding state, and revision identity.
 
-A session has:
+## Authority
 
-- `sessionId`
-- optional `documentId`
-- document `revision`
-- lifecycle state
-- runtime options
-- host callback target
-- optional schema attachment state and schema overlay diagnostics
+This document is authoritative for:
 
-## Lifecycle states
+- document session lifecycle
+- document revision identity
+- dirty/read-only state for Layer 1
+- relationship between source text, tokenization, and structural index
 
-- `created`
-- `mounted`
-- `document-loaded`
-- `disposed`
+This document is not authoritative for:
 
-## Rules
+- persistence
+- Blazor component lifecycle
+- editing transactions beyond read-only placeholders
+- schema overlays
+- projection plugins
 
-- A disposed session must reject further commands.
-- Runtime internals must not depend on Blazor component instances.
-- The session API must be testable without Blazor.
-- Milestone 002 may use placeholder rendering only.
-- Loading a document resets the tracked revision to `0`.
-- Each successful editing transaction increments the revision by `1`.
-- Schema overlays are optional and must never be required for Layer 1 rendering.
-- Milestone 005 invalidates attached schema overlays after successful Layer 1 transactions.
-- Milestone 004 may keep undo/redo history minimal, but unsupported cases must be explicit.
+## Session Model
+
+```ts
+type DocumentSessionId = string;
+type RevisionId = number;
+
+type DocumentSessionMode = "readOnly" | "editable";
+
+interface DocumentSession {
+  id: DocumentSessionId;
+  revision: RevisionId;
+  mode: DocumentSessionMode;
+  sourceText: string;
+  tokenCount: number;
+  rootNodeId: NodeId;
+  structuralIndex: StructuralIndex;
+  tokens: JsonToken[];
+}
+```
+
+## Lifecycle
+
+A document session may be:
+
+1. created from source text
+2. indexed
+3. attached to a viewport
+4. disposed
+
+In this milestone, sessions are read-only by default.
+
+## Revision Semantics
+
+The initial revision is `1`.
+
+Read-only viewport actions such as folding or reveal do not change the document revision.
+
+Future editing milestones may increment revision when source text or structural content changes.
+
+## Source Ownership
+
+For this milestone, the document session owns the source text as a single JavaScript string.
+
+This is intentionally acceptable for the first Layer 1 prototype. Chunked storage is a future optimization and must not be simulated prematurely.
+
+## Invalidation
+
+Creating a new session from different source text creates a new tokenizer output and structural index.
+
+Incremental re-indexing is not required in this milestone.
+
+## Non-Goals
+
+This milestone does not require:
+
+- chunked source storage
+- incremental reparsing
+- editing transactions
+- persistence
+- remote streaming
+- dirty-state tracking for edits
+
+## Legacy Note
+
+Earlier milestones used a `DocumentSessionRecord` type with lifecycle states (`created`, `mounted`, `document-loaded`, `disposed`) and a `SessionRegistry` in the monolithic runtime-core. That model supports editing, schema overlays, and projections. The Layer 1 modular `DocumentSession` is a read-only, lighter-weight model aligned with the spec above.

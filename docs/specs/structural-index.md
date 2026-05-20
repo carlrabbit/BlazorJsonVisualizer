@@ -1,47 +1,139 @@
-# Structural Index Spec
+# Structural Index Specification
 
-## Purpose
+## Goal
 
-Defines the initial JSON structural index used by Layer 1 viewing, folding, and navigation.
+Define the Layer 1 structural index built from JSON tokenizer output.
 
-## Scope
+The structural index represents JSON node boundaries and parent/child relationships without making the full JavaScript object tree the canonical runtime model.
 
-Milestone 003 supports complete in-memory parsing of small JSON documents. Huge-document chunking is a later enhancement.
+## Authority
 
-## Node model
+This document is authoritative for:
 
-Each structural node has:
+- JSON node identity
+- node kinds
+- node offset range semantics
+- parent/child relationship semantics
+- structural index construction expectations
+- folding target semantics
 
-- `nodeId: string`
-- `kind: "object" | "array" | "property" | "string" | "number" | "boolean" | "null"`
-- `startOffset: number`
-- `endOffset: number`
-- `parentId?: string`
-- `firstChildId?: string`
-- `nextSiblingId?: string`
-- `depth: number`
-- `path: string`
-- `foldable: boolean`
-- `folded: boolean`
+This document is not authoritative for:
 
-## Rules
+- tokenizer lexical behavior
+- viewport rendering
+- schema overlays
+- editing transactions
+- persistence
 
-- Node IDs must remain stable until the document is reloaded.
-- Offsets refer to UTF-16 string offsets in Milestone 003.
-- Object and array nodes are foldable.
-- Primitive value nodes are not foldable.
-- Property nodes connect object members to their value nodes.
-- Invalid JSON must produce a diagnostic instead of a structural index.
+## Node Identity
 
-## Non-goals
+Each structural node has a stable node identifier within a document session revision.
 
-- Incremental reparsing.
-- Chunked structural indexes.
-- Stable IDs across edits.
-- Schema metadata.
+```ts
+type NodeId = string;
+```
 
-## Edit invalidation rules
+Node identifiers are runtime identifiers, not persisted external IDs.
 
-After a successful transaction, the runtime must update or rebuild the affected structural index.
+## Node Model
 
-Milestone 004 may rebuild the full index for small documents after each transaction. This is acceptable only as a prototype constraint. Fold state may be preserved only for nodes whose exact paths survive the rebuild.
+```ts
+type JsonNodeKind =
+  | "document"
+  | "object"
+  | "array"
+  | "property"
+  | "string"
+  | "number"
+  | "boolean"
+  | "null"
+  | "invalid";
+
+interface JsonNode {
+  id: NodeId;
+  kind: JsonNodeKind;
+  startOffset: number;
+  endOffset: number;
+  parentId?: NodeId;
+  depth: number;
+  firstChildId?: NodeId;
+  nextSiblingId?: NodeId;
+  propertyName?: string;
+}
+```
+
+`startOffset` is inclusive. `endOffset` is exclusive.
+
+A `document` node is the root node for the indexed document.
+
+## Property Nodes
+
+A JSON object property is represented as a `property` node.
+
+The property node owns:
+
+- the property name
+- the value node as its child
+
+The property node range covers the property string token through the end of the value node.
+
+## Structural Validity
+
+For valid JSON:
+
+- every non-root node has a parent
+- object and array nodes may have children
+- property nodes appear only under object nodes
+- property nodes have one value child
+- primitive nodes have no children
+
+For invalid JSON:
+
+- the structural index may contain `invalid` nodes
+- construction should not crash on malformed input where recovery is practical
+
+## Construction Rules
+
+The structural index is built from tokenizer output.
+
+The indexer must not call `JSON.parse` as its canonical implementation.
+
+Using `JSON.parse` in tests as an oracle for small valid snippets is allowed, but the production indexer must preserve source ranges and therefore cannot rely on object materialization.
+
+## Fold State
+
+Fold state is tracked as a `Set<NodeId>` of folded node IDs on the structural index.
+
+Foldable nodes:
+
+- object
+- array
+
+Non-foldable nodes:
+
+- document
+- property
+- string
+- number
+- boolean
+- null
+- invalid
+
+## Fast Tests
+
+Fast structural index tests must cover:
+
+- root document node
+- object node
+- array node
+- nested object/array
+- property node
+- primitive nodes
+- parent/child links
+- depth
+- node ranges
+- malformed input recovery
+
+## Legacy Note
+
+Earlier milestones used a `StructuralNodeRecord` type with `foldable`, `folded`, and `path` fields in the monolithic runtime-core index. The Layer 1 modular implementation uses `JsonNode` with fold state managed separately as `foldedNodeIds: Set<NodeId>` on the `StructuralIndex`.
