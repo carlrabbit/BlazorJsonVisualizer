@@ -14,20 +14,20 @@ const samples = [
   {
     name: "Layer 1 JSON viewer sample",
     port: 5120,
-    status: "Planned",
-    implemented: false,
+    status: "Implemented",
+    implemented: true,
   },
   {
     name: "Layer 2 schema overlay sample",
     port: 5130,
-    status: "Planned",
-    implemented: false,
+    status: "Implemented",
+    implemented: true,
   },
   {
     name: "Layer 3 projection sample",
     port: 5140,
-    status: "Planned",
-    implemented: false,
+    status: "Implemented",
+    implemented: true,
   },
 ];
 

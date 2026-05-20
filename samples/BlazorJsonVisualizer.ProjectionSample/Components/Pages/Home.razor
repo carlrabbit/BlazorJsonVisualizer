@@ -1,0 +1,84 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using System.Text.Json
+
+<PageTitle>Layer 3 Projection Sample</PageTitle>
+
+<h1>Layer 3 Projection Sample</h1>
+
+<p>
+    This sample demonstrates Layer 3 projection/plugin behavior. A small array-of-objects JSON document
+    is loaded and a table projection is created over the <code>$.items</code> path.
+</p>
+
+<JsonVisualizer @ref="_visualizer"
+                SessionId="layer3-session"
+                DocumentId="layer3-document"
+                Text="@SampleJson"
+                RuntimeEvent="HandleRuntimeEvent" />
+
+<section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Latest runtime event</h2>
+        <p><strong>Type:</strong> @_latestEvent.Type</p>
+        <p><strong>Session:</strong> @_latestEvent.SessionId</p>
+        <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
+        <p><strong>Projection:</strong> @_latestEvent.ProjectionId</p>
+        <p><strong>Projection kind:</strong> @_latestEvent.Kind</p>
+        <p><strong>Projection source path:</strong> @_latestEvent.SourcePath</p>
+        <p><strong>Message:</strong> @_latestEvent.Message</p>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Parse diagnostics</h2>
+        @if (_diagnostics.Count == 0)
+        {
+            <p>No diagnostics.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var diagnostic in _diagnostics)
+                {
+                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.StartOffset-@diagnostic.EndOffset)</li>
+                }
+            </ul>
+        }
+    </section>
+</section>
+
+@code {
+    private JsonVisualizer? _visualizer;
+    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer3-session", "Waiting for runtime event.");
+    private List<RuntimeDiagnosticDto> _diagnostics = [];
+    private bool _projectionCreated;
+    private const string SampleProjectionId = "layer3-items-table";
+
+    private const string SampleJson = """
+{
+  "items": [
+    { "name": "Alice", "age": 30, "role": "admin" },
+    { "name": "Bob", "age": 42, "role": "viewer" },
+    { "name": "Charlie", "age": 27, "role": "editor" }
+  ]
+}
+""";
+
+    private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    {
+        _latestEvent = runtimeEvent;
+
+        if (runtimeEvent.Diagnostics is not null)
+        {
+            _diagnostics = runtimeEvent.Diagnostics.ToList();
+        }
+
+        if (runtimeEvent.Type == RuntimeEventTypes.DocumentLoaded && !_projectionCreated && _visualizer is not null)
+        {
+            await _visualizer.CreateProjectionAsync(SampleProjectionId, "table.arrayOfObjects", "$.items");
+            _projectionCreated = true;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

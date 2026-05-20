@@ -34,3 +34,13 @@ Agents may create and run fast tests. Agents must not create or run long-running
 ## Sample launch checks
 
 Starting sample applications is a developer-experience check, not a general fast test. The sample launcher may be used manually and by dedicated workflow/dev-container setup, but normal fast-test workflows should not start all samples unless explicitly configured to do so.
+
+## Sample app validation
+
+Sample apps are validated primarily by build and manual launch checks. They must not add large browser automation suites unless explicitly requested.
+
+Required fast checks:
+
+- sample projects build
+- launcher can start implemented samples
+- static sample index links to implemented samples

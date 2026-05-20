@@ -151,3 +151,17 @@ This dev-container variant should:
 - GitHub Pages deployment.
 - Full sample implementation for milestones that are not implemented yet.
 - Running test suites automatically when launching samples.
+
+## Sample app requirements
+
+Each sample app must:
+
+- have a fixed HTTP port documented in `samples/SAMPLES.md`
+- be listed in the static sample index
+- run through `scripts/dev/start-samples.sh`
+- use small deterministic sample data
+- avoid network dependencies
+- avoid long-running tests or benchmarks
+- demonstrate one clear layer-focused scenario
+
+Layer-focused samples should avoid pretending to implement unsupported future behavior. If the underlying runtime feature is not available yet, the sample may show a placeholder state that clearly identifies the missing feature and links to the relevant milestone/spec.

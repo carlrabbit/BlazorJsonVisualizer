@@ -22,3 +22,15 @@ The TypeScript browser runtime is a first-class subsystem. Blazor is the primary
 - Rich text clipboard fidelity.
 - First-class IME support for CJK input.
 - Multi-user collaboration.
+
+## Samples
+
+Developer samples live under `samples/` and use fixed ports so they can run concurrently in local development and GitHub workspace/dev-container environments.
+
+Use:
+
+```bash
+scripts/dev/start-samples.sh
+```
+
+Then open the samples index on port `5100`.
