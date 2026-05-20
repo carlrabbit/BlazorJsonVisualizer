@@ -31,6 +31,42 @@ Examples:
 
 Agents may create and run fast tests. Agents must not create or run long-running tests unless explicitly requested.
 
+## Layer 1 fast test rules (Milestone 009)
+
+Layer 1 tests created in Milestone 009 are fast tests by default.
+
+Allowed:
+
+- tokenizer unit tests over small strings
+- structural index unit tests over small JSON snippets
+- viewport calculation tests
+- folding state tests
+- path reveal tests
+- read-only renderer smoke tests
+
+Not allowed by default:
+
+- huge JSON files
+- generated massive documents
+- benchmarks
+- fuzzing
+- long browser automation
+- endurance tests
+
+Large JSON and performance validation belongs in a later explicitly triggered long-running workflow.
+
+## Running Layer 1 tests
+
+```bash
+cd tests/runtime && npm test
+```
+
+Or from the runtime workspace:
+
+```bash
+cd src/runtime && npm run test:layer1
+```
+
 ## Sample launch checks
 
 Starting sample applications is a developer-experience check, not a general fast test. The sample launcher may be used manually and by dedicated workflow/dev-container setup, but normal fast-test workflows should not start all samples unless explicitly configured to do so.
