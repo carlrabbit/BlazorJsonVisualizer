@@ -84,7 +84,7 @@ require_command() {
 
 check_port_free() {
   local port="$1"
-  if ss -Htanl "( sport = :$port )" | grep -q 'LISTEN'; then
+  if ss -Htanl "sport = :$port" | grep -q 'LISTEN'; then
     echo "Port $port is already in use by another listening process." >&2
     exit 1
   fi
@@ -195,7 +195,7 @@ start_process() {
 start_index() {
   start_process \
     "$INDEX_PID_FILE" \
-    dotnet run "$INDEX_SERVER_APP" -- "$INDEX_DIR" "http://$BIND_HOST:$INDEX_PORT"
+    dotnet run -- "$INDEX_SERVER_APP" -- "$INDEX_DIR" "http://$BIND_HOST:$INDEX_PORT"
 }
 
 start_basic_sample() {
