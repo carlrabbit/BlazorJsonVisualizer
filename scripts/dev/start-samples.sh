@@ -239,11 +239,11 @@ if [[ ! -f "$INDEX_SERVER_APP" ]]; then
   exit 1
 fi
 
-if (( DETACH_MODE && ! DRY_RUN )); then
-  if [[ -z "$LOG_FILE" ]]; then
-    LOG_FILE="$DEFAULT_LOG_FILE"
-  fi
+if (( DETACH_MODE )) && [[ -z "$LOG_FILE" ]]; then
+  LOG_FILE="$DEFAULT_LOG_FILE"
+fi
 
+if (( DETACH_MODE && ! DRY_RUN )); then
   prepare_detached_state
   if ! ensure_detached_not_running; then
     exit 0
@@ -256,8 +256,6 @@ if (( ! DRY_RUN )); then
   check_port_free "$LAYER1_PORT"
   check_port_free "$LAYER2_PORT"
   check_port_free "$LAYER3_PORT"
-elif (( DETACH_MODE )) && [[ -z "$LOG_FILE" ]]; then
-  LOG_FILE="$DEFAULT_LOG_FILE"
 fi
 
 echo "== Sample ports =="

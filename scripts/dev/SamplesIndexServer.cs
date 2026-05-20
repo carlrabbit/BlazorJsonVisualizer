@@ -35,5 +35,5 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = string.Empty
 });
 
-app.Run();
+await app.RunAsync();
 return 0;
