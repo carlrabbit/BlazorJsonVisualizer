@@ -21,7 +21,6 @@ function makeElement(tag: string) {
     firstChild: any;
     children: any[];
     setAttribute(k: string, v: string): void;
-    setAttribute(k: string, v: string): void;
     removeChild(child: any): void;
     appendChild(child: any): void;
   } = {
