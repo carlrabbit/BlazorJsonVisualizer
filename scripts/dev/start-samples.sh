@@ -195,7 +195,7 @@ start_process() {
 start_index() {
   start_process \
     "$INDEX_PID_FILE" \
-    dotnet run -- "$INDEX_SERVER_APP" -- "$INDEX_DIR" "http://$BIND_HOST:$INDEX_PORT"
+    dotnet run "$INDEX_SERVER_APP" -- "$INDEX_DIR" "http://$BIND_HOST:$INDEX_PORT"
 }
 
 start_basic_sample() {
