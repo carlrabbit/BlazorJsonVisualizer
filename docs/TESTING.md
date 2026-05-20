@@ -80,3 +80,4 @@ Required fast checks:
 - sample projects build
 - launcher can start implemented samples
 - static sample index links to implemented samples
+- if `scripts/dev/start-samples.sh` changes, `scripts/dev/start-samples.sh --dry-run` must be run and succeed before other launcher validation

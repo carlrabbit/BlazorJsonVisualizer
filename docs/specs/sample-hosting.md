@@ -121,9 +121,11 @@ The script should:
 - start the static index on port 5100
 - start each implemented sample on its fixed port
 - check port availability for the index and implemented samples only
+- support a dry-run mode that prints the build/start plan without building or starting samples
 - print the sample index URL and sample port table
 - fail clearly when a port is already in use
 - not start long-running tests
+- be dry-run validated with `scripts/dev/start-samples.sh --dry-run` whenever the launcher changes
 
 ## Dev-container integration
 
