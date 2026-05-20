@@ -84,7 +84,7 @@ require_command() {
 
 check_port_free() {
   local port="$1"
-  if ss -Htanl "sport = :$port" | grep -q 'LISTEN'; then
+  if ss -Htanl "sport eq :$port" | grep -q 'LISTEN'; then
     echo "Port $port is already in use by another listening process." >&2
     exit 1
   fi
@@ -239,14 +239,16 @@ if [[ ! -f "$INDEX_SERVER_APP" ]]; then
   exit 1
 fi
 
-if (( DETACH_MODE )) && [[ -z "$LOG_FILE" ]]; then
-  LOG_FILE="$DEFAULT_LOG_FILE"
-fi
+if (( DETACH_MODE )); then
+  if [[ -z "$LOG_FILE" ]]; then
+    LOG_FILE="$DEFAULT_LOG_FILE"
+  fi
 
-if (( DETACH_MODE && ! DRY_RUN )); then
-  prepare_detached_state
-  if ! ensure_detached_not_running; then
-    exit 0
+  if (( ! DRY_RUN )); then
+    prepare_detached_state
+    if ! ensure_detached_not_running; then
+      exit 0
+    fi
   fi
 fi
 
