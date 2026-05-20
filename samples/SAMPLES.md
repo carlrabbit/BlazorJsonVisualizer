@@ -22,6 +22,8 @@ scripts/dev/start-samples.sh
 
 Then open the static samples index on port `5100`.
 
+If you change `scripts/dev/start-samples.sh`, run `scripts/dev/start-samples.sh --dry-run` first.
+
 The sample dev-container/Codespaces variant uses detached startup so repeated starts do not block the container startup hook.
 
 ## Codespaces usage
