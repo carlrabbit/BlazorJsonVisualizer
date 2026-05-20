@@ -1,0 +1,112 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using System.Text.Json
+
+<PageTitle>Layer 1 JSON Viewer Sample</PageTitle>
+
+<h1>Layer 1 JSON Viewer Sample</h1>
+
+<p>
+    This sample demonstrates Layer 1 JSON viewing and navigation behavior.
+    The component below loads a small embedded JSON document and mounts it in the visualizer.
+</p>
+
+<JsonVisualizer @ref="_visualizer"
+                SessionId="layer1-session"
+                DocumentId="layer1-document"
+                Text="@SampleJson"
+                RuntimeEvent="HandleRuntimeEvent" />
+
+<section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Reveal path</h2>
+        <p style="margin-top: 0;">Enter an indexed path such as <code>$.document.nested.items</code>.</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_revealPath"
+                   style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                   aria-label="Reveal path" />
+            <button @onclick="RevealPathAsync"
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                Reveal path
+            </button>
+        </div>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button @onclick='() => SetRevealPath("$.document.nested")'>Reveal nested</button>
+            <button @onclick='() => SetRevealPath("$.features")'>Reveal features</button>
+        </div>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Latest runtime event</h2>
+        <p><strong>Type:</strong> @_latestEvent.Type</p>
+        <p><strong>Session:</strong> @_latestEvent.SessionId</p>
+        <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
+        <p><strong>Message:</strong> @_latestEvent.Message</p>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Parse diagnostics</h2>
+        @if (_diagnostics.Count == 0)
+        {
+            <p>No diagnostics.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var diagnostic in _diagnostics)
+                {
+                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.StartOffset-@diagnostic.EndOffset)</li>
+                }
+            </ul>
+        }
+    </section>
+</section>
+
+@code {
+    private JsonVisualizer? _visualizer;
+    private string _revealPath = "$.document.nested";
+    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer1-session", "Waiting for runtime event.");
+    private List<RuntimeDiagnosticDto> _diagnostics = [];
+
+    private const string SampleJson = """
+{
+  "project": "BlazorJsonVisualizer",
+  "layer": 1,
+  "features": ["viewing", "folding", "navigation"],
+  "document": {
+    "kind": "sample",
+    "nested": {
+      "enabled": true,
+      "items": [1, 2, 3]
+    }
+  }
+}
+""";
+
+    private async Task RevealPathAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.RevealPathAsync(_revealPath);
+    }
+
+    private void SetRevealPath(string path)
+    {
+        _revealPath = path;
+    }
+
+    private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    {
+        _latestEvent = runtimeEvent;
+
+        if (runtimeEvent.Diagnostics is not null)
+        {
+            _diagnostics = runtimeEvent.Diagnostics.ToList();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+}

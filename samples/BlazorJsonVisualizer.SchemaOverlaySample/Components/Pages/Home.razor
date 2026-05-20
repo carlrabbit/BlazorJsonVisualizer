@@ -1,0 +1,150 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using System.Text.Json
+
+<PageTitle>Layer 2 Schema Overlay Sample</PageTitle>
+
+<h1>Layer 2 Schema Overlay Sample</h1>
+
+<p>
+    This sample demonstrates Layer 2 schema overlay behavior. A small JSON document is loaded
+    alongside a matching JSON Schema. The visualizer displays schema-driven diagnostics and metadata.
+</p>
+
+<JsonVisualizer @ref="_visualizer"
+                SessionId="layer2-session"
+                DocumentId="layer2-document"
+                Text="@SampleJson"
+                RuntimeEvent="HandleRuntimeEvent" />
+
+<section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Schema metadata lookup</h2>
+        <p style="margin-top: 0;">Enter a path to look up schema metadata, e.g. <code>$.name</code> or <code>$.kind</code>.</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_schemaPath"
+                   style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                   aria-label="Schema path" />
+            <button @onclick="LookupSchemaMetadataAsync"
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                Lookup
+            </button>
+        </div>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button @onclick='() => SetSchemaPath("$.name")'>Lookup name</button>
+            <button @onclick='() => SetSchemaPath("$.kind")'>Lookup kind</button>
+            <button @onclick='() => SetSchemaPath("$.enabled")'>Lookup enabled</button>
+        </div>
+        <pre style="margin-top: 0.75rem; white-space: pre-wrap;">@_schemaMetadataJson</pre>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Latest runtime event</h2>
+        <p><strong>Type:</strong> @_latestEvent.Type</p>
+        <p><strong>Session:</strong> @_latestEvent.SessionId</p>
+        <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
+        <p><strong>Message:</strong> @_latestEvent.Message</p>
+    </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Schema diagnostics</h2>
+        @if (_schemaDiagnostics.Count == 0)
+        {
+            <p>No schema diagnostics.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var diagnostic in _schemaDiagnostics)
+                {
+                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.Path)</li>
+                }
+            </ul>
+        }
+    </section>
+</section>
+
+@code {
+    private JsonVisualizer? _visualizer;
+    private string _schemaPath = "$.name";
+    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer2-session", "Waiting for runtime event.");
+    private List<SchemaDiagnosticDto> _schemaDiagnostics = [];
+    private string _schemaMetadataJson = "No schema metadata lookup yet.";
+    private bool _schemaAttached;
+    private static readonly JsonSerializerOptions MetadataJsonOptions = new() { WriteIndented = true };
+    private const string SampleSchemaId = "layer2-schema";
+
+    private const string SampleJson = """
+{
+  "name": "Example item",
+  "kind": "demo",
+  "enabled": true,
+  "count": 3
+}
+""";
+
+    private const string SampleSchemaJson = """
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Example Item",
+  "type": "object",
+  "required": ["name", "kind", "enabled"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable item name."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["demo", "test", "production"],
+      "description": "Item classification."
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether the item is enabled."
+    },
+    "count": {
+      "type": "number",
+      "description": "Example numeric value."
+    }
+  }
+}
+""";
+
+    private async Task LookupSchemaMetadataAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        var metadata = await _visualizer.GetSchemaMetadataForPathAsync(_schemaPath);
+        _schemaMetadataJson = metadata is null
+            ? "No schema metadata for this path."
+            : JsonSerializer.Serialize(metadata, MetadataJsonOptions);
+    }
+
+    private void SetSchemaPath(string path)
+    {
+        _schemaPath = path;
+    }
+
+    private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    {
+        _latestEvent = runtimeEvent;
+
+        if (runtimeEvent.SchemaDiagnostics is not null)
+        {
+            _schemaDiagnostics = runtimeEvent.SchemaDiagnostics.ToList();
+        }
+
+        if (runtimeEvent.Type == RuntimeEventTypes.DocumentLoaded && !_schemaAttached && _visualizer is not null)
+        {
+            using var document = JsonDocument.Parse(SampleSchemaJson);
+            await _visualizer.AttachSchemaAsync(SampleSchemaId, document.RootElement.Clone());
+            _schemaAttached = true;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+}
