@@ -25,9 +25,17 @@ LOG_FILE=""
 INDEX_DIR="$REPO_ROOT/samples/index"
 INDEX_SERVER_APP="$REPO_ROOT/scripts/dev/SamplesIndexServer.cs"
 BASIC_SAMPLE_PROJECT="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj"
+BASIC_SAMPLE_DIR="$(dirname "$BASIC_SAMPLE_PROJECT")"
+BASIC_SAMPLE_DLL="$BASIC_SAMPLE_DIR/bin/Debug/net10.0/BlazorJsonVisualizer.SampleApp.dll"
 LAYER1_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.Layer1Sample/BlazorJsonVisualizer.Layer1Sample.csproj"
+LAYER1_DIR="$(dirname "$LAYER1_PROJECT")"
+LAYER1_DLL="$LAYER1_DIR/bin/Debug/net10.0/BlazorJsonVisualizer.Layer1Sample.dll"
 LAYER2_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.SchemaOverlaySample/BlazorJsonVisualizer.SchemaOverlaySample.csproj"
+LAYER2_DIR="$(dirname "$LAYER2_PROJECT")"
+LAYER2_DLL="$LAYER2_DIR/bin/Debug/net10.0/BlazorJsonVisualizer.SchemaOverlaySample.dll"
 LAYER3_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/BlazorJsonVisualizer.ProjectionSample.csproj"
+LAYER3_DIR="$(dirname "$LAYER3_PROJECT")"
+LAYER3_DLL="$LAYER3_DIR/bin/Debug/net10.0/BlazorJsonVisualizer.ProjectionSample.dll"
 
 pids=()
 
@@ -192,6 +200,33 @@ start_process() {
   fi
 }
 
+start_process_in_directory() {
+  local pid_file="$1"
+  local working_dir="$2"
+  shift 2
+  local command=("$@")
+
+  if (( DRY_RUN )); then
+    print_dry_run_command cd "$working_dir"
+    print_dry_run_command "${command[@]}"
+    return
+  fi
+
+  if (( DETACH_MODE )); then
+    (
+      cd "$working_dir"
+      nohup "${command[@]}" >>"$LOG_FILE" 2>&1 &
+      echo "$!" > "$pid_file"
+    )
+  else
+    (
+      cd "$working_dir"
+      "${command[@]}"
+    ) &
+    pids+=("$!")
+  fi
+}
+
 start_index() {
   start_process \
     "$INDEX_PID_FILE" \
@@ -199,27 +234,31 @@ start_index() {
 }
 
 start_basic_sample() {
-  start_process \
+  start_process_in_directory \
     "$BASIC_PID_FILE" \
-    dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT"
+    "$BASIC_SAMPLE_DIR" \
+    dotnet "$BASIC_SAMPLE_DLL" --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT"
 }
 
 start_layer1_sample() {
-  start_process \
+  start_process_in_directory \
     "$LAYER1_PID_FILE" \
-    dotnet run --project "$LAYER1_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$LAYER1_PORT"
+    "$LAYER1_DIR" \
+    dotnet "$LAYER1_DLL" --urls "http://$BIND_HOST:$LAYER1_PORT"
 }
 
 start_layer2_sample() {
-  start_process \
+  start_process_in_directory \
     "$LAYER2_PID_FILE" \
-    dotnet run --project "$LAYER2_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$LAYER2_PORT"
+    "$LAYER2_DIR" \
+    dotnet "$LAYER2_DLL" --urls "http://$BIND_HOST:$LAYER2_PORT"
 }
 
 start_layer3_sample() {
-  start_process \
+  start_process_in_directory \
     "$LAYER3_PID_FILE" \
-    dotnet run --project "$LAYER3_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$LAYER3_PORT"
+    "$LAYER3_DIR" \
+    dotnet "$LAYER3_DLL" --urls "http://$BIND_HOST:$LAYER3_PORT"
 }
 
 parse_args "$@"
