@@ -25,9 +25,13 @@ LOG_FILE=""
 INDEX_DIR="$REPO_ROOT/samples/index"
 INDEX_SERVER_APP="$REPO_ROOT/scripts/dev/SamplesIndexServer.cs"
 BASIC_SAMPLE_PROJECT="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj"
+BASIC_SAMPLE_DLL="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/bin/Debug/net10.0/BlazorJsonVisualizer.SampleApp.dll"
 LAYER1_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.Layer1Sample/BlazorJsonVisualizer.Layer1Sample.csproj"
+LAYER1_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.Layer1Sample/bin/Debug/net10.0/BlazorJsonVisualizer.Layer1Sample.dll"
 LAYER2_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.SchemaOverlaySample/BlazorJsonVisualizer.SchemaOverlaySample.csproj"
+LAYER2_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.SchemaOverlaySample/bin/Debug/net10.0/BlazorJsonVisualizer.SchemaOverlaySample.dll"
 LAYER3_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/BlazorJsonVisualizer.ProjectionSample.csproj"
+LAYER3_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/bin/Debug/net10.0/BlazorJsonVisualizer.ProjectionSample.dll"
 
 pids=()
 
@@ -201,25 +205,25 @@ start_index() {
 start_basic_sample() {
   start_process \
     "$BASIC_PID_FILE" \
-    dotnet run --project "$BASIC_SAMPLE_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT"
+    dotnet "$BASIC_SAMPLE_DLL" --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT"
 }
 
 start_layer1_sample() {
   start_process \
     "$LAYER1_PID_FILE" \
-    dotnet run --project "$LAYER1_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$LAYER1_PORT"
+    dotnet "$LAYER1_DLL" --urls "http://$BIND_HOST:$LAYER1_PORT"
 }
 
 start_layer2_sample() {
   start_process \
     "$LAYER2_PID_FILE" \
-    dotnet run --project "$LAYER2_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$LAYER2_PORT"
+    dotnet "$LAYER2_DLL" --urls "http://$BIND_HOST:$LAYER2_PORT"
 }
 
 start_layer3_sample() {
   start_process \
     "$LAYER3_PID_FILE" \
-    dotnet run --project "$LAYER3_PROJECT" --no-launch-profile --no-build --urls "http://$BIND_HOST:$LAYER3_PORT"
+    dotnet "$LAYER3_DLL" --urls "http://$BIND_HOST:$LAYER3_PORT"
 }
 
 parse_args "$@"
