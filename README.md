@@ -40,24 +40,40 @@ src/runtime/runtime-blazor/src/             — Layer 1 Blazor host
 
 Developer samples live under `samples/` and use fixed ports so they can run concurrently in local development and GitHub workspace/dev-container environments.
 
-Use:
-
 ```bash
 scripts/dev/start-samples.sh
 ```
 
 Then open the samples index on port `5100`.
 
-## Running tests
+## Engineering
 
-Fast tests (Layer 1):
-
-```bash
-cd tests/runtime && npm test
-```
-
-Full runtime test suite:
+Canonical commands:
 
 ```bash
-cd src/runtime && npm test
+./eng/restore.sh         # restore dependencies
+./eng/build.sh           # build all projects
+./eng/test.sh            # run short-running tests
+./eng/format.sh          # apply formatting
+./eng/check.sh           # restore + build + test + verify (completion gate)
+./eng/frontend-check.sh  # TypeScript/Biome checks
+./eng/samples.sh         # build and validate samples
 ```
+
+Older npm-based runtime commands are superseded by the canonical `eng/` scripts.
+
+See [`docs/ENGINEERING.md`](docs/ENGINEERING.md) for the full command contract.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [`docs/ENGINEERING.md`](docs/ENGINEERING.md) | Command contracts and engineering setup. |
+| [`docs/GUARDRAILS.md`](docs/GUARDRAILS.md) | Project-wide implementation and testing constraints. |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Structural system design. |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | Decision records and rationale. |
+| [`docs/MILESTONES.md`](docs/MILESTONES.md) | Implementation phases. |
+| [`docs/RESEARCH.md`](docs/RESEARCH.md) | Non-authoritative research and prior guides. |
+| [`docs/SPECS.md`](docs/SPECS.md) | Behavioral specs and invariants. |
+| [`docs/TBPS.md`](docs/TBPS.md) | Task best practices. |
+| [`docs/TERMINOLOGY.md`](docs/TERMINOLOGY.md) | Canonical vocabulary. |

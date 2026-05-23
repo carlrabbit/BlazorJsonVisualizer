@@ -56,10 +56,38 @@ An alternate view over supported JSON structure, such as a table or statistical 
 
 A deterministic runtime operation that changes document state and may produce patches or events.
 
-## Fast Test
+## Short-Running Test
 
-A small deterministic test that should run by default in normal CI and during agent work.
+A small deterministic test that completes quickly with no external dependencies. May run automatically in CI and during agent work. Synonym: fast test.
 
 ## Long-Running Test
 
-A stress, benchmark, huge-document, fuzzing, endurance, or large browser automation test that must not run automatically.
+A stress test, benchmark runner, huge-document test, fuzzing harness, endurance test, or large browser automation suite. Must not run automatically unless explicitly requested.
+
+## Guardrail
+
+A project-wide constraint that all contributors and AI agents must follow during implementation. Guardrails define scope, quality, testing, and documentation boundaries.
+
+## Engineering Guide
+
+The concrete engineering substrate documentation: command contracts, build tooling, toolchain setup, building blocks, and optional modules.
+
+## Command Contract
+
+The canonical definition of `eng/` script names, purposes, and expected behaviors. Agents must not invent commands outside the contract.
+
+## Document Authority
+
+The designation of which document is the single source of truth for a given topic. Authoritative documents supersede research, comments, and informal descriptions.
+
+## Document Contract
+
+The cross-reference rule that lists which documents must be reviewed when an authoritative document changes.
+
+## Building Block
+
+A modular capability package from the Engineering Guide V3. Each block adds specific files, commands, and conventions to the repository.
+
+## Optional Module
+
+An engineering capability that is absent by default and must be explicitly activated in a milestone. Examples: Playwright, BenchmarkDotNet, NuGet packaging, GitHub Pages.

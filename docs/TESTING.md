@@ -1,5 +1,8 @@
 # Testing
 
+> **This document is superseded by [`docs/guardrails/testing.md`](guardrails/testing.md).**
+> It remains here as a compatibility pointer. The authoritative testing policy lives in the guardrail.
+
 ## Fast tests
 
 Fast tests are small deterministic tests that may be run by default by humans, agents, and CI.
