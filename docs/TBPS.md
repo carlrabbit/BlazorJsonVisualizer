@@ -4,6 +4,7 @@ Task-based procedures describe repeatable work. Each implementation issue should
 
 ## Foundational TBPs
 
+- `docs/tbps/add-tbp.md`
 - `docs/tbps/create-spec.md`
 - `docs/tbps/create-milestone.md`
 - `docs/tbps/start-milestone.md`
@@ -12,4 +13,5 @@ Task-based procedures describe repeatable work. Each implementation issue should
 - `docs/tbps/bug-investigation.md`
 - `docs/tbps/documentation-review.md`
 - `docs/tbps/terminology-management.md`
+- `docs/tbps/release.md`
 - `docs/tbps/runtime-contract-change.md`
