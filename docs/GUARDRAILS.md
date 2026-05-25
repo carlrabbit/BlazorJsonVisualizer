@@ -12,6 +12,7 @@ Guardrails differ from specs (which define what the system does) and engineering
 - implementation scope and quality constraints
 - language-specific constraints (TypeScript, .NET)
 - agent behavior constraints
+- public documentation synchronization constraints
 
 ## What does not belong here
 
@@ -23,7 +24,7 @@ Guardrails differ from specs (which define what the system does) and engineering
 
 | Document | Purpose |
 |---|---|
-| `docs/guardrails/testing.md` | Testing policy: fast vs. long-running test classification, agent test execution rules. |
+| `docs/guardrails/testing.md` | Testing policy: fast vs. long-running test classification, release-only package smoke classification, and agent test execution rules. |
 | `docs/guardrails/implementation.md` | Implementation constraints: scope, readability, public API documentation, validation, and documentation synchronization. |
 | `docs/guardrails/languages/dotnet.md` | .NET-specific guardrails: style, analyzer usage, formatting, and project conventions. |
 | `docs/guardrails/languages/typescript.md` | TypeScript-specific guardrails: strict options, Bun/Biome usage, module conventions. |
@@ -33,6 +34,7 @@ Guardrails differ from specs (which define what the system does) and engineering
 This document is authoritative for:
 - the index of guardrail documents under `docs/guardrails/`
 - the definition of what counts as a guardrail
+- cross-links to public documentation guardrail sources (`docs/PUBLIC-DOCS.md`, `public-docs/`)
 
 This document is not authoritative for:
 - product behavior (use specs)
@@ -44,4 +46,6 @@ When this index changes, review:
 - `AGENTS.md`
 - `.github/copilot-instructions.md`
 - `docs/ENGINEERING.md`
+- `docs/PUBLIC-DOCS.md`
+- `public-docs/`
 - `docs/TESTING.md`

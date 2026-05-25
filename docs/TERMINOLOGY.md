@@ -91,3 +91,35 @@ A modular capability package from the Engineering Guide V3. Each block adds spec
 ## Optional Module
 
 An engineering capability that is absent by default and must be explicitly activated in a milestone. Examples: Playwright, BenchmarkDotNet, NuGet packaging, GitHub Pages.
+
+## Public Documentation
+
+User-facing documentation intended for external consumers, maintained under `public-docs/` and synchronized with supported behavior.
+
+## Consumer
+
+A user of published or externally documented surfaces, including package users, API users, diagnostics readers, sample users, and release readers.
+
+## Public Documentation Surface
+
+A specific user-facing documentation output that must stay synchronized, such as README user sections, getting-started docs, package README content, API docs, diagnostics references, and release notes.
+
+## Package README
+
+The consumer-facing README content shipped with a package, sourced from `public-docs/nuget/package-readme.md`.
+
+## Diagnostics Reference
+
+Consumer-facing diagnostics documentation that explains identifiers, meanings, and supported mitigation guidance.
+
+## Public API Baseline
+
+An intentional, versioned definition of the approved public API surface used to detect accidental breaking or additive changes.
+
+## Release Readiness
+
+A validation state indicating public docs, package smoke checks, API checks, samples, and release notes are aligned for a versioned release.
+
+## Package Smoke Test
+
+A consumer-style validation run against locally packed artifacts to verify package installability and basic usability before publishing.

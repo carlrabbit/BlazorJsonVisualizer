@@ -5,6 +5,8 @@ about: Prepare and publish a versioned release
 
 # Required Reading
 
+- `README.md`
+- `docs/PUBLIC-DOCS.md`
 - `docs/ENGINEERING.md`
 - `docs/engineering/command-contract.md`
 - `docs/tbps/release.md`
@@ -25,10 +27,21 @@ about: Prepare and publish a versioned release
 
 [Link the milestone being released.]
 
+# Public Documentation Release Checklist
+
+- [ ] README is user-first.
+- [ ] NuGet package README content is current.
+- [ ] Getting started docs are current.
+- [ ] Public API docs are current.
+- [ ] Diagnostics reference is current.
+- [ ] Samples documentation is current.
+- [ ] Versioning policy is current.
+- [ ] Release notes are current.
+
 # Testing Expectations
 
 - `./eng/check.sh` must succeed.
-- Short-running tests must pass.
+- `./eng/release-check.sh <version>` must succeed when release readiness prerequisites are active.
 
 # Exit Criteria
 

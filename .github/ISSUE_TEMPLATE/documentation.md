@@ -9,6 +9,7 @@ about: Add or revise repository documentation
 - `docs/TERMINOLOGY.md`
 - `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
+- `docs/PUBLIC-DOCS.md`
 - `docs/tbps/documentation-review.md`
 - Relevant authoritative index document (`docs/SPECS.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/MILESTONES.md`, or `docs/WORKFLOWS.md`)
 
@@ -23,6 +24,13 @@ about: Add or revise repository documentation
 # Non-Goals
 
 [List what will not change.]
+
+# Public Documentation Impact
+
+- [ ] No public documentation impact
+- [ ] Update `README.md` user-facing sections
+- [ ] Update `public-docs/` sources (list files)
+- [ ] Update release notes/versioning docs
 
 # Documentation Authority
 

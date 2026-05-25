@@ -12,6 +12,8 @@ Workflow documents describe repository automation and release flow.
 
 - `docs/workflows/ci.md`
 - `docs/workflows/long-running-tests.md`
+- `docs/workflows/public-docs.md`
+- `docs/workflows/release-check.md`
 - `docs/workflows/release.md`
 
 ## Developer sample hosting

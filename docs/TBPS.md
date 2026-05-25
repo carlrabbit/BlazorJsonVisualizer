@@ -15,3 +15,4 @@ Task-based procedures describe repeatable work. Each implementation issue should
 - `docs/tbps/terminology-management.md`
 - `docs/tbps/release.md`
 - `docs/tbps/runtime-contract-change.md`
+- `docs/tbps/public-documentation-update.md`
