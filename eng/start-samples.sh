@@ -296,8 +296,8 @@ if (( DRY_RUN )); then
 fi
 
 echo "Building implemented sample projects..."
-run_build_command npm --prefix "$RUNTIME_WORKSPACE_DIR" install
-run_build_command npm --prefix "$RUNTIME_WORKSPACE_DIR" run build
+run_build_command bun install --cwd "$RUNTIME_WORKSPACE_DIR"
+run_build_command bun run --cwd "$RUNTIME_WORKSPACE_DIR" build
 run_build_command cp "$RUNTIME_BLAZOR_DIST_FILE" "$RUNTIME_BLAZOR_WWWROOT_FILE"
 run_build_command dotnet restore "$BASIC_SAMPLE_PROJECT"
 run_build_command dotnet build "$BASIC_SAMPLE_PROJECT" --no-restore
