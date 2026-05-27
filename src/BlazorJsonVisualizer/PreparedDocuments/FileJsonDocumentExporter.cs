@@ -24,7 +24,6 @@ public sealed class FileJsonDocumentExporter(IPreparedJsonDocumentStore store) :
         }
 
         await using var source = await handle.OpenSourceReadStreamAsync(cancellationToken);
-        source.Position = 0;
         await source.CopyToAsync(destination, cancellationToken);
     }
 }
