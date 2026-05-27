@@ -17,3 +17,9 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/json-tokenizer.md`
 - `docs/specs/layer1-rendering.md`
 - `docs/specs/path-navigation.md`
+
+## Visual identity specs (Milestone 010)
+
+- `docs/specs/visual-identity.md`
+- `docs/specs/theme-token-format.md`
+- `docs/specs/visual-identity-playground.md`

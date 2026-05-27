@@ -24,7 +24,7 @@ Decision records document why a particular approach was chosen over alternatives
 
 | Document | Purpose |
 |---|---|
-| *(none yet)* | Decision records will be added here as durable rationale is documented. |
+| `decisions/0005-token-based-visual-identity.md` | Accepts semantic JSON design tokens as the public visual identity contract and defines the first dark-only visual identity playground direction. |
 
 ## Authority
 

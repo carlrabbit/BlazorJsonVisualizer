@@ -17,6 +17,19 @@ Define release-readiness validation that runs before publishing.
 - Release check must not publish packages.
 - If a prerequisite module is not active, the command must fail with a clear prerequisite message.
 
+## Visual Identity Sample
+
+The release-check workflow must include the Visual Identity sample through the canonical sample validation command.
+
+The workflow must not require screenshot regression tests for this milestone.
+
+When visual identity validation changes, review:
+
+- docs/specs/visual-identity-playground.md
+- docs/engineering/samples.md
+- docs/engineering/release-readiness.md
+- public-docs/samples/visual-identity-playground.md
+
 ## Authority
 
 This document is authoritative for release readiness workflow expectations.

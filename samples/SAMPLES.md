@@ -11,6 +11,7 @@ This directory contains developer-facing sample applications for BlazorJsonVisua
 | 5120 | Layer 1 JSON viewer sample | `samples/BlazorJsonVisualizer.Layer1Sample` | Implemented |
 | 5130 | Layer 2 schema overlay sample | `samples/BlazorJsonVisualizer.SchemaOverlaySample` | Implemented |
 | 5140 | Layer 3 projection sample | `samples/BlazorJsonVisualizer.ProjectionSample` | Implemented |
+| 5150 | Visual Identity Playground | `samples/BlazorJsonVisualizer.VisualIdentitySample` | Implemented |
 
 ## Running all samples
 

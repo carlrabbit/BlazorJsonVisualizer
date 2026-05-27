@@ -3,6 +3,7 @@
     <Project Path="samples/BlazorJsonVisualizer.Layer1Sample/BlazorJsonVisualizer.Layer1Sample.csproj" />
     <Project Path="samples/BlazorJsonVisualizer.ProjectionSample/BlazorJsonVisualizer.ProjectionSample.csproj" />
     <Project Path="samples/BlazorJsonVisualizer.SchemaOverlaySample/BlazorJsonVisualizer.SchemaOverlaySample.csproj" />
+    <Project Path="samples/BlazorJsonVisualizer.VisualIdentitySample/BlazorJsonVisualizer.VisualIdentitySample.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj" />

@@ -12,6 +12,33 @@ This document describes the sample project conventions and launch procedures for
 | BlazorJsonVisualizer.Layer1Sample | 5120 | Layer 1 runtime demonstration. |
 | BlazorJsonVisualizer.SchemaOverlaySample | 5130 | Layer 2 schema overlay demonstration. |
 | BlazorJsonVisualizer.ProjectionSample | 5140 | Layer 3 projection demonstration. |
+| BlazorJsonVisualizer.VisualIdentitySample | 5150 | Visual identity theme playground. |
+
+## Visual Identity Sample
+
+Path:
+
+```text
+samples/BlazorJsonVisualizer.VisualIdentitySample
+```
+
+Purpose:
+
+The Visual Identity sample is the maintained Blazor playground for theme JSON import, token editing, validation, preview, and export.
+
+Fixed port:
+
+```text
+5150
+```
+
+Rules:
+
+- The sample must build through the canonical sample command.
+- The sample must be included in sample validation.
+- The sample must be included in release validation.
+- The sample must not introduce screenshot regression tests in this milestone.
+- The sample must not define a parallel .NET object-token API.
 
 ## Sample Conventions
 
