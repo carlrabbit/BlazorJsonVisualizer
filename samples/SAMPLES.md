@@ -18,12 +18,12 @@ This directory contains developer-facing sample applications for BlazorJsonVisua
 Use:
 
 ```bash
-scripts/dev/start-samples.sh
+eng/start-samples.sh
 ```
 
 Then open the static samples index on port `5100`.
 
-If you change `scripts/dev/start-samples.sh`, run `scripts/dev/start-samples.sh --dry-run` first.
+If you change `eng/start-samples.sh`, run `eng/start-samples.sh --dry-run` first.
 
 The sample dev-container/Codespaces variant uses detached startup so repeated starts do not block the container startup hook.
 
@@ -38,6 +38,6 @@ Use the sample-focused devcontainer entry:
 ## Rules
 
 - Each sample app must use its documented fixed port.
-- Each sample must bind to `0.0.0.0` when launched from scripts/dev containers.
+- Each sample must bind to `0.0.0.0` when launched from sample devcontainers.
 - Samples should use small deterministic embedded data.
 - Samples are for manual development validation, not long-running automated tests.

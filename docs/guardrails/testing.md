@@ -91,7 +91,7 @@ Required fast checks:
 - sample projects build
 - launcher can start implemented samples
 - static sample index links to implemented samples
-- if `scripts/dev/start-samples.sh` changes, run `scripts/dev/start-samples.sh --dry-run` before other launcher validation
+- if `eng/start-samples.sh` changes, run `eng/start-samples.sh --dry-run` before other launcher validation
 
 Starting sample applications is a developer-experience check, not a general fast test. Sample launch must not block normal fast-test workflows.
 

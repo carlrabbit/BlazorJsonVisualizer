@@ -15,6 +15,6 @@ for proj in "$REPO_ROOT"/samples/*/*.csproj; do
 done
 
 eng_step "samples: validate dry run"
-if [ -f "$REPO_ROOT/scripts/dev/start-samples.sh" ]; then
-  bash "$REPO_ROOT/scripts/dev/start-samples.sh" --dry-run
+if [ -f "$REPO_ROOT/eng/start-samples.sh" ]; then
+  bash "$REPO_ROOT/eng/start-samples.sh" --dry-run
 fi

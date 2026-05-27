@@ -62,13 +62,13 @@ Rules:
 
 ```sh
 # Launch all samples
-scripts/dev/start-samples.sh
+eng/start-samples.sh
 
 # Dry run (no build/start)
-scripts/dev/start-samples.sh --dry-run
+eng/start-samples.sh --dry-run
 
 # Detached launch (non-blocking)
-scripts/dev/start-samples.sh --detach
+eng/start-samples.sh --detach
 ```
 
 Then open the samples index on port `5100`.

@@ -1,16 +1,17 @@
 {
   "name": "BlazorJsonVisualizer Samples",
   "image": "mcr.microsoft.com/devcontainers/dotnet:2.1.1-10.0",
-  "forwardPorts": [5100, 5110, 5120, 5130, 5140],
+  "forwardPorts": [5100, 5110, 5120, 5130, 5140, 5150],
   "portsAttributes": {
     "5100": { "label": "Samples Index", "visibility": "public" },
     "5110": { "label": "Basic Sample", "visibility": "public" },
     "5120": { "label": "Layer 1 Sample", "visibility": "public" },
     "5130": { "label": "Layer 2 Schema Overlay Sample", "visibility": "public" },
-    "5140": { "label": "Layer 3 Projection Sample", "visibility": "public" }
+    "5140": { "label": "Layer 3 Projection Sample", "visibility": "public" },
+    "5150": { "label": "Visual Identity Playground", "visibility": "public" }
   },
-  "postCreateCommand": "dotnet restore src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj && dotnet restore samples/BlazorJsonVisualizer.Layer1Sample/BlazorJsonVisualizer.Layer1Sample.csproj && dotnet restore samples/BlazorJsonVisualizer.SchemaOverlaySample/BlazorJsonVisualizer.SchemaOverlaySample.csproj && dotnet restore samples/BlazorJsonVisualizer.ProjectionSample/BlazorJsonVisualizer.ProjectionSample.csproj",
-  "postStartCommand": "bash scripts/dev/start-samples.sh --detach --log-file /tmp/blazor-json-visualizer-samples.log",
+  "postCreateCommand": "./eng/restore.sh",
+  "postStartCommand": "bash eng/start-samples.sh --detach --log-file /tmp/blazor-json-visualizer-samples.log",
   "customizations": {
     "vscode": {
       "settings": {
