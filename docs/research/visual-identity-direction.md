@@ -71,7 +71,7 @@ This means:
 
 - dense, but not cramped;
 - precise, but not visually harsh;
-- dark-mode first, light-mode supported;
+- dark-only first for the initial visual identity milestone; light theme support is deferred until Layer 1 stabilizes;
 - restrained syntax colors;
 - strong hierarchy and indentation cues;
 - subtle panels rather than heavy boxes;
@@ -542,16 +542,20 @@ The token model should be:
 - independent of Blazor;
 - usable by the TypeScript runtime;
 - simple enough to edit manually;
-- stable enough for future public documentation.
+- stable as an immediate public extension contract.
 
 Avoid early support for:
 
 - cascading token inheritance;
 - computed token expressions;
 - theme packages;
-- nested plugin overrides;
+- complex nested plugin override resolution;
 - automatic contrast generation;
 - framework-specific tokens.
+
+Theme JSON is a public extension contract from the first visual identity milestone. This means the JSON shape, schema version, required token categories, plugin-token namespace rules, validation behavior, and import/export behavior must be specified and treated as externally consumable. Early versions may evolve, but changes must be intentional, documented, and versioned through the `schemaVersion` field.
+
+Host applications provide theme tokens as JSON only. The Blazor-facing package may expose helpers for loading, validating, and applying JSON, but it should not define a parallel .NET object model as a second public contract in the first milestone.
 
 ### Initial Theme Shape
 
@@ -646,6 +650,35 @@ Recommended initial categories:
 | `border.*` | Border widths. |
 | `shadow.*` | Overlay shadows. |
 
+### Plugin-Local Tokens
+
+Layer 3 plugins are expected to become a major part of the library, so plugin-local tokens should be supported from the first visual identity milestone.
+
+Plugin-local tokens must still use the shared theme JSON format and must not bypass the host token system. They should be namespaced so host applications can inspect, override, validate, and export them with the rest of the theme.
+
+Recommended initial namespace pattern:
+
+```text
+plugin.<pluginId>.<tokenCategory>.<tokenName>
+```
+
+Examples:
+
+```text
+plugin.tableProjection.color.cell.edited.background
+plugin.tableProjection.color.column.typeBadge.foreground
+plugin.statisticsProjection.color.card.delta.positive.foreground
+```
+
+Rules:
+
+- shared tokens define the baseline product identity;
+- plugin-local tokens may extend the identity for plugin-specific states;
+- plugins must consume shared projection tokens where they fit;
+- plugin-local tokens must be documented by the plugin;
+- plugin-local tokens must be included in import/export round-trips;
+- plugin-local tokens must not redefine core Layer 1 or Layer 2 token semantics.
+
 ## Visual Identity Playground
 
 ### Purpose
@@ -672,12 +705,14 @@ The playground should:
 - load the default theme;
 - import a theme JSON file or pasted JSON text;
 - export the current theme JSON;
-- switch between at least dark and light theme placeholders;
-- edit token values in a simple token table;
-- apply token changes immediately;
+- use the dark default theme only for the first milestone;
+- edit token values in a Blazor token editor;
+- apply token changes immediately through the Blazor host into the runtime/theme preview;
 - show unsupported/missing token fallback behavior;
 - avoid requiring network access;
 - run from the fixed-port sample workspace setup.
+
+Token editing belongs in Blazor for the first milestone. The sample should demonstrate the intended public Blazor-facing integration surface: Blazor owns the token editor UI, accepts/imports/exports theme JSON, and passes validated theme JSON to the TypeScript runtime preview. The TypeScript runtime should consume the resolved theme data and render representative states; it should not own the first token-editing UI.
 
 ### Non-Goals
 
@@ -688,7 +723,8 @@ The playground should not:
 - require authentication;
 - depend on Figma or external assets;
 - finalize the visual identity;
-- implement real Layer 2 or Layer 3 behavior before those layers exist.
+- implement real Layer 2 or Layer 3 behavior before those layers exist;
+- add screenshot regression tests in the first milestone.
 
 ### Representative Page Layout
 
@@ -723,7 +759,7 @@ Initial validation can be manual and fast:
 - no network dependency exists;
 - no hidden long-running visual tests are introduced.
 
-Later validation can include screenshot regression tests, but those should be opt-in and not part of the default fast test path.
+Screenshot regression tests are deferred until runtime rendering stabilizes. The first milestone should rely on build/sample validation, manual visual review, and theme JSON import/export validation. When screenshot regression is introduced later, it must remain explicit and must not destabilize the fast development path.
 
 ## Accessibility Considerations
 
@@ -807,13 +843,18 @@ comfortable
 
 Do not start with full density customization before the default identity is stable.
 
-## Light Theme Direction
+## Theme Mode Direction
 
-Dark theme should be designed first because JSON inspection and dense code-like surfaces often benefit from reduced luminance.
+The first visual identity milestone is dark-only.
 
-Light theme must still be supported as a first-class target.
+Rationale:
 
-Light theme should not be a naive inversion. It needs explicit tokens for:
+- Layer 1 is the stabilizing layer and should not be slowed down by premature light theme parity;
+- dense JSON inspection benefits from reduced luminance during long sessions;
+- a single default mode makes the token playground and representative states easier to validate early;
+- light theme support should be added after Layer 1 rendering, folding, selection, and navigation states are stable.
+
+Light theme remains a future first-class target, but it is not required for the first visual identity milestone. It must not be implemented as a naive inversion. When added, it needs explicit tokens for:
 
 - canvas background;
 - row hover;
@@ -842,6 +883,16 @@ Suggested root:
 <div class="bjv-root" data-bjv-theme="technical-calm-dark">
 ```
 
+Theme input contract:
+
+```text
+Host application -> Blazor component: theme JSON string or JSON document source
+Blazor component -> TypeScript runtime: validated/resolved theme JSON
+TypeScript runtime -> rendered preview/editor: applied CSS variables or runtime style map
+```
+
+Do not introduce a parallel public .NET object model for theme tokens in the first milestone.
+
 ## Proposed Documents to Create Later
 
 ### `docs/specs/visual-identity.md`
@@ -858,12 +909,14 @@ Authoritative for:
 
 Authoritative for:
 
-- theme JSON shape;
+- public theme JSON shape;
 - token name rules;
+- plugin-local token namespace rules;
 - required tokens;
 - optional tokens;
 - fallback behavior;
 - import/export behavior;
+- public compatibility and versioning expectations;
 - validation failure semantics.
 
 ### `docs/decisions/0005-token-based-visual-identity.md`
@@ -881,10 +934,12 @@ Scope:
 - create visual identity spec;
 - create token format spec;
 - create visual identity sample playground;
-- implement default Technical Calm theme;
-- support import/export;
+- implement default Technical Calm dark theme;
+- implement Blazor-based token editing;
+- support theme JSON import/export as a public contract;
 - update sample index;
-- update public sample documentation.
+- update public sample documentation;
+- include visual identity sample validation in release validation.
 
 ### `public-docs/samples/visual-identity.md`
 
@@ -895,15 +950,32 @@ Consumer-facing documentation for:
 - importing/exporting theme JSON;
 - understanding that the default theme is still iterative.
 
-## Open Questions
+## Resolved Direction Decisions
 
-1. Should the default theme be dark-only until Layer 1 stabilizes, or should light theme parity be required in the first visual identity milestone?
-2. Should token editing be implemented in Blazor or in the TypeScript runtime sample shell?
-3. Should theme JSON be considered a public extension contract immediately, or an internal experimental format until Layer 2?
-4. Should plugins be allowed to define plugin-local tokens, or only consume shared projection tokens initially?
-5. Should screenshot regression tests be introduced for the visual identity playground, or deferred until the runtime rendering stabilizes?
-6. Should the visual identity sample be included in release validation or only sample validation?
-7. Should host applications be able to provide theme tokens as .NET objects, JSON strings, or both?
+The following decisions resolve the initial open questions for the first visual identity milestone.
+
+| Question | Decision | Consequence |
+|---|---|---|
+| Default theme mode | Dark-only first | Light theme parity is deferred until Layer 1 stabilizes. |
+| Token editing location | Blazor | The visual identity sample demonstrates the public Blazor-facing integration surface. |
+| Theme JSON contract status | Public contract immediately | The theme JSON shape must be specified, versioned, documented, and validated from the first milestone. |
+| Plugin-local tokens | Allowed immediately | Layer 3 plugins may define namespaced plugin-local tokens while still consuming shared projection tokens where appropriate. |
+| Screenshot regression | Deferred | Do not add screenshot regression tests until runtime rendering stabilizes. |
+| Validation scope | Include in sample and release validation | The visual identity sample must be part of `eng/samples.sh` and release validation once release readiness is applied. |
+| Host theme input | JSON only | Do not create a parallel public .NET object-token API in the first milestone. |
+
+### Implementation Consequences
+
+The visual identity milestone should therefore require:
+
+- a dark-only Technical Calm default theme;
+- `docs/specs/theme-token-format.md` treating theme JSON as a public extension contract;
+- a Blazor token editor in the visual identity sample;
+- runtime-side theme consumption without owning the token-editing UI;
+- plugin-local token namespace rules;
+- import/export round-trip support for shared and plugin-local tokens;
+- sample validation and release validation integration;
+- no screenshot regression test requirement in the first milestone.
 
 ## Recommendation
 
@@ -921,10 +993,13 @@ It should create the infrastructure for design iteration:
 - visual identity spec;
 - theme token format spec;
 - token-based design decision;
-- default Technical Calm theme;
+- default Technical Calm dark theme;
 - visual identity playground sample;
-- import/export of theme JSON;
+- Blazor-based token editor;
+- import/export of theme JSON as a public contract;
+- plugin-local token support;
 - representative Layer 1, Layer 2, and Layer 3 scenarios;
-- sample/public documentation updates.
+- sample/public documentation updates;
+- release-validation integration for the visual identity sample.
 
 This creates a durable design workflow and prevents visual identity from becoming scattered CSS values inside the runtime.
