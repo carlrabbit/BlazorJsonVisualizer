@@ -41,7 +41,16 @@ The TypeScript browser runtime is a first-class subsystem under `src/runtime/`.
 
 Sample projects live under `samples/`. See `docs/engineering/samples.md`.
 
-## Deferred Optional Modules
+### BB19 — Public Documentation
+
+**Status:** Active
+
+Public consumer documentation lives under `public-docs/` and is governed by `docs/PUBLIC-DOCS.md`.
+
+Command:
+- `./eng/public-docs.sh` — Validate required public documentation layout and README constraints.
+
+## Planned / Deferred Optional Modules
 
 ### BB06 — BenchmarkDotNet
 
@@ -57,15 +66,28 @@ E2E tests are opt-in and will not run through `./eng/test.sh` when activated.
 
 ### BB14 — NuGet Packaging
 
-**Status:** Deferred
+**Status:** Planned
 
 NuGet packaging will be added when publishing is needed.
+
+Planned commands:
+- `./eng/package-smoke.sh <version>` (consumer validation for packed artifacts)
 
 ### BB18 — GitHub Pages Website
 
 **Status:** Deferred
 
 GitHub Pages will be added when a project website is needed.
+
+### BB20 — Release Readiness
+
+**Status:** Planned
+
+Release readiness introduces explicit release validation before publish.
+
+Planned commands:
+- `./eng/public-api.sh`
+- `./eng/release-check.sh <version>`
 
 ## Authority
 
@@ -78,3 +100,4 @@ This document is authoritative for:
 When this document changes, review:
 - `docs/ENGINEERING.md`
 - `docs/engineering/building-blocks.md`
+- `docs/engineering/command-contract.md`

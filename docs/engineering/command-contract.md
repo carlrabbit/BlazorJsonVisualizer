@@ -16,33 +16,26 @@ This document defines the canonical `eng/` commands for BlazorJsonVisualizer. Al
 | `./eng/frontend-check.sh` | Run TypeScript/Biome checks. | When touching TS/frontend |
 | `./eng/frontend-format.sh` | Apply TypeScript/Biome formatting. | When requested |
 | `./eng/samples.sh` | Build and validate samples. | When touching samples |
-
-## Future Optional Commands
-
-These commands are documented but not yet implemented:
-
-| Command | Purpose |
-|---|---|
-| `./eng/benchmark.sh` | Run BenchmarkDotNet benchmarks (not part of default test run). |
-| `./eng/e2e.sh` | Run end-to-end Playwright tests (opt-in only). |
-| `./eng/package.sh` | Build NuGet packages. |
-| `./eng/site-build.sh` | Build GitHub Pages site. |
+| `./eng/public-docs.sh` | Validate public documentation required files and consistency checks. | When public docs change |
+| `./eng/package-smoke.sh <version>` | Test packed packages as a consumer. | Explicit only |
+| `./eng/public-api.sh` | Validate intentional public API surface. | Explicit or release work |
+| `./eng/release-check.sh <version>` | Run release-oriented validation. | Explicit only |
 
 ## Agent Rules
 
 - Do not invent commands that are not in this contract.
 - Do not embed repository logic in CI workflows; call `eng/` scripts instead.
 - `./eng/check.sh` is the default completion gate.
-- Long-running tests, e2e tests, and benchmarks must not run through `./eng/test.sh` or `./eng/check.sh`.
+- Long-running tests, e2e tests, benchmarks, and package smoke tests must not run through `./eng/test.sh` or default `./eng/check.sh`.
 - Run `./eng/frontend-check.sh` when touching TypeScript or frontend files.
 - Run `./eng/samples.sh` when touching sample files.
+- `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, and publish commands are explicit-only.
 
 ## Authority
 
 This document is authoritative for:
 - canonical command names and their purposes
 - agent command usage rules
-- the list of future optional commands
 
 ## Document Contract
 

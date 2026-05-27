@@ -9,6 +9,7 @@ about: Implement a planned development milestone
 - `docs/TERMINOLOGY.md`
 - `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
+- `docs/PUBLIC-DOCS.md`
 - `docs/TBPS.md`
 - `docs/tbps/start-milestone.md`
 - `docs/tbps/finish-milestone.md`
@@ -29,6 +30,14 @@ about: Implement a planned development milestone
 # Required Reading
 
 [List docs/specs/tbps relevant to this milestone.]
+
+# Public Documentation Impact
+
+- [ ] No public documentation impact
+- [ ] Update `README.md` user-facing sections
+- [ ] Update `public-docs/` sources (list files)
+- [ ] Update release notes/versioning docs
+- [ ] Update `docs/PUBLIC-DOCS.md` synchronization contract
 
 # Related Specs
 

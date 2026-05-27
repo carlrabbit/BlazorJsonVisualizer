@@ -29,6 +29,7 @@ Not allowed in short-running tests:
 - endurance loops
 - benchmarks
 - fuzzing
+- package smoke tests
 
 ### Long-Running Tests
 
@@ -45,13 +46,22 @@ Examples:
 - large schema validation matrices
 - large Playwright suites
 
+### PackageSmoke Tests
+
+Package smoke tests validate packed artifacts from a consumer perspective.
+
+- Category: `PackageSmoke`
+- Excluded from `./eng/test.sh`
+- Excluded from `./eng/check.sh`
+- Included only in explicit release validation workflows (for example `./eng/package-smoke.sh <version>` or `./eng/release-check.sh <version>` once packaging prerequisites exist)
+
 ## Agent Rules
 
 - Agents may create and run short-running tests.
 - Agents must not create or run long-running tests unless explicitly requested.
 - `./eng/test.sh` runs short-running tests only.
 - `./eng/check.sh` is the default completion gate and only runs short-running tests.
-- Long-running tests require a separate explicit command or workflow trigger.
+- Long-running tests and package smoke tests require separate explicit commands or workflow triggers.
 
 ## Layer 1 Fast Test Rules
 
@@ -89,6 +99,7 @@ Starting sample applications is a developer-experience check, not a general fast
 
 This document is authoritative for:
 - short-running vs. long-running test classification
+- package smoke test classification and default exclusions
 - which tests agents may run automatically
 - sample validation rules
 
@@ -101,3 +112,4 @@ When this document changes, review:
 - `docs/engineering/command-contract.md`
 - `docs/workflows/test-short.md`
 - `docs/workflows/test-long.md`
+- `docs/workflows/release-check.md`

@@ -32,7 +32,9 @@ This guardrail defines implementation scope, readability, and documentation cons
 ## Public API Constraints
 
 - Public API changes must be covered by or update the relevant spec.
-- Public API documentation must be kept aligned with implementation.
+- Public APIs must document intent, contract, constraints, and failure behavior.
+- Public API documentation must not merely restate implementation mechanics.
+- When public API documentation changes, review `public-docs/api/`, `public-docs/getting-started.md`, `public-docs/nuget/`, and `public-docs/release-notes.md`.
 
 ## Validation Constraints
 
