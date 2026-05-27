@@ -19,9 +19,9 @@ Milestones define the sequencing of work: what is in scope, what is out of scope
 
 ## Available Documents
 
-| Document | Purpose |
-|---|---|
-| *(none yet)* | Milestone documents will be added under `docs/milestones/` as they are created. |
+| Document | Status | Purpose |
+|---|---|---|
+| `milestones/milestone-0010-visual-identity-system-and-theme-playground.md` | Active | Creates the first dark-only token-based visual identity system and Blazor theme playground. |
 
 ## Authority
 

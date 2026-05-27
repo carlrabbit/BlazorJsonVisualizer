@@ -43,6 +43,8 @@ This document is not authoritative for:
 | Website source content | `public-docs/website/` |
 | Release notes | `public-docs/release-notes.md` |
 | Versioning policy | `public-docs/versioning.md` |
+| Theme JSON contract | `public-docs/concepts.md` |
+| Visual identity sample | `public-docs/samples/visual-identity-playground.md` |
 
 ## Synchronization Rules
 
@@ -56,6 +58,7 @@ When any listed surface changes, keep related public surfaces aligned.
 - Versioning policy changes must update `public-docs/versioning.md`.
 - Release behavior changes must update `public-docs/release-notes.md`.
 - Website content (if used) must originate from `public-docs/website/` and remain consistent with README and release notes.
+- When the theme JSON contract changes, review and update `docs/specs/theme-token-format.md`, `public-docs/concepts.md`, `public-docs/samples/visual-identity-playground.md`, and `public-docs/release-notes.md`.
 
 ## Document Contract
 

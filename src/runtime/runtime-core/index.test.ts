@@ -8,7 +8,9 @@ import {
   type StructuralNodeRecord,
   RUNTIME_PROTOCOL_VERSION,
   SessionRegistry,
-  toggleFoldInDocument
+  toggleFoldInDocument,
+  parseTheme,
+  exportTheme,
 } from "./index.js";
 
 function assert(condition: boolean, message: string): void {
@@ -842,3 +844,160 @@ createProjectionRejectsUnsupportedSource();
 tableProjectionMapsRowsAndCellsToNodesAndPaths();
 projectionCellEditProducesSetPropertyValueTransaction();
 projectionRebuildsAfterUnderlyingTransaction();
+
+const VALID_DARK_THEME_JSON = JSON.stringify({
+  schemaVersion: "1.0",
+  id: "technical-calm-dark",
+  name: "Technical Calm Dark",
+  mode: "dark",
+  tokens: {
+    "color.canvas.background": "#0f1117",
+    "color.text.primary": "#e6e8ee"
+  },
+  plugins: {}
+});
+
+function themeParserAcceptsValidDarkTheme(): void {
+  const result = parseTheme(VALID_DARK_THEME_JSON);
+  assert(result.valid, "valid dark theme should parse successfully");
+  assert(result.theme !== undefined, "valid theme should have a theme document");
+  assert(result.diagnostics.length === 0, "valid theme should have no diagnostics");
+  assert(result.theme!.id === "technical-calm-dark", "theme id should match");
+  assert(result.theme!.mode === "dark", "theme mode should be dark");
+}
+
+function themeParserRejectsMissingSchemaVersion(): void {
+  const json = JSON.stringify({
+    id: "test",
+    name: "Test",
+    mode: "dark",
+    tokens: {}
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "theme missing schemaVersion should be invalid");
+  assert(result.diagnostics.some(d => d.field === "schemaVersion"), "should have schemaVersion diagnostic");
+}
+
+function themeParserRejectsMissingId(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    name: "Test",
+    mode: "dark",
+    tokens: {}
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "theme missing id should be invalid");
+  assert(result.diagnostics.some(d => d.field === "id"), "should have id diagnostic");
+}
+
+function themeParserRejectsMissingName(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    id: "test",
+    mode: "dark",
+    tokens: {}
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "theme missing name should be invalid");
+  assert(result.diagnostics.some(d => d.field === "name"), "should have name diagnostic");
+}
+
+function themeParserRejectsMissingTokens(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    id: "test",
+    name: "Test",
+    mode: "dark"
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "theme missing tokens should be invalid");
+  assert(result.diagnostics.some(d => d.field === "tokens"), "should have tokens diagnostic");
+}
+
+function themeParserRejectsUnsupportedMode(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    id: "test",
+    name: "Test",
+    mode: "light",
+    tokens: {}
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "theme with unsupported mode should be invalid");
+  assert(result.diagnostics.some(d => d.field === "mode"), "should have mode diagnostic");
+}
+
+function themeParserRejectsNonStringTokenValues(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    id: "test",
+    name: "Test",
+    mode: "dark",
+    tokens: { "color.canvas.background": 42 }
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "theme with non-string token value should be invalid");
+  assert(result.diagnostics.some(d => d.field === "tokens"), "should have tokens diagnostic");
+}
+
+function themeParserAcceptsPluginLocalTokens(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    id: "test",
+    name: "Test",
+    mode: "dark",
+    tokens: { "color.canvas.background": "#000" },
+    plugins: {
+      "my.plugin": { tokens: { "color.custom.foreground": "#fff" } }
+    }
+  });
+  const result = parseTheme(json);
+  assert(result.valid, "theme with plugin-local tokens should be valid");
+  assert(result.theme !== undefined, "theme with plugins should have a theme document");
+  assert("my.plugin" in result.theme!.plugins, "plugin tokens should be present");
+}
+
+function themeParserRejectsInvalidPluginTokenObjects(): void {
+  const json = JSON.stringify({
+    schemaVersion: "1.0",
+    id: "test",
+    name: "Test",
+    mode: "dark",
+    tokens: {},
+    plugins: {
+      "my.plugin": { tokens: { "color.custom": 99 } }
+    }
+  });
+  const result = parseTheme(json);
+  assert(!result.valid, "plugin with non-string token value should be invalid");
+  assert(result.diagnostics.some(d => d.field === "plugins"), "should have plugins diagnostic");
+}
+
+function themeExportPreservesSharedAndPluginTokens(): void {
+  const result = parseTheme(VALID_DARK_THEME_JSON);
+  assert(result.theme !== undefined, "theme should be defined before export");
+  const exported = exportTheme(result.theme!);
+  const reparsed = parseTheme(exported.json);
+  assert(reparsed.valid, "exported theme JSON should be valid");
+  assert(reparsed.theme !== undefined, "re-parsed theme should have document");
+  assert(reparsed.theme!.id === "technical-calm-dark", "exported theme id should round-trip");
+  assert(reparsed.theme!.tokens["color.canvas.background"] === "#0f1117", "exported tokens should round-trip");
+}
+
+function themeParserRejectsInvalidJson(): void {
+  const result = parseTheme("not valid json{");
+  assert(!result.valid, "invalid JSON should fail parse");
+  assert(result.diagnostics.length > 0, "should have at least one diagnostic for invalid JSON");
+}
+
+themeParserAcceptsValidDarkTheme();
+themeParserRejectsMissingSchemaVersion();
+themeParserRejectsMissingId();
+themeParserRejectsMissingName();
+themeParserRejectsMissingTokens();
+themeParserRejectsUnsupportedMode();
+themeParserRejectsNonStringTokenValues();
+themeParserAcceptsPluginLocalTokens();
+themeParserRejectsInvalidPluginTokenObjects();
+themeExportPreservesSharedAndPluginTokens();
+themeParserRejectsInvalidJson();

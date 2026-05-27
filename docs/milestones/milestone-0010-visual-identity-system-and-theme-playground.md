@@ -2,13 +2,7 @@
 
 ## Status
 
-Draft milestone issue content.
-
-This document is intended to be uploaded to:
-
-```text
-docs/milestones/milestone-0010-visual-identity-system-and-theme-playground.md
-```
+Active.
 
 ## Goal
 

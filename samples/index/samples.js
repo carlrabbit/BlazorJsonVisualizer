@@ -29,6 +29,12 @@ const samples = [
     status: "Implemented",
     implemented: true,
   },
+  {
+    name: "Visual Identity Playground",
+    port: 5150,
+    status: "Implemented",
+    implemented: true,
+  },
 ];
 
 function sampleUrl(port) {

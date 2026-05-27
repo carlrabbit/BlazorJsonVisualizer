@@ -8,6 +8,7 @@ BASIC_SAMPLE_PORT=5110
 LAYER1_PORT=5120
 LAYER2_PORT=5130
 LAYER3_PORT=5140
+VISUAL_IDENTITY_PORT=5150
 # Use 0.0.0.0 by default so forwarded ports work in dev containers/workspaces.
 # Override with SAMPLES_BIND_HOST=127.0.0.1 for loopback-only local runs.
 BIND_HOST="${SAMPLES_BIND_HOST:-0.0.0.0}"
@@ -17,6 +18,7 @@ BASIC_PID_FILE="$STATE_DIR/basic.pid"
 LAYER1_PID_FILE="$STATE_DIR/layer1.pid"
 LAYER2_PID_FILE="$STATE_DIR/layer2.pid"
 LAYER3_PID_FILE="$STATE_DIR/layer3.pid"
+VISUAL_IDENTITY_PID_FILE="$STATE_DIR/visual-identity.pid"
 DEFAULT_LOG_FILE="$STATE_DIR/samples.log"
 DETACH_MODE=0
 DRY_RUN=0
@@ -32,6 +34,8 @@ LAYER2_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.SchemaOverlaySample/Blaz
 LAYER2_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.SchemaOverlaySample/bin/Debug/net10.0/BlazorJsonVisualizer.SchemaOverlaySample.dll"
 LAYER3_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/BlazorJsonVisualizer.ProjectionSample.csproj"
 LAYER3_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/bin/Debug/net10.0/BlazorJsonVisualizer.ProjectionSample.dll"
+VISUAL_IDENTITY_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/BlazorJsonVisualizer.VisualIdentitySample.csproj"
+VISUAL_IDENTITY_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/bin/Debug/net10.0/BlazorJsonVisualizer.VisualIdentitySample.dll"
 
 pids=()
 
@@ -139,23 +143,25 @@ prepare_detached_state() {
   clear_stale_pid_file "$LAYER1_PID_FILE"
   clear_stale_pid_file "$LAYER2_PID_FILE"
   clear_stale_pid_file "$LAYER3_PID_FILE"
+  clear_stale_pid_file "$VISUAL_IDENTITY_PID_FILE"
 }
 
 ensure_detached_not_running() {
-  local index_pid basic_pid layer1_pid layer2_pid layer3_pid
+  local index_pid basic_pid layer1_pid layer2_pid layer3_pid visual_identity_pid
   index_pid="$(read_pid_file "$INDEX_PID_FILE")"
   basic_pid="$(read_pid_file "$BASIC_PID_FILE")"
   layer1_pid="$(read_pid_file "$LAYER1_PID_FILE")"
   layer2_pid="$(read_pid_file "$LAYER2_PID_FILE")"
   layer3_pid="$(read_pid_file "$LAYER3_PID_FILE")"
+  visual_identity_pid="$(read_pid_file "$VISUAL_IDENTITY_PID_FILE")"
 
-  if is_pid_running "$index_pid" && is_pid_running "$basic_pid" && is_pid_running "$layer1_pid" && is_pid_running "$layer2_pid" && is_pid_running "$layer3_pid"; then
+  if is_pid_running "$index_pid" && is_pid_running "$basic_pid" && is_pid_running "$layer1_pid" && is_pid_running "$layer2_pid" && is_pid_running "$layer3_pid" && is_pid_running "$visual_identity_pid"; then
     echo "Samples are already running in detached mode. Nothing to do."
     echo "Samples index URL: http://localhost:$INDEX_PORT"
     return 1
   fi
 
-  if is_pid_running "$index_pid" || is_pid_running "$basic_pid" || is_pid_running "$layer1_pid" || is_pid_running "$layer2_pid" || is_pid_running "$layer3_pid"; then
+  if is_pid_running "$index_pid" || is_pid_running "$basic_pid" || is_pid_running "$layer1_pid" || is_pid_running "$layer2_pid" || is_pid_running "$layer3_pid" || is_pid_running "$visual_identity_pid"; then
     echo "Some detached sample processes are still running (check $STATE_DIR/*.pid), but the full sample set is incomplete." >&2
     echo "Manually stop the remaining sample processes using the PIDs from $STATE_DIR/*.pid files (for example: kill \$(cat $STATE_DIR/index.pid)) and remove the PID files (rm -f $STATE_DIR/*.pid) before starting samples again." >&2
     exit 1
@@ -226,6 +232,12 @@ start_layer3_sample() {
     dotnet "$LAYER3_DLL" --urls "http://$BIND_HOST:$LAYER3_PORT"
 }
 
+start_visual_identity_sample() {
+  start_process \
+    "$VISUAL_IDENTITY_PID_FILE" \
+    dotnet "$VISUAL_IDENTITY_DLL" --urls "http://$BIND_HOST:$VISUAL_IDENTITY_PORT"
+}
+
 parse_args "$@"
 
 if (( ! DRY_RUN )); then
@@ -262,6 +274,7 @@ if (( ! DRY_RUN )); then
   check_port_free "$LAYER1_PORT"
   check_port_free "$LAYER2_PORT"
   check_port_free "$LAYER3_PORT"
+  check_port_free "$VISUAL_IDENTITY_PORT"
 fi
 
 echo "== Sample ports =="
@@ -270,6 +283,7 @@ echo "  5110  Basic Blazor host/sample"
 echo "  5120  Layer 1 JSON viewer sample"
 echo "  5130  Layer 2 schema overlay sample"
 echo "  5140  Layer 3 projection sample"
+echo "  5150  Visual Identity Playground"
 echo
 
 if (( DRY_RUN )); then
@@ -286,6 +300,8 @@ run_build_command dotnet restore "$LAYER2_PROJECT"
 run_build_command dotnet build "$LAYER2_PROJECT" --no-restore
 run_build_command dotnet restore "$LAYER3_PROJECT"
 run_build_command dotnet build "$LAYER3_PROJECT" --no-restore
+run_build_command dotnet restore "$VISUAL_IDENTITY_PROJECT"
+run_build_command dotnet build "$VISUAL_IDENTITY_PROJECT" --no-restore
 
 echo "Starting static sample index on http://$BIND_HOST:$INDEX_PORT"
 start_index
@@ -301,6 +317,9 @@ start_layer2_sample
 
 echo "Starting Layer 3 projection sample on http://$BIND_HOST:$LAYER3_PORT"
 start_layer3_sample
+
+echo "Starting Visual Identity Playground on http://$BIND_HOST:$VISUAL_IDENTITY_PORT"
+start_visual_identity_sample
 
 echo
 echo "Samples index URL: http://localhost:$INDEX_PORT"

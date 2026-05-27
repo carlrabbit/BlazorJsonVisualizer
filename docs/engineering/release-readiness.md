@@ -24,6 +24,20 @@ Release readiness may include:
 
 Full release-readiness automation is planned (BB20). Scripts exist with prerequisite checks and clear failure messages where modules are not yet active.
 
+## Visual Identity Release Validation
+
+The visual identity sample is part of release validation.
+
+Release validation must verify that:
+
+- samples/BlazorJsonVisualizer.VisualIdentitySample builds;
+- the sample is reachable through the fixed-port sample launcher setup;
+- default theme JSON is present;
+- the sample can load and export theme JSON;
+- public documentation references the visual identity sample and theme JSON contract.
+
+Screenshot regression tests are deferred and are not part of this milestone's release gate.
+
 ## Authority
 
 This document is authoritative for:

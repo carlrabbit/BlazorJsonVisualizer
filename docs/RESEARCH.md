@@ -49,7 +49,7 @@ This document is not authoritative for:
 |---|---|---|
 | `research/project-setup-guide-v5.md` | Current baseline | Repository knowledge model, documentation conventions, public documentation model, indexes, milestones, TBPs, guardrails, issue templates, workflows, and agent routing. |
 | `research/engineering-guide-v4.md` | Current baseline | Concrete .NET/Bun/Biome/Blazor engineering profile, command contract, samples, public documentation validation, package smoke testing, public API validation, and release readiness. |
-| `research/visual-identity-direction.md` | Draft | Exploratory visual identity direction for Layer 1, Layer 2, and Layer 3, including token strategy and visual identity playground proposal. |
+| `research/visual-identity-direction.md` | Promoted | Exploratory visual identity direction for Layer 1, Layer 2, and Layer 3, including token strategy and visual identity playground proposal. Stable conclusions promoted into `docs/specs/visual-identity.md`, `docs/specs/theme-token-format.md`, `docs/specs/visual-identity-playground.md`, and `docs/decisions/0005-token-based-visual-identity.md`. |
 
 ## Superseded Research
 

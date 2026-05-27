@@ -1,0 +1,719 @@
+@page "/"
+@rendermode InteractiveServer
+@using System.Text.Json
+@using System.Reflection
+
+<PageTitle>Visual Identity Playground</PageTitle>
+
+<h1>Visual Identity Playground</h1>
+
+<p>
+    Demonstrates theme JSON import, token editing, validation, preview, and export.
+    Representative Layer 1, Layer 2, and Layer 3 visual states are shown using the active theme tokens.
+</p>
+
+<div class="playground-grid">
+
+    @* ── Theme Source Panel ── *@
+    <section class="panel panel-theme-source">
+        <h2>Theme Source</h2>
+        <p class="panel-description">Paste or edit theme JSON. Changes update the preview.</p>
+        <textarea value="@_themeJson"
+                  @oninput="OnThemeJsonInput"
+                  rows="12"
+                  spellcheck="false"
+                  aria-label="Theme JSON source"
+                  class="code-input @(HasErrors ? "input-error" : "")"></textarea>
+        <div class="button-row">
+            <button @onclick="LoadDefaultTheme" class="btn-secondary">Load Default</button>
+            <button @onclick="ResetTheme" class="btn-secondary">Reset</button>
+        </div>
+    </section>
+
+    @* ── Validation Panel ── *@
+    <section class="panel panel-validation">
+        <h2>Validation</h2>
+        @if (_validationErrors.Count == 0 && _isValid)
+        {
+            <p class="validation-ok">✓ Theme JSON is valid.</p>
+        }
+        else if (_validationErrors.Count > 0)
+        {
+            <ul class="validation-errors" role="list">
+                @foreach (var error in _validationErrors)
+                {
+                    <li><strong>@error.Field:</strong> @error.Message</li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="validation-pending">Enter or load theme JSON above.</p>
+        }
+    </section>
+
+    @* ── Token Editor Panel ── *@
+    <section class="panel panel-token-editor">
+        <h2>Token Editor</h2>
+        <p class="panel-description">Edit representative token values. Changes update the preview immediately.</p>
+        @if (_isValid && _editableTokens.Count > 0)
+        {
+            <div class="token-groups">
+                @foreach (var group in GetTokenGroups())
+                {
+                    <fieldset class="token-group">
+                        <legend>@group.Key</legend>
+                        @foreach (var token in group.Value)
+                        {
+                            <div class="token-row">
+                                <label class="token-label" title="@token.Key">@ShortTokenName(token.Key)</label>
+                                @if (IsColorToken(token.Key))
+                                {
+                                    <input type="color"
+                                           value="@NormalizeColorForInput(token.Value)"
+                                           @oninput="e => UpdateToken(token.Key, e.Value?.ToString() ?? token.Value)"
+                                           class="token-color-input"
+                                           aria-label="@token.Key" />
+                                }
+                                <input type="text"
+                                       value="@token.Value"
+                                       @oninput="e => UpdateToken(token.Key, e.Value?.ToString() ?? token.Value)"
+                                       class="token-text-input"
+                                       aria-label="@token.Key value" />
+                            </div>
+                        }
+                    </fieldset>
+                }
+            </div>
+        }
+        else if (!_isValid)
+        {
+            <p class="panel-note">Fix validation errors to enable token editing.</p>
+        }
+    </section>
+
+    @* ── Export Panel ── *@
+    <section class="panel panel-export">
+        <h2>Export</h2>
+        <p class="panel-description">Copy normalized theme JSON for use in host applications.</p>
+        @if (_isValid)
+        {
+            <textarea readonly
+                      rows="10"
+                      spellcheck="false"
+                      class="code-input"
+                      aria-label="Exported theme JSON">@GetExportedJson()</textarea>
+            <div class="button-row">
+                <button @onclick="CopyExportedJson" class="btn-primary">Copy JSON</button>
+                @if (_copyConfirmed)
+                {
+                    <span class="copy-confirmed" role="status">Copied!</span>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="panel-note">Valid theme JSON required for export.</p>
+        }
+    </section>
+
+</div>
+
+@* ── Preview Sections ── *@
+
+<div class="preview-sections">
+
+    @* Theme CSS variables applied to preview root *@
+    <div class="bjv-root" data-bjv-theme="technical-calm-dark" style="@GetPreviewCssVars()">
+
+        @* ── Layer 1 Preview ── *@
+        <section class="preview-layer preview-layer1">
+            <h2>Layer 1 — JSON Viewing Preview</h2>
+            <p class="preview-note">Visual preview scenario. Placeholders show representative states.</p>
+
+            <div class="bjv-viewer">
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent"></span>
+                    <span class="bjv-punctuation">&#123;</span>
+                </div>
+                <div class="bjv-row bjv-row-hover">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"project"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-string">"BlazorJsonVisualizer"</span>
+                    <span class="bjv-punctuation">,</span>
+                    <span class="bjv-state-badge bjv-hover-badge">hover</span>
+                </div>
+                <div class="bjv-row bjv-row-active-path">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"layer"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-number">1</span>
+                    <span class="bjv-punctuation">,</span>
+                    <span class="bjv-state-badge bjv-active-path-badge">active path</span>
+                </div>
+                <div class="bjv-row bjv-row-selected">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"features"</span>
+                    <span class="bjv-punctuation">: [</span>
+                    <span class="bjv-state-badge bjv-selected-badge">selected</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent bjv-indent-2"></span>
+                    <span class="bjv-string">"viewing"</span>
+                    <span class="bjv-punctuation">,</span>
+                </div>
+                <div class="bjv-row bjv-row-normal bjv-search-match">
+                    <span class="bjv-indent bjv-indent-2"></span>
+                    <span class="bjv-string">"folding"</span>
+                    <span class="bjv-punctuation">,</span>
+                    <span class="bjv-state-badge bjv-search-badge">search match</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent bjv-indent-2"></span>
+                    <span class="bjv-string">"navigation"</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-punctuation">],</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"nested"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-fold-control">▶</span>
+                    <span class="bjv-punctuation">&#123; ... &#125;</span>
+                    <span class="bjv-state-badge bjv-folded-badge">folded</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"invalidKey"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-invalid">undefined_token</span>
+                    <span class="bjv-state-badge bjv-invalid-badge">invalid token</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent"></span>
+                    <span class="bjv-punctuation">&#125;</span>
+                </div>
+            </div>
+        </section>
+
+        @* ── Layer 2 Preview ── *@
+        <section class="preview-layer preview-layer2">
+            <h2>Layer 2 — Schema Overlay Preview</h2>
+            <p class="preview-note">Visual preview scenario. Schema behavior is mocked for this milestone.</p>
+
+            <div class="bjv-viewer">
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent"></span>
+                    <span class="bjv-punctuation">&#123;</span>
+                </div>
+                <div class="bjv-row bjv-row-normal bjv-schema-hint-row">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"name"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-string">"example"</span>
+                    <span class="bjv-schema-hint">ⓘ string · required</span>
+                </div>
+                <div class="bjv-row bjv-row-normal bjv-validation-error-row">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"count"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-string">"not-a-number"</span>
+                    <span class="bjv-validation-marker bjv-error-marker">✗ expected integer</span>
+                </div>
+                <div class="bjv-row bjv-row-normal bjv-validation-warning-row">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"status"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-string">"pending"</span>
+                    <span class="bjv-validation-marker bjv-warning-marker">⚠ deprecated value</span>
+                </div>
+                <div class="bjv-row bjv-row-normal bjv-suggestion-row">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"priority"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-number">3</span>
+                    <span class="bjv-schema-hint bjv-suggestion-hint">→ allowed: 1, 2, 3</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent bjv-indent-1"></span>
+                    <span class="bjv-property">"tags"</span>
+                    <span class="bjv-punctuation">: </span>
+                    <span class="bjv-schema-hint">optional · array of string</span>
+                </div>
+                <div class="bjv-row bjv-row-normal">
+                    <span class="bjv-indent"></span>
+                    <span class="bjv-punctuation">&#125;</span>
+                </div>
+            </div>
+            <div class="schema-action-bar">
+                <button class="schema-action schema-action-safe" disabled>+ Add missing required</button>
+                <button class="schema-action schema-action-danger" disabled>⚠ Remove unknown properties</button>
+            </div>
+        </section>
+
+        @* ── Layer 3 Preview ── *@
+        <section class="preview-layer preview-layer3">
+            <h2>Layer 3 — Projection Plugin Preview</h2>
+            <p class="preview-note">Visual preview scenario. Projection behavior is mocked for this milestone.</p>
+
+            <div class="projection-table-container">
+                <table class="projection-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Value</th>
+                            <th>Type</th>
+                            <th>Path</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="projection-row">
+                            <td>project</td>
+                            <td>BlazorJsonVisualizer</td>
+                            <td>string</td>
+                            <td class="projection-path-link">$.project</td>
+                        </tr>
+                        <tr class="projection-row projection-row-selected">
+                            <td>layer</td>
+                            <td>3</td>
+                            <td>number</td>
+                            <td class="projection-path-link">$.layer</td>
+                            <span class="bjv-state-badge bjv-selected-row-badge">selected</span>
+                        </tr>
+                        <tr class="projection-row">
+                            <td>active</td>
+                            <td>true</td>
+                            <td>boolean</td>
+                            <td class="projection-path-link">$.active</td>
+                        </tr>
+                        <tr class="projection-row">
+                            <td>score</td>
+                            <td class="projection-metric-positive">98.5</td>
+                            <td>number</td>
+                            <td class="projection-path-link">$.score</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="projection-stats">
+                <div class="stats-card">
+                    <div class="stats-card-label">Total Nodes</div>
+                    <div class="stats-card-value">12</div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-card-label">Depth</div>
+                    <div class="stats-card-value">3</div>
+                </div>
+                <div class="stats-card stats-card-plugin-ok">
+                    <div class="stats-card-label">Plugin</div>
+                    <div class="stats-card-value">Active</div>
+                </div>
+                <div class="stats-card stats-card-plugin-warn">
+                    <div class="stats-card-label">Unsupported</div>
+                    <div class="stats-card-value">⚠ partial</div>
+                </div>
+            </div>
+        </section>
+
+        @* ── Plugin-Local Token Preview ── *@
+        <section class="preview-layer preview-plugin-tokens">
+            <h2>Plugin-Local Token Preview</h2>
+            <p class="preview-note">Shows plugin-local tokens from the current theme.</p>
+
+            @if (_isValid && _pluginTokens.Count > 0)
+            {
+                @foreach (var plugin in _pluginTokens)
+                {
+                    <div class="plugin-token-group">
+                        <h3>Plugin: <code>@plugin.Key</code></h3>
+                        <ul class="plugin-token-list">
+                            @foreach (var token in plugin.Value)
+                            {
+                                <li>
+                                    <code class="plugin-token-name">@token.Key</code>:
+                                    <span class="plugin-token-value">@token.Value</span>
+                                    @if (IsColorToken(token.Key))
+                                    {
+                                        <span class="plugin-color-swatch" style="background-color: @token.Value;" aria-hidden="true"></span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            }
+            else if (_isValid)
+            {
+                <p class="panel-note">No plugin-local tokens in the current theme. Add a <code>plugins</code> entry to the theme JSON to see plugin tokens here.</p>
+            }
+            else
+            {
+                <p class="panel-note">Valid theme JSON required.</p>
+            }
+        </section>
+
+    </div>@* /bjv-root *@
+
+</div>@* /preview-sections *@
+
+@code {
+    private string _themeJson = string.Empty;
+    private bool _isValid;
+    private bool _copyConfirmed;
+    private List<ValidationError> _validationErrors = [];
+    private Dictionary<string, string> _editableTokens = [];
+    private Dictionary<string, Dictionary<string, string>> _pluginTokens = [];
+
+    private record ValidationError(string Field, string Message);
+
+    protected override void OnInitialized()
+    {
+        LoadDefaultTheme();
+    }
+
+    private bool HasErrors => _validationErrors.Count > 0;
+
+    private void LoadDefaultTheme()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = "BlazorJsonVisualizer.VisualIdentitySample.wwwroot.themes.technical-calm-dark.json";
+        using var stream = assembly.GetManifestResourceStream(resourceName);
+        if (stream is not null)
+        {
+            using var reader = new System.IO.StreamReader(stream);
+            _themeJson = reader.ReadToEnd();
+        }
+        else
+        {
+            _themeJson = GetFallbackDefaultTheme();
+        }
+
+        ParseAndValidate();
+    }
+
+    private void ResetTheme()
+    {
+        LoadDefaultTheme();
+    }
+
+    private void OnThemeJsonInput(ChangeEventArgs e)
+    {
+        _themeJson = e.Value?.ToString() ?? string.Empty;
+        ParseAndValidate();
+    }
+
+    private void ParseAndValidate()
+    {
+        _validationErrors = [];
+        _isValid = false;
+        _editableTokens = [];
+        _pluginTokens = [];
+
+        if (string.IsNullOrWhiteSpace(_themeJson))
+        {
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(_themeJson);
+            var root = doc.RootElement;
+
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                _validationErrors.Add(new ValidationError("(root)", "Theme JSON must be a JSON object."));
+                return;
+            }
+
+            if (!root.TryGetProperty("schemaVersion", out var sv) || sv.ValueKind != JsonValueKind.String)
+                _validationErrors.Add(new ValidationError("schemaVersion", "Required field 'schemaVersion' must be a string."));
+            else if (sv.GetString() != "1.0")
+                _validationErrors.Add(new ValidationError("schemaVersion", $"Unsupported schemaVersion '{sv.GetString()}'. Supported: 1.0."));
+
+            if (!root.TryGetProperty("id", out var id) || id.ValueKind != JsonValueKind.String)
+                _validationErrors.Add(new ValidationError("id", "Required field 'id' must be a string."));
+
+            if (!root.TryGetProperty("name", out var name) || name.ValueKind != JsonValueKind.String)
+                _validationErrors.Add(new ValidationError("name", "Required field 'name' must be a string."));
+
+            if (!root.TryGetProperty("mode", out var mode) || mode.ValueKind != JsonValueKind.String)
+                _validationErrors.Add(new ValidationError("mode", "Required field 'mode' must be a string."));
+            else if (mode.GetString() != "dark")
+                _validationErrors.Add(new ValidationError("mode", $"Unsupported mode '{mode.GetString()}'. Supported: dark."));
+
+            if (!root.TryGetProperty("tokens", out var tokens))
+            {
+                _validationErrors.Add(new ValidationError("tokens", "Required field 'tokens' is missing."));
+            }
+            else if (tokens.ValueKind != JsonValueKind.Object)
+            {
+                _validationErrors.Add(new ValidationError("tokens", "Field 'tokens' must be an object."));
+            }
+            else
+            {
+                foreach (var prop in tokens.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.String)
+                    {
+                        _validationErrors.Add(new ValidationError("tokens", $"Token '{prop.Name}' must have a string value."));
+                    }
+                    else
+                    {
+                        _editableTokens[prop.Name] = prop.Value.GetString() ?? string.Empty;
+                    }
+                }
+            }
+
+            if (root.TryGetProperty("plugins", out var plugins))
+            {
+                if (plugins.ValueKind != JsonValueKind.Object)
+                {
+                    _validationErrors.Add(new ValidationError("plugins", "Field 'plugins' must be an object."));
+                }
+                else
+                {
+                    foreach (var pluginProp in plugins.EnumerateObject())
+                    {
+                        if (pluginProp.Value.ValueKind != JsonValueKind.Object)
+                        {
+                            _validationErrors.Add(new ValidationError("plugins", $"Plugin '{pluginProp.Name}' must be an object."));
+                            continue;
+                        }
+
+                        if (!pluginProp.Value.TryGetProperty("tokens", out var pluginTokens) ||
+                            pluginTokens.ValueKind != JsonValueKind.Object)
+                        {
+                            _validationErrors.Add(new ValidationError("plugins", $"Plugin '{pluginProp.Name}' must have a 'tokens' object."));
+                            continue;
+                        }
+
+                        var pluginTokenMap = new Dictionary<string, string>();
+                        foreach (var pt in pluginTokens.EnumerateObject())
+                        {
+                            if (pt.Value.ValueKind != JsonValueKind.String)
+                            {
+                                _validationErrors.Add(new ValidationError("plugins", $"Plugin '{pluginProp.Name}' token '{pt.Name}' must be a string."));
+                            }
+                            else
+                            {
+                                pluginTokenMap[pt.Name] = pt.Value.GetString() ?? string.Empty;
+                            }
+                        }
+                        _pluginTokens[pluginProp.Name] = pluginTokenMap;
+                    }
+                }
+            }
+
+            _isValid = _validationErrors.Count == 0;
+        }
+        catch (JsonException ex)
+        {
+            _validationErrors.Add(new ValidationError("(root)", $"Theme JSON is not valid JSON: {ex.Message}"));
+        }
+    }
+
+    private void UpdateToken(string key, string value)
+    {
+        _editableTokens[key] = value;
+        RebuildThemeJson();
+    }
+
+    private void RebuildThemeJson()
+    {
+        if (!_isValid && _editableTokens.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(_themeJson);
+            var root = doc.RootElement;
+
+            var updated = new Dictionary<string, object?>
+            {
+                ["schemaVersion"] = root.TryGetProperty("schemaVersion", out var sv) ? sv.GetString() : "1.0",
+                ["id"] = root.TryGetProperty("id", out var id) ? id.GetString() : "custom",
+                ["name"] = root.TryGetProperty("name", out var nm) ? nm.GetString() : "Custom Theme",
+                ["mode"] = root.TryGetProperty("mode", out var md) ? md.GetString() : "dark",
+                ["tokens"] = _editableTokens,
+            };
+
+            if (_pluginTokens.Count > 0)
+            {
+                updated["plugins"] = _pluginTokens.ToDictionary(
+                    p => p.Key,
+                    p => (object)new Dictionary<string, object> { ["tokens"] = p.Value }
+                );
+            }
+            else
+            {
+                updated["plugins"] = new Dictionary<string, object>();
+            }
+
+            _themeJson = JsonSerializer.Serialize(updated, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            // If rebuild fails, leave the JSON as-is
+        }
+    }
+
+    private string GetExportedJson()
+    {
+        if (!_isValid)
+        {
+            return string.Empty;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(_themeJson);
+            return JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return _themeJson;
+        }
+    }
+
+    private async Task CopyExportedJson()
+    {
+        // In a real implementation this would use JS interop to copy to clipboard.
+        // For this milestone placeholder, we toggle a "Copied" confirmation.
+        _copyConfirmed = true;
+        await Task.Delay(2000);
+        _copyConfirmed = false;
+        StateHasChanged();
+    }
+
+    private string GetPreviewCssVars()
+    {
+        if (!_isValid || _editableTokens.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        foreach (var token in _editableTokens)
+        {
+            var cssVar = "--bjv-" + token.Key.Replace(".", "-");
+            sb.Append(cssVar);
+            sb.Append(": ");
+            sb.Append(token.Value);
+            sb.Append("; ");
+        }
+
+        return sb.ToString();
+    }
+
+    private IEnumerable<KeyValuePair<string, List<KeyValuePair<string, string>>>> GetTokenGroups()
+    {
+        var groups = new Dictionary<string, List<KeyValuePair<string, string>>>();
+
+        foreach (var token in _editableTokens)
+        {
+            var prefix = token.Key.Contains('.') ? token.Key.Split('.')[0] : "other";
+            if (!groups.TryGetValue(prefix, out var list))
+            {
+                list = [];
+                groups[prefix] = list;
+            }
+
+            list.Add(new KeyValuePair<string, string>(token.Key, token.Value));
+        }
+
+        foreach (var group in groups.OrderBy(g => g.Key))
+        {
+            yield return group;
+        }
+    }
+
+    private static string ShortTokenName(string key)
+    {
+        var parts = key.Split('.');
+        return parts.Length > 2 ? string.Join(".", parts.Skip(1)) : key;
+    }
+
+    private static bool IsColorToken(string key) =>
+        key.StartsWith("color.", StringComparison.Ordinal) ||
+        key.StartsWith("syntax.", StringComparison.Ordinal) ||
+        key.StartsWith("state.", StringComparison.Ordinal) ||
+        key.StartsWith("layer", StringComparison.Ordinal) ||
+        key.StartsWith("focus.", StringComparison.Ordinal) ||
+        key.StartsWith("selection.", StringComparison.Ordinal);
+
+    private static string NormalizeColorForInput(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "#000000";
+        }
+
+        var trimmed = value.Trim();
+
+        // Only 6-digit hex colors are reliably supported by <input type="color">
+        if (trimmed.StartsWith('#') && trimmed.Length == 7)
+        {
+            return trimmed;
+        }
+
+        return "#000000";
+    }
+
+    private static string GetFallbackDefaultTheme() => """
+{
+  "schemaVersion": "1.0",
+  "id": "technical-calm-dark",
+  "name": "Technical Calm Dark",
+  "mode": "dark",
+  "tokens": {
+    "color.canvas.background": "#0f1117",
+    "color.surface.background": "#151923",
+    "color.surface.elevated.background": "#1a2233",
+    "color.border.default": "#252b38",
+    "color.border.subtle": "#1c2230",
+    "color.text.primary": "#e6e8ee",
+    "color.text.secondary": "#b4bdcc",
+    "color.text.muted": "#8892a6",
+    "color.focus.ring": "#7aa2f7",
+    "color.selection.background": "#1d2a3d",
+    "color.selection.foreground": "#e6e8ee",
+    "syntax.property.foreground": "#8fb4ff",
+    "syntax.string.foreground": "#b6d987",
+    "syntax.number.foreground": "#e6b450",
+    "syntax.boolean.foreground": "#c792ea",
+    "syntax.null.foreground": "#7f8795",
+    "syntax.punctuation.foreground": "#9aa3b2",
+    "syntax.invalid.foreground": "#f87171",
+    "state.error.foreground": "#f87171",
+    "state.error.background": "#3b1a1a",
+    "state.warning.foreground": "#fbbf24",
+    "state.warning.background": "#3b2e0a",
+    "state.info.foreground": "#60a5fa",
+    "state.info.background": "#1a2a3b",
+    "state.suggestion.foreground": "#34d399",
+    "layer1.activePath.background": "#1d2a3d",
+    "layer1.row.hover.background": "#171d2a",
+    "layer1.fold.control.foreground": "#8892a6",
+    "layer2.schemaHint.foreground": "#60a5fa",
+    "layer2.validationMarker.error": "#f87171",
+    "layer2.validationMarker.warning": "#fbbf24",
+    "layer3.projection.selection.background": "#21314a",
+    "layer3.projection.sourceLink.foreground": "#7aa2f7",
+    "font.ui.family": "system-ui, sans-serif",
+    "font.mono.family": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    "space.1": "4px",
+    "space.2": "8px",
+    "space.3": "12px",
+    "radius.1": "4px",
+    "radius.2": "6px"
+  },
+  "plugins": {}
+}
+""";
+}

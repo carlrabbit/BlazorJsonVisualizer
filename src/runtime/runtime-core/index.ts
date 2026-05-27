@@ -2788,3 +2788,6 @@ function isDigit(character: string | undefined): boolean {
 function isDigitOneToNine(character: string | undefined): boolean {
   return character !== undefined && character >= "1" && character <= "9";
 }
+
+export { parseTheme, exportTheme } from "./src/theme/themeParser.js";
+export type { ThemeDocument, ThemePluginTokens, ThemeDiagnostic, ThemeParseResult, ThemeExportResult, SupportedSchemaVersion, SupportedMode } from "./src/theme/themeParser.js";

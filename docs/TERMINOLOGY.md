@@ -123,3 +123,31 @@ A validation state indicating public docs, package smoke checks, API checks, sam
 ## Package Smoke Test
 
 A consumer-style validation run against locally packed artifacts to verify package installability and basic usability before publishing.
+
+## Visual Identity
+
+The visual semantics, token model, and representative states that define how BlazorJsonVisualizer presents structure, schema information, and projections.
+
+## Theme
+
+A JSON document that supplies semantic design-token values to BlazorJsonVisualizer.
+
+## Theme Token
+
+A named semantic visual value from a theme JSON document.
+
+## Shared Theme Token
+
+A theme token available to the core editor layers and plugins.
+
+## Plugin-Local Theme Token
+
+A token scoped to a specific plugin identifier and used by that plugin for projection-specific presentation.
+
+## Visual Identity Playground
+
+A maintained Blazor sample used to import, edit, validate, preview, and export theme JSON across representative Layer 1, Layer 2, and Layer 3 states.
+
+## Technical Calm
+
+The default visual identity direction: dense, precise, restrained, dark-first, and suitable for structured-data inspection.
