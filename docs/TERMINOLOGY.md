@@ -56,6 +56,46 @@ An alternate view over supported JSON structure, such as a table or statistical 
 
 A deterministic runtime operation that changes document state and may produce patches or events.
 
+## Raw JSON Source
+
+The original JSON input stream supplied by the user before repository-specific preparation occurs.
+
+## Prepared Document
+
+A persistent internal representation of an imported JSON source, including source storage, metadata, derived indexes, and change tracking.
+
+## Prepared Document Store
+
+The durable storage abstraction responsible for creating, opening, listing, and deleting prepared documents.
+
+## Document Import
+
+The process of reading a raw JSON source once and creating a prepared document.
+
+## Document Export
+
+The process of materializing the current prepared document state as JSON.
+
+## Derived Index
+
+A rebuildable index created from document content or transactions, such as structure, path, or search metadata.
+
+## Search Index
+
+A derived index used to support search over a prepared document without limiting results to visible viewport rows.
+
+## Compaction
+
+The process of incorporating transactions into a newer prepared representation to reduce replay cost or storage fragmentation.
+
+## Export Policy
+
+A policy that defines how JSON output is generated from prepared document state.
+
+## Format Preservation
+
+The degree to which exported JSON preserves original source bytes, whitespace, ordering, and formatting.
+
 ## Short-Running Test
 
 A small deterministic test that completes quickly with no external dependencies. May run automatically in CI and during agent work. Synonym: fast test.

@@ -8,6 +8,18 @@ public sealed record DisposeSessionCommand(string SessionId);
 
 public sealed record LoadTextDocumentCommand(string SessionId, string DocumentId, string Text, string ContentType = RuntimeConstants.JsonContentType);
 
+public sealed record OpenPreparedDocumentCommand(string SessionId, string DocumentId);
+
+public sealed record ClosePreparedDocumentCommand(string SessionId, string DocumentId);
+
+public sealed record GetPreparedDocumentInfoCommand(string SessionId, string DocumentId);
+
+public sealed record RequestSourceRangeCommand(string SessionId, string DocumentId, long StartOffset, int Length);
+
+public sealed record RequestSearchCommand(string SessionId, string DocumentId, string Query);
+
+public sealed record RevealSearchResultCommand(string SessionId, string DocumentId, long StartOffset, long EndOffset);
+
 public sealed record AttachSchemaCommand(string SessionId, string SchemaId, JsonElement Schema);
 
 public sealed record DetachSchemaCommand(string SessionId, string SchemaId);

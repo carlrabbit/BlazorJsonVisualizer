@@ -28,6 +28,42 @@ public sealed class JsonVisualizerJsInterop(IJSRuntime jsRuntime) : IAsyncDispos
         await module.InvokeVoidAsync("loadTextDocument", command);
     }
 
+    public async ValueTask OpenPreparedDocumentAsync(OpenPreparedDocumentCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("openPreparedDocument", command);
+    }
+
+    public async ValueTask ClosePreparedDocumentAsync(ClosePreparedDocumentCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("closePreparedDocument", command);
+    }
+
+    public async ValueTask GetPreparedDocumentInfoAsync(GetPreparedDocumentInfoCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("getPreparedDocumentInfo", command);
+    }
+
+    public async ValueTask RequestSourceRangeAsync(RequestSourceRangeCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("requestSourceRange", command);
+    }
+
+    public async ValueTask RequestSearchAsync(RequestSearchCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("requestSearch", command);
+    }
+
+    public async ValueTask RevealSearchResultAsync(RevealSearchResultCommand command)
+    {
+        var module = await moduleTask.Value;
+        await module.InvokeVoidAsync("revealSearchResult", command);
+    }
+
     public async ValueTask CreateProjectionAsync(CreateProjectionCommand command)
     {
         var module = await moduleTask.Value;

@@ -23,3 +23,12 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/visual-identity.md`
 - `docs/specs/theme-token-format.md`
 - `docs/specs/visual-identity-playground.md`
+
+## Prepared document specs (Milestone 012)
+
+- `docs/specs/prepared-document.md`
+- `docs/specs/document-import.md`
+- `docs/specs/prepared-document-store.md`
+- `docs/specs/document-export.md`
+- `docs/specs/search-index.md`
+- `docs/specs/transaction-log.md`

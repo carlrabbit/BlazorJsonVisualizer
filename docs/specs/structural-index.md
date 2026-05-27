@@ -137,3 +137,5 @@ Fast structural index tests must cover:
 ## Legacy Note
 
 Earlier milestones used a `StructuralNodeRecord` type with `foldable`, `folded`, and `path` fields in the monolithic runtime-core index. The Layer 1 modular implementation uses `JsonNode` with fold state managed separately as `foldedNodeIds: Set<NodeId>` on the `StructuralIndex`.
+
+For prepared-document workflows, persisted structure metadata is treated as a derived index and may be rebuilt from prepared source plus transactions.

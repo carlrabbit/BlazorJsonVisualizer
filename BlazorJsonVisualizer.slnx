@@ -9,4 +9,7 @@
     <Project Path="src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj" />
     <Project Path="src/BlazorJsonVisualizer/BlazorJsonVisualizer.csproj" />
   </Folder>
+  <Folder Name="/tests/unit/">
+    <Project Path="tests/unit/BlazorJsonVisualizer.PreparedDocuments.Tests/BlazorJsonVisualizer.PreparedDocuments.Tests.csproj" />
+  </Folder>
 </Solution>
