@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 INDEX_PORT=5100
 BASIC_SAMPLE_PORT=5110
@@ -25,7 +25,7 @@ DRY_RUN=0
 LOG_FILE=""
 
 INDEX_DIR="$REPO_ROOT/samples/index"
-INDEX_SERVER_APP="$REPO_ROOT/scripts/dev/SamplesIndexServer.cs"
+INDEX_SERVER_APP="$REPO_ROOT/eng/SamplesIndexServer.cs"
 BASIC_SAMPLE_PROJECT="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj"
 BASIC_SAMPLE_DLL="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp/bin/Debug/net10.0/BlazorJsonVisualizer.SampleApp.dll"
 LAYER1_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.Layer1Sample/BlazorJsonVisualizer.Layer1Sample.csproj"
@@ -36,12 +36,15 @@ LAYER3_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/BlazorJ
 LAYER3_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/bin/Debug/net10.0/BlazorJsonVisualizer.ProjectionSample.dll"
 VISUAL_IDENTITY_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/BlazorJsonVisualizer.VisualIdentitySample.csproj"
 VISUAL_IDENTITY_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/bin/Debug/net10.0/BlazorJsonVisualizer.VisualIdentitySample.dll"
+RUNTIME_WORKSPACE_DIR="$REPO_ROOT/src/runtime"
+RUNTIME_BLAZOR_DIST_FILE="$RUNTIME_WORKSPACE_DIR/runtime-blazor/dist/index.js"
+RUNTIME_BLAZOR_WWWROOT_FILE="$REPO_ROOT/src/BlazorJsonVisualizer/wwwroot/runtime-blazor.js"
 
 pids=()
 
 usage() {
   cat <<'EOF'
-Usage: scripts/dev/start-samples.sh [--detach] [--dry-run] [--log-file PATH]
+Usage: eng/start-samples.sh [--detach] [--dry-run] [--log-file PATH]
 
   --detach         Start the sample processes in the background and exit.
   --dry-run        Print the build/start plan without running it. Run this after changing the launcher.
@@ -242,6 +245,7 @@ parse_args "$@"
 
 if (( ! DRY_RUN )); then
   require_command dotnet
+  require_command npm
   require_command ss
 fi
 
@@ -292,6 +296,9 @@ if (( DRY_RUN )); then
 fi
 
 echo "Building implemented sample projects..."
+run_build_command npm --prefix "$RUNTIME_WORKSPACE_DIR" install
+run_build_command npm --prefix "$RUNTIME_WORKSPACE_DIR" run build
+run_build_command cp "$RUNTIME_BLAZOR_DIST_FILE" "$RUNTIME_BLAZOR_WWWROOT_FILE"
 run_build_command dotnet restore "$BASIC_SAMPLE_PROJECT"
 run_build_command dotnet build "$BASIC_SAMPLE_PROJECT" --no-restore
 run_build_command dotnet restore "$LAYER1_PROJECT"
@@ -328,7 +335,7 @@ if (( DRY_RUN )); then
   if (( DETACH_MODE )); then
     echo "Dry run log file: $LOG_FILE"
   fi
-  echo "Dry run complete. Run this after changing scripts/dev/start-samples.sh."
+  echo "Dry run complete. Run this after changing eng/start-samples.sh."
   exit 0
 fi
 

@@ -21,7 +21,7 @@ For now, contributors can build and validate with:
 Runnable developer samples live under `samples/`.
 
 ```bash
-scripts/dev/start-samples.sh
+eng/start-samples.sh
 ```
 
 Then open the samples index on `http://localhost:5100`.

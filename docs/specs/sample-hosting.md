@@ -112,7 +112,7 @@ The repository must provide a single command or script that launches all impleme
 Recommended script name:
 
 ```text
-scripts/dev/start-samples.sh
+eng/start-samples.sh
 ```
 
 The script should:
@@ -125,7 +125,7 @@ The script should:
 - print the sample index URL and sample port table
 - fail clearly when a port is already in use
 - not start long-running tests
-- be dry-run validated with `scripts/dev/start-samples.sh --dry-run` whenever the launcher changes
+- be dry-run validated with `eng/start-samples.sh --dry-run` whenever the launcher changes
 
 ## Dev-container integration
 
@@ -175,7 +175,7 @@ Each sample app must:
 
 - have a fixed HTTP port documented in `samples/SAMPLES.md`
 - be listed in the static sample index
-- run through `scripts/dev/start-samples.sh`
+- run through `eng/start-samples.sh`
 - use small deterministic sample data
 - avoid network dependencies
 - avoid long-running tests or benchmarks

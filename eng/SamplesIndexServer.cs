@@ -4,7 +4,7 @@ using Microsoft.Extensions.FileProviders;
 
 if (args.Length != 2)
 {
-    Console.Error.WriteLine("Usage: dotnet run scripts/dev/SamplesIndexServer.cs -- <directory> <url>");
+    Console.Error.WriteLine("Usage: dotnet run eng/SamplesIndexServer.cs -- <directory> <url>");
     return 1;
 }
 
