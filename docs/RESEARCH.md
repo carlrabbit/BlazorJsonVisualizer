@@ -2,64 +2,99 @@
 
 ## Purpose
 
-Research documents preserve exploratory thinking, prior guide versions, and rationale that may influence future repository standards.
+Research documents preserve exploratory thinking.
 
-Research is non-authoritative unless promoted into one of the authoritative documentation areas:
+Research is non-authoritative unless promoted into:
 
-- terminology
-- architecture
-- decisions
-- specs
-- milestones
-- TBPs
-- guardrails
-- engineering
-- public documentation
-- workflows
+- terminology;
+- architecture;
+- decisions;
+- specs;
+- TBPs;
+- guardrails;
+- engineering;
+- workflows;
+- public documentation.
+
+Research documents may explain rationale, compare options, preserve discarded alternatives, and prepare future milestone/specification work.
 
 ## Authority
 
 This document is authoritative for:
 
-- the purpose of `docs/research/`
-- the list of research documents currently tracked by the repository
-- the rule that research documents are non-authoritative by default
+- indexing research documents under `docs/research/`;
+- identifying current and superseded research baselines;
+- describing how research is promoted into authoritative repository documents.
 
 This document is not authoritative for:
 
-- repository governance rules
-- engineering command contracts
-- public documentation rules
-- implementation guardrails
-- product behavior
+- product behavior;
+- implementation details;
+- architecture decisions;
+- public documentation content;
+- engineering command contracts.
+
+## Rules
+
+- Research is non-authoritative by default.
+- Stable conclusions must be promoted into the appropriate authoritative document type.
+- Research documents must not replace specs, architecture documents, decisions, TBPs, guardrails, engineering documents, or public documentation.
+- Research documents should use canonical terminology where practical.
+- Superseded research may remain indexed when it preserves useful rationale.
+- Do not create `docs/research/README.md`.
 
 ## Available Research
 
-| Research Document | Purpose |
+| Research Document | Status | Purpose |
+|---|---|---|
+| `research/project-setup-guide-v5.md` | Current baseline | Repository knowledge model, documentation conventions, public documentation model, indexes, milestones, TBPs, guardrails, issue templates, workflows, and agent routing. |
+| `research/engineering-guide-v4.md` | Current baseline | Concrete .NET/Bun/Biome/Blazor engineering profile, command contract, samples, public documentation validation, package smoke testing, public API validation, and release readiness. |
+| `research/visual-identity-direction.md` | Draft | Exploratory visual identity direction for Layer 1, Layer 2, and Layer 3, including token strategy and visual identity playground proposal. |
+
+## Superseded Research
+
+| Research Document | Superseded By | Notes |
+|---|---|---|
+| `research/project-setup-guide-v4.md` | `research/project-setup-guide-v5.md` | Keep only if historical V4 rationale is still useful. |
+| `research/engineering-guide-v3.md` | `research/engineering-guide-v4.md` | Keep only if historical V3 rationale is still useful. |
+| `research/project-setup-guide-v3.md` | `research/project-setup-guide-v5.md` | Keep only if migration history from early repository setup is needed. |
+
+## Promotion Path
+
+When research produces stable conclusions, promote them into the appropriate authoritative documents.
+
+| Research Topic | Promote Stable Conclusions To |
 |---|---|
-| `docs/research/project-setup-guide-v5.md` | Research copy of Project Setup Guide V5, used as the source rationale for upgrading the repository governance and public documentation model. |
-| `docs/research/engineering-guide-v4.md` | Research copy of Engineering Guide V4, used as the source rationale for upgrading engineering command contracts, public documentation validation, and release readiness. |
-
-## Promotion Rule
-
-Rules from research documents become authoritative only when extracted into the relevant authoritative document.
-
-Examples:
-
-- repository governance rules belong in `docs/TERMINOLOGY.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/SPECS.md`, `docs/MILESTONES.md`, `docs/TBPS.md`, `docs/WORKFLOWS.md`, `docs/GUARDRAILS.md`, or `docs/ENGINEERING.md`;
-- public documentation rules belong in `docs/PUBLIC-DOCS.md`, public documentation TBPs, public documentation guardrails, and `public-docs/`;
-- command contracts belong in `docs/ENGINEERING.md` and `docs/engineering/command-contract.md`;
-- testing policy belongs in `docs/GUARDRAILS.md`, `docs/guardrails/testing.md`, and workflow specs;
-- release readiness policy belongs in `docs/engineering/release-readiness.md`, `docs/workflows/release-check.md`, and canonical `eng/` scripts;
-- rationale belongs in `docs/decisions/` when it becomes durable project rationale.
+| Terminology | `docs/TERMINOLOGY.md` |
+| Architecture structure | `docs/architecture/*.md` and `docs/ARCHITECTURE.md` |
+| Rationale/choice | `docs/decisions/*.md` and `docs/DECISIONS.md` |
+| Behavioral rules/invariants | `docs/specs/*.md` and `docs/SPECS.md` |
+| Implementation sequencing | `docs/milestones/*.md` and `docs/MILESTONES.md` |
+| Reusable process | `docs/tbps/*.md` and `docs/TBPS.md` |
+| Implementation constraints | `docs/guardrails/*.md` and `docs/GUARDRAILS.md` |
+| Command/tooling behavior | `docs/engineering/*.md` and `docs/ENGINEERING.md` |
+| Public user-facing usage | `public-docs/` and `docs/PUBLIC-DOCS.md` |
+| Workflow intent | `docs/workflows/*.md` and `docs/WORKFLOWS.md` |
 
 ## Document Contract
 
-When this index changes, review:
+### Related Documents
 
-- `docs/research/`
-- `docs/ENGINEERING.md`
+- `docs/TERMINOLOGY.md`
+- `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/SPECS.md`
+- `docs/MILESTONES.md`
+- `docs/TBPS.md`
 - `docs/GUARDRAILS.md`
+- `docs/ENGINEERING.md`
 - `docs/PUBLIC-DOCS.md`
-- `AGENTS.md`
-- `.github/copilot-instructions.md`
+
+### Must Be Updated Together
+
+When a research document is added, removed, or superseded, review and update:
+
+- this index;
+- any affected authoritative documents if research conclusions are promoted;
+- related milestone issues if the research changes planned implementation work;
+- public documentation if the research affects user-facing behavior, samples, package usage, or release readiness.
