@@ -17,6 +17,10 @@ Define release-readiness validation that runs before publishing.
 - Release check must not publish packages.
 - If a prerequisite module is not active, the command must fail with a clear prerequisite message.
 
+## GitHub Workflow File
+
+- `.github/workflows/release-check.yml`
+
 ## Visual Identity Sample
 
 The release-check workflow must include the Visual Identity sample through the canonical sample validation command.
@@ -41,3 +45,4 @@ When this document changes, review:
 - `docs/engineering/release-readiness.md`
 - `docs/engineering/command-contract.md`
 - `eng/release-check.sh`
+- `.github/workflows/release-check.yml`

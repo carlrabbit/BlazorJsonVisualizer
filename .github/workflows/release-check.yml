@@ -1,0 +1,31 @@
+name: Release Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to validate for release readiness
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release-check:
+    name: Release readiness validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Bun
+        if: hashFiles('bun.lock') != ''
+        uses: oven-sh/setup-bun@v2
+
+      - name: Run release checks
+        run: ./eng/release-check.sh "${{ inputs.version }}"
