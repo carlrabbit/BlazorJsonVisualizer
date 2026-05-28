@@ -22,6 +22,7 @@ Milestones define the sequencing of work: what is in scope, what is out of scope
 | Document | Status | Purpose |
 |---|---|---|
 | `milestones/milestone-0010-visual-identity-system-and-theme-playground.md` | Active | Creates the first dark-only token-based visual identity system and Blazor theme playground. |
+| `milestones/milestone-0012-prepared-document-import-storage-indexing-export.md` | Active | Defines and implements the prepared-document import, storage, indexing, and export lifecycle for huge JSON workflows. |
 
 ## Authority
 

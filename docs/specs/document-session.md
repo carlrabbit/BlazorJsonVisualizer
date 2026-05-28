@@ -62,6 +62,12 @@ Read-only viewport actions such as folding or reveal do not change the document 
 
 Future editing milestones may increment revision when source text or structural content changes.
 
+## Prepared Document Relationship
+
+For huge-document workflows, a document session may be opened from a prepared document instead of direct full-text load.
+
+The prepared document remains the durable source of truth. The runtime session remains interactive state.
+
 ## Source Ownership
 
 For this milestone, the document session owns the source text as a single JavaScript string.

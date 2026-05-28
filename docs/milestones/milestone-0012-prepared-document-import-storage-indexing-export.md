@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft milestone issue content.
+Active milestone implementation specification.
 
 ## Goal
 

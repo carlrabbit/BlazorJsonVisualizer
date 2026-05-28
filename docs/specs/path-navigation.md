@@ -89,3 +89,5 @@ This milestone does not require:
 - schema-aware path aliases
 - path suggestions
 - path history
+
+For prepared-document workflows, path resolution still depends on structural index ownership and is not required to scan only visible viewport rows.

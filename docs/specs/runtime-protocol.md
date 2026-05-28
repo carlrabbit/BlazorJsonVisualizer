@@ -141,6 +141,55 @@ Fields:
 - `projectionId: string`
 - `selection: ProjectionSelectionDto`
 
+## Additional host-to-runtime messages for Milestone 012
+
+### `openPreparedDocument`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+
+### `closePreparedDocument`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+
+### `getPreparedDocumentInfo`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+
+### `requestSourceRange`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+- `startOffset: number`
+- `length: number`
+
+### `requestSearch`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+- `query: string`
+
+### `revealSearchResult`
+
+Fields:
+
+- `sessionId: string`
+- `documentId: string`
+- `startOffset: number`
+- `endOffset: number`
+
 ## Runtime-to-host events
 
 ### `sessionCreated`
