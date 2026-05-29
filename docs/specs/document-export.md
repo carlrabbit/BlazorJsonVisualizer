@@ -77,3 +77,9 @@ When this spec changes, review:
 - `docs/PUBLIC-DOCS.md`
 - `public-docs/concepts.md`
 - `public-docs/guides/huge-json-documents.md`
+
+## Storage Engine Export Behavior
+
+The default export implementation streams unchanged source chunks to the destination stream and reports the handle revision used for export. It does not build the complete output as a string.
+
+If a prepared document contains transactions and transaction application is not supported, export must fail clearly instead of silently ignoring changes.

@@ -28,6 +28,11 @@ jobs:
 
           ran=0
 
+          if [ -x ./eng/long-running-tests.sh ]; then
+            ./eng/long-running-tests.sh
+            ran=1
+          fi
+
           if [ -x ./eng/e2e.sh ]; then
             ./eng/e2e.sh
             ran=1

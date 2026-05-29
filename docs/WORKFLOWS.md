@@ -6,7 +6,7 @@ Workflow documents describe repository automation and release flow.
 
 - `docs/workflows/build.md`
 - `docs/workflows/test-short.md`
-- `docs/workflows/test-long.md`
+- `docs/workflows/test-long.md` — explicit long-running tests via `./eng/long-running-tests.sh`.
 
 ## Existing Workflows
 

@@ -33,3 +33,9 @@ A prepared document stores source representation, derived index metadata, and tr
 See:
 
 - public-docs/guides/huge-json-documents.md
+
+## Huge JSON prepared-document lifecycle
+
+Huge JSON documents are imported before interactive use. Import creates a prepared document with source chunks, a manifest, derived index artifacts, and a transaction log. Applications can then open the prepared document many times, search it by using prepared storage, and export it by streaming unchanged source chunks.
+
+Prepared-document storage details are internal. Consumers should use the prepared document store and handle APIs rather than relying on physical file names.
