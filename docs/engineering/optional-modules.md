@@ -17,7 +17,7 @@ Required files:
 - `bun.lock`
 - `biome.json`
 - `tsconfig.json` (or `tsconfig.base.json`)
-- `docs/guardrails/languages/typescript.md`
+- `docs/engineering/typescript-tools.md`
 
 Commands:
 - `./eng/frontend-check.sh` — Run Biome checks.

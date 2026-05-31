@@ -43,7 +43,7 @@ Create the planned sample applications for Layer 1, Layer 2, and Layer 3 so the 
 
 - `README.md`
 - `docs/TERMINOLOGY.md`
-- `docs/TBPS.md`
+- `docs/ENGINEERING.md`
 - `docs/SPECS.md`
 - `docs/TESTING.md`
 - `docs/specs/sample-hosting.md`

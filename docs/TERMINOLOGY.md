@@ -104,13 +104,17 @@ A small deterministic test that completes quickly with no external dependencies.
 
 A stress test, benchmark runner, huge-document test, fuzzing harness, endurance test, or large browser automation suite. Must not run automatically unless explicitly requested.
 
-## Guardrail
+## Validation Tier
 
-A project-wide constraint that all contributors and AI agents must follow during implementation. Guardrails define scope, quality, testing, and documentation boundaries.
+A documented level of repository validation. Focused checks validate a changed surface, Tier 1 runs short-running implementation tests, Tier 2 runs the default completion gate, and explicit-only workflows cover long-running, package, public API, release, and publish work.
+
+## Maturity Mode
+
+The repository status that determines how much process, public-package, architecture, and release-readiness structure should be active. This repository is currently in Exploration / Active Design mode.
 
 ## Engineering Guide
 
-The concrete engineering substrate documentation: command contracts, build tooling, toolchain setup, building blocks, and optional modules.
+The concrete engineering substrate documentation: command contracts, validation tiers, build tooling, toolchain setup, implementation constraints, building blocks, and optional modules.
 
 ## Command Contract
 
@@ -126,7 +130,7 @@ The cross-reference rule that lists which documents must be reviewed when an aut
 
 ## Building Block
 
-A modular capability package from the Engineering Guide V3. Each block adds specific files, commands, and conventions to the repository.
+A modular capability package from the Engineering Guide. Each block adds specific files, commands, and conventions to the repository.
 
 ## Optional Module
 

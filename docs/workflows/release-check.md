@@ -2,7 +2,11 @@
 
 ## Purpose
 
-Define release-readiness validation that runs before publishing.
+Define the future release-readiness validation workflow without making it part of normal implementation.
+
+## Current Status
+
+Release readiness is future work. The workflow is explicit-only and does not imply that public package publication is active.
 
 ## Command
 
@@ -13,8 +17,8 @@ Define release-readiness validation that runs before publishing.
 ## Rules
 
 - Release check is explicit-only and must not run by default in normal development gates.
-- Release readiness validates package smoke tests, public API, samples, public docs, and release notes before publishing.
 - Release check must not publish packages.
+- Package smoke and public API validation are required only when package/public API maturity changes and those prerequisites are active.
 - If a prerequisite module is not active, the command must fail with a clear prerequisite message.
 
 ## GitHub Workflow File
@@ -23,7 +27,7 @@ Define release-readiness validation that runs before publishing.
 
 ## Visual Identity Sample
 
-The release-check workflow must include the Visual Identity sample through the canonical sample validation command.
+Once release readiness becomes active, release-check should include the Visual Identity sample through the canonical sample validation command.
 
 The workflow must not require screenshot regression tests for this milestone.
 
@@ -36,7 +40,7 @@ When visual identity validation changes, review:
 
 ## Authority
 
-This document is authoritative for release readiness workflow expectations.
+This document is authoritative for future release readiness workflow expectations.
 
 ## Document Contract
 

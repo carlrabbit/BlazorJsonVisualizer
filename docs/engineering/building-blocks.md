@@ -4,7 +4,7 @@
 
 This document lists the engineering building blocks selected for BlazorJsonVisualizer.
 
-Building blocks are modular capability packages defined in Engineering Guide V4. Each block adds specific files, commands, and conventions to the repository.
+Building blocks are modular capability packages defined by the engineering guides stored under `docs/research/`. Each block adds specific files, commands, and conventions to the repository.
 
 ## Selected Building Blocks
 
@@ -15,7 +15,7 @@ Building blocks are modular capability packages defined in Engineering Guide V4.
 | BB02 | Shared Build Configuration | Active |
 | BB03 | EditorConfig and C# Style | Active |
 | BB04 | MTP + TUnit Unit Tests | Active |
-| BB05 | Test Guardrails | Active |
+| BB05 | Test Policy and Validation Tiers | Active |
 | BB07 | GitHub Actions CI | Active |
 | BB08 | Agent Instructions | Active |
 | BB09 | Bun + Biome | Active |

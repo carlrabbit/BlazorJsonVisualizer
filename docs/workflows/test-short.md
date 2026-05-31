@@ -29,7 +29,7 @@ The CI workflow runs `./eng/check.sh` which includes short-running tests.
 - Tests with `TestCategory=E2E`
 - Benchmarks
 
-See `docs/guardrails/testing.md` for classification rules.
+See `docs/engineering/command-contract.md` for classification rules.
 
 ## Authority
 
@@ -39,5 +39,5 @@ This document is authoritative for the short-running test workflow spec.
 
 When this document changes, review:
 - `docs/WORKFLOWS.md`
-- `docs/guardrails/testing.md`
+- `docs/engineering/command-contract.md`
 - `docs/ENGINEERING.md`

@@ -5,9 +5,7 @@
 - `README.md`
 - `AGENTS.md`
 - `docs/TERMINOLOGY.md`
-- `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
-- `docs/TBPS.md`
 - `docs/SPECS.md`
 
 When public behavior, package contents, samples, diagnostics, public API, website content, or release behavior changes, also read:
@@ -15,13 +13,17 @@ When public behavior, package contents, samples, diagnostics, public API, websit
 - `docs/PUBLIC-DOCS.md`
 - relevant files in `public-docs/`
 
+When runtime/browser/component boundaries or rationale change, also read:
+
+- `docs/ARCHITECTURE.md`
+- relevant files in `docs/architecture/`
+- `docs/DECISIONS.md`
+
 ## Documentation authority
 
 - Repository-local documents are the source of truth for architecture and behavior.
 - Specs are authoritative for behavior.
-- TBPs define repeatable implementation and maintenance work.
-- Guardrails define project-wide constraints.
-- Engineering docs define command contracts and tooling setup.
+- Engineering docs define command contracts, validation tiers, tooling setup, and implementation constraints.
 - Public docs rules are governed by `docs/PUBLIC-DOCS.md`.
 - Terminology must be updated when new durable terms are introduced.
 
@@ -35,5 +37,6 @@ When public behavior, package contents, samples, diagnostics, public API, websit
 - Use canonical `eng/` scripts for all build, test, and validation operations.
 - Use Bun, not npm. Use Biome, not ESLint or Prettier.
 - Do not run long-running tests unless explicitly requested.
-- Run `./eng/check.sh` before completion when practical.
-- Release validation commands are explicit-only: `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, and publish commands.
+- Run the smallest relevant validation tier for the change.
+- Treat `./eng/check.sh` as Tier 2 and run it before completion when practical.
+- Release validation commands are explicit-only: `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, `./eng/public-api.sh`, and publish commands.

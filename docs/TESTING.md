@@ -1,11 +1,10 @@
 # Testing
 
-> **This document is superseded by [`docs/guardrails/testing.md`](guardrails/testing.md).**
-> It remains here as a compatibility pointer. The authoritative testing policy lives in the guardrail.
+The authoritative testing policy now lives in `docs/engineering/command-contract.md` as part of repository validation-tier routing.
 
-## Fast tests
+## Short-running tests
 
-Fast tests are small deterministic tests that may be run by default by humans, agents, and CI.
+Short-running tests are small deterministic tests that may be run by default by humans, agents, and CI.
 
 Examples:
 
@@ -30,13 +29,17 @@ Examples:
 - large schema validation matrices
 - large Playwright suites
 
+## Package smoke tests
+
+Package smoke tests are explicit-only future release/package validation. They must not run through `./eng/test.sh` or `./eng/check.sh` until package maturity changes and the explicit release workflow asks for them.
+
 ## Agent rule
 
-Agents may create and run fast tests. Agents must not create or run long-running tests unless explicitly requested.
+Agents may create and run short-running tests. Agents must not create or run long-running tests unless explicitly requested.
 
-## Layer 1 fast test rules (Milestone 009)
+## Layer 1 short-running test rules
 
-Layer 1 tests created in Milestone 009 are fast tests by default.
+Layer 1 tests are short-running tests by default when they use small inputs.
 
 Allowed:
 
@@ -58,27 +61,11 @@ Not allowed by default:
 
 Large JSON and performance validation belongs in a later explicitly triggered long-running workflow.
 
-## Running Layer 1 tests
-
-```bash
-cd tests/runtime && npm test
-```
-
-Or from the runtime workspace:
-
-```bash
-cd src/runtime && npm run test:layer1
-```
-
-## Sample launch checks
-
-Starting sample applications is a developer-experience check, not a general fast test. The sample launcher may be used manually and by dedicated workflow/dev-container setup, but normal fast-test workflows should not start all samples unless explicitly configured to do so.
-
 ## Sample app validation
 
 Sample apps are validated primarily by build and manual launch checks. They must not add large browser automation suites unless explicitly requested.
 
-Required fast checks:
+Required focused checks:
 
 - sample projects build
 - launcher can start implemented samples

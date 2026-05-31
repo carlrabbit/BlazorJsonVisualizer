@@ -2,6 +2,6 @@
 
 ## Status
 
-Planned.
+Preview / planned.
 
-Versioning policy is not yet release-ready and will be finalized before first package release.
+Versioning policy is not release-ready and will be finalized before first package release.

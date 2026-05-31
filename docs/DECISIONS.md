@@ -17,8 +17,7 @@ Decision records document why a particular approach was chosen over alternatives
 
 - behavioral specs (use `docs/SPECS.md`)
 - structural design (use `docs/ARCHITECTURE.md`)
-- implementation guardrails (use `docs/GUARDRAILS.md`)
-- engineering commands (use `docs/ENGINEERING.md`)
+- engineering commands, validation, and implementation constraints (use `docs/ENGINEERING.md`)
 
 ## Available Documents
 
@@ -29,12 +28,14 @@ Decision records document why a particular approach was chosen over alternatives
 ## Authority
 
 This document is authoritative for:
+
 - the index of decision records under `docs/decisions/`
 - what counts as a decision record
 
 ## Document Contract
 
 When this index changes, review:
+
 - `README.md`
 - `AGENTS.md`
 - `docs/ARCHITECTURE.md`

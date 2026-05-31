@@ -2,19 +2,23 @@
 
 ## Purpose
 
-Describe repository-local expectations for preparing and publishing a versioned release.
+Describe repository-local expectations for eventual versioned releases.
+
+## Current Status
+
+Release publication is future work. Public package publication is preview/planned, and release-readiness validation is explicit-only.
 
 ## Command model
 
-- Fast development gate: `./eng/check.sh`
-- Explicit release readiness gate: `./eng/release-check.sh <version>`
+- Normal implementation completion gate: `./eng/check.sh` (Tier 2)
+- Future explicit release readiness gate: `./eng/release-check.sh <version>`
 
 ## Initial direction
 
 - Releases must align with repository specs and documented runtime boundaries.
 - Packaging concerns belong to the Blazor host rather than the runtime core.
 - Release automation can evolve in later milestones without redefining architecture authority.
-- Publishing must happen only after explicit release-readiness validation passes.
+- Publishing must happen only after explicit release-readiness validation passes once release readiness is active.
 
 ## GitHub Workflow File
 

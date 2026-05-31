@@ -50,15 +50,10 @@ Add constrained Layer 1 editing through explicit structural transactions. Editin
 ## Governing documents
 
 - `README.md`
-- `docs/TBPS.md`
+- `docs/ENGINEERING.md`
 - `docs/SPECS.md`
 - `docs/WORKFLOWS.md`
 - `docs/TESTING.md`
-- `docs/tbps/create-milestone.md`
-- `docs/tbps/start-milestone.md`
-- `docs/tbps/finish-milestone.md`
-- `docs/tbps/feature-implementation.md`
-- `docs/tbps/runtime-contract-change.md`
 - `docs/specs/runtime-protocol.md`
 - `docs/specs/document-session.md`
 - `docs/specs/structural-index.md`

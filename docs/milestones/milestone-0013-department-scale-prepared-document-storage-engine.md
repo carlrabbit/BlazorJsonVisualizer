@@ -106,13 +106,10 @@ Before implementation, read:
 - `AGENTS.md`
 - `docs/TERMINOLOGY.md`
 - `docs/SPECS.md`
-- `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
 - `docs/PUBLIC-DOCS.md`
-- `docs/TBPS.md`
 - `docs/WORKFLOWS.md`
-- `docs/research/project-setup-guide-v5.md`
-- `docs/research/engineering-guide-v4.md`
+- `docs/RESEARCH.md`
 - `docs/milestones/milestone-0012-prepared-document-import-storage-indexing-export.md`
 
 After creation or update, also read:
@@ -825,7 +822,6 @@ Also update:
 - `docs/MILESTONES.md`
 - `docs/TERMINOLOGY.md`
 - `docs/ENGINEERING.md`
-- `docs/GUARDRAILS.md`
 - `docs/PUBLIC-DOCS.md`
 
 ## Proposed Spec Content: `docs/specs/prepared-document-storage-abstraction.md`
@@ -1152,9 +1148,7 @@ When this milestone changes, review:
 - `docs/SPECS.md`
 - `docs/ARCHITECTURE.md`
 - `docs/TERMINOLOGY.md`
-- `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
 - `docs/PUBLIC-DOCS.md`
 - `AGENTS.md`
 - `.github/copilot-instructions.md`
-- relevant issue templates

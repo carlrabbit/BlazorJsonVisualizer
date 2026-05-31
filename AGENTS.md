@@ -2,19 +2,19 @@
 
 ## Required reading before implementation
 
+Always read:
+
 - `README.md`
 - `docs/TERMINOLOGY.md`
-- `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
-- `docs/TBPS.md`
 - `docs/SPECS.md`
-- The relevant milestone issue.
-- Any specs referenced by the milestone issue.
+- the relevant milestone issue or task text
+- any specs referenced by the milestone issue or task text
 
-When work changes public behavior, package contents, samples, diagnostics, public API, website content, or release behavior, also read:
+Read conditionally:
 
-- `docs/PUBLIC-DOCS.md`
-- relevant files under `public-docs/`
+- `docs/PUBLIC-DOCS.md` and relevant files under `public-docs/` when work changes public behavior, package contents, samples, diagnostics, public API, website content, or release behavior.
+- `docs/ARCHITECTURE.md`, relevant files under `docs/architecture/`, and `docs/DECISIONS.md` when work changes runtime/browser/component boundaries or decision rationale.
 
 ## Work rules
 
@@ -33,15 +33,22 @@ When work changes public behavior, package contents, samples, diagnostics, publi
 ## Engineering rules
 
 - Use canonical `eng/` scripts for all build, test, and validation operations.
-- `./eng/check.sh` is the default completion gate; run it before declaring work complete when practical.
+- Run the smallest relevant validation tier for the change.
+- Treat `./eng/check.sh` as Tier 2 validation and the default completion gate; run it before declaring work complete when practical.
 - Do not embed repository command logic in CI workflows; call `eng/` scripts instead.
-- `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, and publish commands are explicit-only workflows.
-- `./eng/public-api.sh` is explicit for release/public API work.
-- See `docs/ENGINEERING.md` and `docs/engineering/command-contract.md` for the full command list.
+- `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, `./eng/public-api.sh`, and publish commands are explicit-only release/public API workflows.
+- See `docs/ENGINEERING.md` and `docs/engineering/command-contract.md` for the full command list and validation tiers.
+
+## Validation-tier routing
+
+- Tier 0 — targeted checks for the changed surface, such as docs validation, frontend checks, sample checks, or a focused test invocation through an `eng/` script.
+- Tier 1 — short-running implementation validation with `./eng/test.sh` or another documented focused `eng/` command.
+- Tier 2 — default completion validation with `./eng/check.sh`.
+- Explicit-only — long-running, package smoke, public API, release readiness, and publish workflows; run only when requested or when the task is explicitly release/public-API work.
 
 ## Testing rules
 
 - Agents may create and run short-running tests.
 - Agents must not create or run long-running tests unless explicitly requested.
 - Run the smallest relevant validation set.
-- See `docs/guardrails/testing.md` for full classification rules.
+- See `docs/engineering/command-contract.md` and `docs/TESTING.md` for test classification rules.
