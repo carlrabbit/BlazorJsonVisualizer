@@ -20,7 +20,7 @@ Required behavior:
 - Other encodings are unsupported by default.
 - Unsupported encodings must fail import with a diagnostic unless an explicit opt-in path is implemented.
 
-The implementation may detect encoding through BOM and/or configured source metadata. Heuristic encoding detection is not required.
+The implementation may detect encoding through BOM and/or configured source metadata. Heuristic encoding detection is not required. The current ingestion job layer rejects unsupported BOMs and non-UTF-8 charset metadata, and accepts UTF-8 BOM by stripping it before prepared-document storage.
 
 ## Invalid Bytes
 

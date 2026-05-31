@@ -2,13 +2,13 @@
 
 ## Status
 
-Preview public diagnostics reference for planned/active JSON ingestion behavior.
+Preview public diagnostics reference for the implemented JSON ingestion job layer.
 
-Diagnostic codes are intended to be stable once emitted by implementation. This document must be updated whenever import diagnostic codes are added, removed, or meaningfully changed.
+The listed diagnostic codes are emitted by the current implementation and are intended to be stable. This document must be updated whenever import diagnostic codes are added, removed, or meaningfully changed.
 
 ## Diagnostic Format
 
-Import diagnostics may include:
+Import diagnostics include a severity, stable code, and message, and may include:
 
 - severity;
 - stable code;
