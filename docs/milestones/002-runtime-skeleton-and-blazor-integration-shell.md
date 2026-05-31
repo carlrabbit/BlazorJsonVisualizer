@@ -38,12 +38,9 @@ Create the standalone TypeScript runtime skeleton and the minimal Blazor-facing 
 ## Governing documents
 
 - `README.md`
-- `docs/TBPS.md`
+- `docs/ENGINEERING.md`
 - `docs/SPECS.md`
 - `docs/WORKFLOWS.md`
-- `docs/tbps/create-milestone.md`
-- `docs/tbps/feature-implementation.md`
-- `docs/tbps/runtime-contract-change.md`
 - `docs/architecture/runtime-boundaries.md`
 - `docs/architecture/browser-runtime.md`
 - `docs/architecture/blazor-integration.md`

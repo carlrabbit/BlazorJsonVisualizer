@@ -1,5 +1,9 @@
 # Visual Identity Playground
 
+## Status
+
+Preview sample.
+
 ## Purpose
 
 The Visual Identity Playground demonstrates how theme JSON affects BlazorJsonVisualizer visual states.
@@ -45,6 +49,6 @@ Plugins may define plugin-local tokens under their plugin identifier.
 
 ## Validation
 
-The sample participates in sample validation and release validation.
+The sample participates in focused sample validation. Release validation is future work until release readiness becomes active.
 
 Screenshot regression tests are deferred for the first milestone.

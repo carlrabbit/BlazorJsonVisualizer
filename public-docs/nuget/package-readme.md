@@ -2,6 +2,6 @@
 
 ## Status
 
-Planned.
+Preview / planned.
 
-This source will provide package README content when BB14 NuGet packaging is active.
+This source will provide package README content when NuGet packaging is active. It is intentionally incomplete while public package publication remains future work.

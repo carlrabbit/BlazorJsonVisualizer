@@ -67,27 +67,18 @@ Before implementation, read:
 - `docs/ARCHITECTURE.md`
 - `docs/DECISIONS.md`
 - `docs/MILESTONES.md`
-- `docs/TBPS.md`
-- `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
 - `docs/PUBLIC-DOCS.md`
 - `docs/RESEARCH.md`
-- `docs/research/project-setup-guide-v5.md`
-- `docs/research/engineering-guide-v4.md`
 - `docs/specs/json-tokenizer.md`
 - `docs/specs/structural-index.md`
 - `docs/specs/document-session.md`
 - `docs/specs/viewport-model.md`
 - `docs/specs/path-navigation.md`
 - `docs/specs/runtime-protocol.md`
-- `docs/guardrails/testing.md`
-- `docs/guardrails/implementation.md`
-- `docs/guardrails/languages/dotnet.md`
-- `docs/guardrails/languages/typescript.md`
-- `docs/tbps/feature-implementation.md`
-- `docs/tbps/create-spec.md`
-- `docs/tbps/create-milestone.md`
-- `docs/tbps/public-documentation-update.md`
+- `docs/engineering/command-contract.md`
+- `docs/engineering/dotnet.md`
+- `docs/engineering/typescript-tools.md`
 
 If any referenced document does not exist yet, create or update it as required by this milestone and by repository standards.
 
@@ -240,9 +231,7 @@ docs/ARCHITECTURE.md
 docs/MILESTONES.md
 docs/PUBLIC-DOCS.md
 docs/ENGINEERING.md
-docs/GUARDRAILS.md
-docs/guardrails/testing.md
-docs/guardrails/implementation.md
+docs/engineering/command-contract.md
 docs/specs/runtime-protocol.md
 docs/specs/document-session.md
 docs/specs/structural-index.md

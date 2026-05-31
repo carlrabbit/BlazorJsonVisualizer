@@ -35,7 +35,10 @@ This document describes the .NET build, test, format, and project conventions fo
 
 - TUnit for test authoring.
 - Microsoft Testing Platform (MTP) for test execution.
-- Filter for default test runs: `--filter "TestCategory!=Slow&TestCategory!=E2E"`
+- Test projects must reference the tested source project.
+- Do not mix production and test code in the same project.
+- Filter slow and E2E tests out of default runs with: `--filter "TestCategory!=Slow&TestCategory!=E2E"`
+- Benchmarks are not tests; they belong in the `benchmarks/` folder when explicitly selected.
 
 ## Shared Build Configuration
 
@@ -49,6 +52,14 @@ This document describes the .NET build, test, format, and project conventions fo
 - CI verifies formatting with `dotnet format --verify-no-changes`.
 - `.editorconfig` controls style rules.
 
+## Constraints
+
+- Pin the .NET SDK version through `global.json`.
+- Pin package versions through central package management (`Directory.Packages.props`).
+- Use `Directory.Build.props` for shared build configuration.
+- Use `NuGet.config` when custom feeds are needed.
+- Blazor is the primary UI integration surface; do not replace it with a separate SPA framework.
+
 ## Authority
 
 This document is authoritative for:
@@ -59,4 +70,5 @@ This document is authoritative for:
 
 When this document changes, review:
 - `docs/ENGINEERING.md`
-- `docs/guardrails/languages/dotnet.md`
+- `docs/ENGINEERING.md`
+- `AGENTS.md`

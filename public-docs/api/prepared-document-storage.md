@@ -1,5 +1,9 @@
 # Prepared Document Storage API
 
+## Status
+
+Preview.
+
 The prepared-document storage API has two layers:
 
 - the application-facing prepared document store and handle API;

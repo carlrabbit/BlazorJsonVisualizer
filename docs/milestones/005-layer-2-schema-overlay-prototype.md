@@ -46,14 +46,9 @@ Add the first Layer 2 prototype: attach JSON Schema metadata to a loaded JSON do
 
 - `README.md`
 - `docs/TERMINOLOGY.md`
-- `docs/TBPS.md`
+- `docs/ENGINEERING.md`
 - `docs/SPECS.md`
 - `docs/TESTING.md`
-- `docs/tbps/create-milestone.md`
-- `docs/tbps/start-milestone.md`
-- `docs/tbps/finish-milestone.md`
-- `docs/tbps/feature-implementation.md`
-- `docs/tbps/runtime-contract-change.md`
 - `docs/specs/runtime-protocol.md`
 - `docs/specs/document-session.md`
 - `docs/specs/structural-index.md`

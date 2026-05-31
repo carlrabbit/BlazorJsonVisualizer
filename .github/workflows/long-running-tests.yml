@@ -22,27 +22,5 @@ jobs:
         if: hashFiles('bun.lock') != ''
         uses: oven-sh/setup-bun@v2
 
-      - name: Run long-running test scripts when available
-        run: |
-          set -euo pipefail
-
-          ran=0
-
-          if [ -x ./eng/long-running-tests.sh ]; then
-            ./eng/long-running-tests.sh
-            ran=1
-          fi
-
-          if [ -x ./eng/e2e.sh ]; then
-            ./eng/e2e.sh
-            ran=1
-          fi
-
-          if [ -x ./eng/benchmark.sh ]; then
-            ./eng/benchmark.sh
-            ran=1
-          fi
-
-          if [ "$ran" -eq 0 ]; then
-            echo "No long-running test scripts are implemented yet."
-          fi
+      - name: Run long-running tests
+        run: ./eng/long-running-tests.sh

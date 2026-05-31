@@ -2,9 +2,9 @@
 
 ## Status
 
-Current as a pre-release placeholder.
+Preview / pre-release placeholder.
 
-No package release has been published yet. Add versioned entries when release readiness checks are active.
+No package release has been published yet. Release readiness is future work; add versioned entries when release checks and package publication become active.
 
 ## Unreleased
 

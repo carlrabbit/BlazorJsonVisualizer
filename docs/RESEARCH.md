@@ -10,8 +10,6 @@ Research is non-authoritative unless promoted into:
 - architecture;
 - decisions;
 - specs;
-- TBPs;
-- guardrails;
 - engineering;
 - workflows;
 - public documentation.
@@ -38,7 +36,7 @@ This document is not authoritative for:
 
 - Research is non-authoritative by default.
 - Stable conclusions must be promoted into the appropriate authoritative document type.
-- Research documents must not replace specs, architecture documents, decisions, TBPs, guardrails, engineering documents, or public documentation.
+- Research documents must not replace specs, architecture documents, decisions, engineering documents, milestones, workflows, or public documentation.
 - Research documents should use canonical terminology where practical.
 - Superseded research may remain indexed when it preserves useful rationale.
 - Do not create `docs/research/README.md`.
@@ -47,7 +45,6 @@ This document is not authoritative for:
 
 | Research Document | Status | Purpose |
 |---|---|---|
-| `research/project-setup-guide-v6.md` | Current baseline | Repository knowledge model, documentation conventions, public documentation model, indexes, milestones, TBPs, guardrails, issue templates, workflows, and agent routing. |
 | `research/engineering-guide-v5.md` | Current baseline | Concrete .NET/Bun/Biome/Blazor engineering profile, command contract, samples, public documentation validation, package smoke testing, public API validation, and release readiness. |
 | `research/visual-identity-direction.md` | Promoted | Exploratory visual identity direction for Layer 1, Layer 2, and Layer 3, including token strategy and visual identity playground proposal. Stable conclusions promoted into `docs/specs/visual-identity.md`, `docs/specs/theme-token-format.md`, `docs/specs/visual-identity-playground.md`, and `docs/decisions/0005-token-based-visual-identity.md`. |
 
@@ -69,8 +66,7 @@ When research produces stable conclusions, promote them into the appropriate aut
 | Rationale/choice | `docs/decisions/*.md` and `docs/DECISIONS.md` |
 | Behavioral rules/invariants | `docs/specs/*.md` and `docs/SPECS.md` |
 | Implementation sequencing | `docs/milestones/*.md` and `docs/MILESTONES.md` |
-| Reusable process | `docs/tbps/*.md` and `docs/TBPS.md` |
-| Implementation constraints | `docs/guardrails/*.md` and `docs/GUARDRAILS.md` |
+| Implementation constraints | `docs/ENGINEERING.md` and `docs/engineering/*.md` |
 | Command/tooling behavior | `docs/engineering/*.md` and `docs/ENGINEERING.md` |
 | Public user-facing usage | `public-docs/` and `docs/PUBLIC-DOCS.md` |
 | Workflow intent | `docs/workflows/*.md` and `docs/WORKFLOWS.md` |
@@ -84,8 +80,6 @@ When research produces stable conclusions, promote them into the appropriate aut
 - `docs/DECISIONS.md`
 - `docs/SPECS.md`
 - `docs/MILESTONES.md`
-- `docs/TBPS.md`
-- `docs/GUARDRAILS.md`
 - `docs/ENGINEERING.md`
 - `docs/PUBLIC-DOCS.md`
 

@@ -67,5 +67,5 @@ This document is authoritative for:
 
 When this document changes, review:
 - `docs/ENGINEERING.md`
-- `docs/guardrails/languages/typescript.md`
+- `AGENTS.md`
 - `AGENTS.md`

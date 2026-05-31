@@ -2,14 +2,14 @@
 
 ## Purpose
 
-This index tracks structural system design documents for BlazorJsonVisualizer.
+This index tracks durable structural system design documents for BlazorJsonVisualizer.
 
-Architecture documents describe how the system is structured: subsystems, layers, boundaries, interfaces, and data flows.
+Architecture documentation is intentionally lightweight while the repository is in **Exploration / Active Design** mode. Add or expand architecture docs only when runtime/browser/component boundaries, interfaces, or data flows need durable explanation beyond behavioral specs.
 
 ## What belongs here
 
 - layer and subsystem descriptions
-- component and interface diagrams or descriptions
+- component and interface boundaries
 - cross-cutting structural patterns
 - integration boundaries between TypeScript runtime, Blazor host, and .NET library
 
@@ -17,33 +17,36 @@ Architecture documents describe how the system is structured: subsystems, layers
 
 - feature behavioral specs (use `docs/SPECS.md`)
 - rationale and trade-offs for specific choices (use `docs/DECISIONS.md`)
-- build and tooling setup (use `docs/ENGINEERING.md`)
-- implementation guardrails (use `docs/GUARDRAILS.md`)
+- build, tooling, validation, and implementation constraints (use `docs/ENGINEERING.md`)
 
 ## Available Documents
 
 | Document | Purpose |
 |---|---|
-| *(none yet)* | Architecture documents will be added here as the system matures. |
+| `docs/architecture/runtime-boundaries.md` | Summarizes ownership boundaries between the browser runtime, runtime core, and Blazor host. |
+| `docs/architecture/browser-runtime.md` | Describes the TypeScript runtime package split and framework-free core rule. |
+| `docs/architecture/blazor-integration.md` | Describes Blazor host responsibilities and non-responsibilities. |
+| `docs/architecture/document-model.md` | Describes the structure-first document model and overlay boundaries. |
+| `docs/architecture/plugin-model.md` | Describes planned Layer 3 plugin/projection boundaries. |
 
 ## Authority
 
 This document is authoritative for:
+
 - the index of architecture documents under `docs/architecture/`
 - what counts as an architecture document
 
 This document is not authoritative for:
+
 - product behavior (use specs)
 - engineering commands (use engineering docs)
+- implementation process or validation tiers (use engineering docs)
 
 ## Document Contract
 
 When this index changes, review:
+
 - `README.md`
 - `AGENTS.md`
 - `docs/DECISIONS.md`
 - `docs/SPECS.md`
-
-## Prepared document storage engine
-
-Department-scale prepared document storage is owned by the .NET side. The application-facing store coordinates streaming import, source chunk storage, manifests, derived indexes, transaction logs, search, export, and delete behavior. The storage-provider abstraction uses containers, storage objects, temporary object writers, range reads, and leases so the default file-backed provider can later be replaced without making the file layout public.

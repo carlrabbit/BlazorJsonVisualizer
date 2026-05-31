@@ -107,7 +107,7 @@ Required content summary:
 
 Research draft.
 
-This document is non-authoritative. It preserves exploratory design direction for the BlazorJsonVisualizer visual identity and should be promoted into architecture, decisions, specs, milestones, guardrails, public documentation, and implementation only after review.
+This document is non-authoritative. It preserves exploratory design direction for the BlazorJsonVisualizer visual identity and should be promoted into architecture, decisions, specs, milestones, engineering documentation, public documentation, and implementation only after review.
 
 ## Accepted Direction
 
@@ -152,7 +152,7 @@ Proposed entry:
 | research/visual-identity-direction.md | Non-authoritative research for the default visual identity, theme-token model, and visual identity playground across Layer 1, Layer 2, and Layer 3. |
 ```
 
-Also ensure that `docs/RESEARCH.md` states that research is non-authoritative unless promoted into specs, decisions, milestones, guardrails, engineering docs, workflows, or public docs.
+Also ensure that `docs/RESEARCH.md` states that research is non-authoritative unless promoted into specs, decisions, milestones, engineering docs, workflows, or public docs.
 
 ### TODO — Create `docs/specs/visual-identity.md`
 

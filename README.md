@@ -4,7 +4,11 @@ BlazorJsonVisualizer is a Blazor-facing package for a standalone TypeScript brow
 
 ## Current status
 
-Pre-release project. Public package publishing and release-readiness automation are being prepared; consumer documentation exists but is still maturing.
+BlazorJsonVisualizer is in **Exploration / Active Design** mode.
+
+The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, search/indexing, visual identity, and related browser/Blazor boundaries. Architecture is emerging and should be documented only where durable boundaries need explanation.
+
+Public package publication is **preview/planned**. Public docs are preview surfaces and may intentionally describe planned workflows separately from currently supported behavior. Release readiness is future work and must not be treated as a normal implementation requirement.
 
 ## Quick start
 
@@ -26,7 +30,9 @@ eng/start-samples.sh
 
 Then open the samples index on `http://localhost:5100`.
 
-## Public documentation
+## Public documentation preview
+
+These preview docs describe currently useful concepts and planned consumer workflows. Installation, package, versioning, and release material remains planned until package publication matures.
 
 - [Getting started](public-docs/getting-started.md)
 - [Installation](public-docs/installation.md)
@@ -36,13 +42,14 @@ Then open the samples index on `http://localhost:5100`.
 - [Diagnostics](public-docs/diagnostics.md)
 - [Versioning](public-docs/versioning.md)
 - [Release notes](public-docs/release-notes.md)
+- [Huge JSON documents](public-docs/guides/huge-json-documents.md)
 
 ## Contributor documentation
 
 - [`docs/TERMINOLOGY.md`](docs/TERMINOLOGY.md)
 - [`docs/SPECS.md`](docs/SPECS.md)
-- [`docs/TBPS.md`](docs/TBPS.md)
-- [`docs/GUARDRAILS.md`](docs/GUARDRAILS.md)
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/DECISIONS.md`](docs/DECISIONS.md)
 - [`docs/ENGINEERING.md`](docs/ENGINEERING.md)
 - [`docs/PUBLIC-DOCS.md`](docs/PUBLIC-DOCS.md)
 
@@ -53,10 +60,12 @@ Then open the samples index on `http://localhost:5100`.
 ./eng/build.sh           # build all projects
 ./eng/test.sh            # run short-running tests
 ./eng/format.sh          # apply formatting
-./eng/check.sh           # restore + build + test + verify (completion gate)
-./eng/frontend-check.sh  # TypeScript/Biome checks
-./eng/samples.sh         # build and validate samples
-./eng/public-docs.sh     # validate public documentation layout
+./eng/check.sh           # Tier 2 completion gate: restore + build + test + verify
+./eng/frontend-check.sh  # focused TypeScript/Biome checks
+./eng/samples.sh         # focused sample validation
+./eng/public-docs.sh     # focused public documentation validation
 ```
+
+Release/public-package commands such as `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, and `./eng/public-api.sh` are explicit-only future-readiness workflows.
 
 See [`docs/engineering/command-contract.md`](docs/engineering/command-contract.md) for full command usage rules.

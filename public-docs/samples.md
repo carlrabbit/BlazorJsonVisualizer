@@ -2,20 +2,20 @@
 
 ## Status
 
-Current for repository samples listing.
+Preview for repository samples.
 
-Sample docs are in progress and not yet marked release-ready for external consumers.
+Sample docs list useful repository samples now, but they are not release-ready external consumer documentation.
 
 ## Available Samples
 
-| Sample | Purpose |
-|---|---|
-| Visual Identity Playground | Demonstrates theme JSON import, Blazor token editing, validation, preview, and export across representative Layer 1, Layer 2, and Layer 3 states. |
+| Sample | Purpose | Status |
+|---|---|---|
+| Visual Identity Playground | Demonstrates theme JSON import, Blazor token editing, validation, preview, and export across representative Layer 1, Layer 2, and Layer 3 states. | Preview |
 
 ## Guides
 
 - `public-docs/guides/huge-json-documents.md` explains the prepared-document lifecycle used for huge JSON workflows.
 
-## Prepared document storage samples
+## Planned
 
-Prepared-document storage is available as a library capability. Dedicated UI samples for huge-document import, search, and export are planned after the storage engine stabilizes.
+Dedicated UI samples for huge-document import, search, and export are planned after the storage engine stabilizes.

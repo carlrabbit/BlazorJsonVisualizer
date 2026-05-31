@@ -50,4 +50,4 @@ This document is authoritative for the long-running test workflow spec.
 
 When this document changes, review:
 - `docs/WORKFLOWS.md`
-- `docs/guardrails/testing.md`
+- `docs/engineering/command-contract.md`

@@ -1,5 +1,13 @@
 # Huge JSON Documents
 
+## Status
+
+Preview planned public workflow.
+
+This guide describes the intended public workflow for huge JSON documents while package publication remains planned. Current limits are listed separately below.
+
+## Workflow
+
 For huge JSON documents, use the prepared-document lifecycle instead of loading the entire JSON payload as one in-memory string.
 
 ```text
