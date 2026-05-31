@@ -62,6 +62,7 @@ Package smoke tests validate packed artifacts from a consumer perspective.
 - `./eng/test.sh` runs short-running tests only.
 - `./eng/check.sh` is the default completion gate and only runs short-running tests.
 - Long-running tests and package smoke tests require separate explicit commands or workflow triggers.
+- `./eng/long-running-tests.sh --fast` is allowed only when long-running test infrastructure itself is being implemented or explicitly requested; it must keep data sizes minimal.
 
 ## Layer 1 Fast Test Rules
 

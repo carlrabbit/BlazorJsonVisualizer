@@ -43,3 +43,7 @@ When this index changes, review:
 - `AGENTS.md`
 - `docs/DECISIONS.md`
 - `docs/SPECS.md`
+
+## Prepared document storage engine
+
+Department-scale prepared document storage is owned by the .NET side. The application-facing store coordinates streaming import, source chunk storage, manifests, derived indexes, transaction logs, search, export, and delete behavior. The storage-provider abstraction uses containers, storage objects, temporary object writers, range reads, and leases so the default file-backed provider can later be replaced without making the file layout public.

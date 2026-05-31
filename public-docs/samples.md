@@ -15,3 +15,7 @@ Sample docs are in progress and not yet marked release-ready for external consum
 ## Guides
 
 - `public-docs/guides/huge-json-documents.md` explains the prepared-document lifecycle used for huge JSON workflows.
+
+## Prepared document storage samples
+
+Prepared-document storage is available as a library capability. Dedicated UI samples for huge-document import, search, and export are planned after the storage engine stabilizes.

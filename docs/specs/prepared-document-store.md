@@ -38,14 +38,14 @@ A prepared document handle represents an opened prepared document and provides a
 
 The first implementation is a local file-backed prepared document store.
 
-Each document directory includes at least:
+Each document container includes at least:
 
 - `manifest.json`
-- `source.json`
-- `structure.index.json`
-- `search.index.json`
-- `path.index.json`
-- `transactions.log`
+- chunked source storage
+- line, structural, search, and path index artifacts
+- a transaction log artifact
+
+The file-backed provider stores those artifacts in its versioned internal layout; application code must not depend on the physical file names.
 
 ## Ownership Boundary
 
@@ -71,3 +71,9 @@ When this spec changes, review:
 - `docs/specs/document-export.md`
 - `docs/specs/document-session.md`
 - `docs/ENGINEERING.md`
+
+## Storage Provider Boundary
+
+The application-facing prepared document store is backed by `IPreparedDocumentStorageProvider`. Application users open prepared documents through store handles; replacement storage providers operate on document containers, storage objects, temporary object writers, and leases rather than physical paths.
+
+The default store uses the internal file-backed layout defined by `docs/specs/file-prepared-document-store.md`. That layout is not the public prepared document contract.

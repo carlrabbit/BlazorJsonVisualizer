@@ -48,3 +48,7 @@ When this spec changes, review:
 - `docs/specs/document-export.md`
 - `docs/specs/document-session.md`
 - `docs/specs/runtime-protocol.md`
+
+## Storage Engine Transaction Artifact
+
+The default storage engine initializes `transactions/log.jsonl` during import with a version marker and zero transactions. Editing integration and transaction replay are deferred. Export must fail clearly if non-zero transactions exist before transaction application is implemented.

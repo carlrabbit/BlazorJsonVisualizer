@@ -1,8 +1,12 @@
+using System.Text.Json.Serialization;
+
 namespace BlazorJsonVisualizer.PreparedDocuments;
 
+[JsonConverter(typeof(JsonStringEnumConverter<JsonDocumentPreparationState>))]
 public enum JsonDocumentPreparationState
 {
-    Preparing,
+    Importing,
     Ready,
-    Failed
+    Failed,
+    Deleting
 }

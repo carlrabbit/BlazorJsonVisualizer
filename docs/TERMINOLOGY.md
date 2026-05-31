@@ -191,3 +191,39 @@ A maintained Blazor sample used to import, edit, validate, preview, and export t
 ## Technical Calm
 
 The default visual identity direction: dense, precise, restrained, dark-first, and suitable for structured-data inspection.
+
+## Prepared Document Storage Engine
+
+A component that persists prepared document artifacts and provides access to source chunks, manifests, indexes, transaction logs, and export data.
+
+## Prepared Document Storage Provider
+
+A replaceable implementation of the storage abstraction used by the prepared document storage engine.
+
+## File-Backed Prepared Document Store
+
+The default storage provider that stores prepared document artifacts in a versioned directory layout on a filesystem.
+
+## Storage Abstraction
+
+The interface layer that defines storage operations required by prepared document import, open, indexing, search, transaction logging, export, cleanup, and deletion.
+
+## Storage Object
+
+A named persistent item owned by a storage provider, such as a manifest, chunk, index file, transaction log, or temporary import artifact.
+
+## Storage Lease
+
+A handle that reserves access to a prepared document or storage object for a bounded operation, such as read, write, import, export, or delete.
+
+## Storage Format Version
+
+A version number that identifies the internal prepared document storage layout and record formats.
+
+## Source Chunk
+
+A bounded slice of imported JSON source stored independently so range reads and streaming export do not require loading the whole source.
+
+## Index Artifact
+
+A persisted derived file or object containing rebuildable index data, such as line offsets, structural nodes, search terms, or path mappings.

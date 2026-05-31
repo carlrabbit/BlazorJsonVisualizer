@@ -50,3 +50,7 @@ When this spec changes, review:
 - `docs/specs/structural-index.md`
 - `docs/specs/path-navigation.md`
 - `public-docs/concepts.md`
+
+## Storage Engine Search Behavior
+
+Milestone 0013 provides first-generation literal search over persisted source text. Results use UTF-8 byte offsets, include the searched revision, and provide bounded previews. Property-name and string-value scoped search remain explicit future work and must not silently fall back to incorrect behavior.

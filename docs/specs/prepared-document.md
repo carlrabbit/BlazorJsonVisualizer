@@ -93,3 +93,9 @@ When this spec changes, review:
 - `docs/TERMINOLOGY.md`
 - `docs/PUBLIC-DOCS.md`
 - `public-docs/concepts.md`
+
+## Storage Engine Alignment
+
+Milestone 0013 stores prepared documents through a replaceable storage-provider abstraction. The manifest remains the durable entry point and now records source byte length, UTF-8 source encoding, source chunk size, updated timestamp, line index state, and transaction-log state.
+
+Prepared source offsets persisted by the storage engine are UTF-8 byte offsets. Browser/runtime offsets may use UTF-16 code units only after explicit conversion through index services.
