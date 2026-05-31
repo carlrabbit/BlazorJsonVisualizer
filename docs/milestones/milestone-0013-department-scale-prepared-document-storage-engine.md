@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft milestone issue content document.
+Active milestone implementation specification.
 
 ## Goal
 
@@ -1066,7 +1066,7 @@ Define but do not run by default:
 - large search latency smoke test;
 - large export smoke test.
 
-Long-running tests should be wired to a dedicated workflow or explicit command only if the repository already supports that pattern.
+Long-running tests are wired to `./eng/long-running-tests.sh` and the manual long-running workflow. Use `./eng/long-running-tests.sh --fast` to exercise the slow-category inventory with reduced data sizes during infrastructure validation.
 
 ## Validation
 

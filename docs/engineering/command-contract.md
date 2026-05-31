@@ -17,6 +17,7 @@ This document defines the canonical `eng/` commands for BlazorJsonVisualizer. Al
 | `./eng/frontend-format.sh` | Apply TypeScript/Biome formatting. | When requested |
 | `./eng/samples.sh` | Build and validate samples. | When touching samples |
 | `./eng/public-docs.sh` | Validate public documentation required files and consistency checks. | When public docs change |
+| `./eng/long-running-tests.sh [--fast]` | Run tests marked `TestCategory=Slow`; `--fast` uses minimal data for smoke validation. | Explicit only |
 | `./eng/package-smoke.sh <version>` | Test packed packages as a consumer. | Explicit only |
 | `./eng/public-api.sh` | Validate intentional public API surface. | Explicit or release work |
 | `./eng/release-check.sh <version>` | Run release-oriented validation. | Explicit only |
@@ -29,7 +30,7 @@ This document defines the canonical `eng/` commands for BlazorJsonVisualizer. Al
 - Long-running tests, e2e tests, benchmarks, and package smoke tests must not run through `./eng/test.sh` or default `./eng/check.sh`.
 - Run `./eng/frontend-check.sh` when touching TypeScript or frontend files.
 - Run `./eng/samples.sh` when touching sample files.
-- `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, and publish commands are explicit-only.
+- `./eng/long-running-tests.sh`, `./eng/release-check.sh <version>`, `./eng/package-smoke.sh <version>`, and publish commands are explicit-only.
 
 ## Authority
 

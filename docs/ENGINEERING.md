@@ -50,6 +50,7 @@ For repository governance, knowledge model, and documentation conventions, see `
 | `./eng/frontend-format.sh` | Apply TypeScript/Biome formatting. |
 | `./eng/samples.sh` | Build and validate samples. |
 | `./eng/public-docs.sh` | Validate required public documentation surfaces. |
+| `./eng/long-running-tests.sh [--fast]` | Run explicit long-running tests; `--fast` uses reduced data sizes for validation. |
 | `./eng/public-api.sh` | Validate intentional public API surface strategy (explicit/release work). |
 | `./eng/package-smoke.sh <version>` | Consumer smoke validation for packed packages (explicit only). |
 | `./eng/release-check.sh <version>` | Release-oriented validation gate (explicit only, no publish). |
@@ -74,3 +75,7 @@ When this index changes, review:
 - `README.md`
 - `docs/GUARDRAILS.md`
 - `docs/PUBLIC-DOCS.md`
+
+## Prepared Document Storage Validation
+
+Prepared-document storage tests are short-running when they use small in-memory JSON snippets and temporary directories. Huge-file validation, 100-document stores, and multi-user stress tests are long-running scenarios and must remain explicit-only.

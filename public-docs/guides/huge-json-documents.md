@@ -1,26 +1,25 @@
 # Huge JSON Documents
 
-## Status
+For huge JSON documents, use the prepared-document lifecycle instead of loading the entire JSON payload as one in-memory string.
 
-Current for the prepared-document lifecycle contract.
+```text
+Import once.
+Open prepared document many times.
+Search and navigation use prepared indexes.
+Edits are stored as transactions.
+Export materializes JSON.
+```
 
 ## Lifecycle
 
-Huge JSON files are imported before they are opened interactively.
+1. Import a readable JSON stream into a prepared document store.
+2. The store writes source chunks, metadata, indexes, and a manifest.
+3. Open handles read from the prepared document without reparsing the full source.
+4. Search returns byte-offset results and previews from the prepared source.
+5. Export streams unchanged source chunks to the destination stream.
 
-Import creates a prepared document with structural metadata and derived indexes. The prepared document can be reopened, searched, edited incrementally, and exported back to JSON.
+The default implementation is file backed, but the public contract is the prepared-document store and handle API. Applications should not depend on the internal directory layout.
 
-The original source is not rewritten on every edit.
+## Current Limits
 
-## Storage Ownership
-
-Prepared-document persistence is owned by the .NET side.
-
-The browser runtime owns interactive session state and viewport behavior.
-
-## Export Contract
-
-Initial format-preservation contract:
-
-- unchanged regions should be preserved byte-for-byte where practical;
-- changed regions may be normalized by export policy.
+The first storage engine supports unchanged export and literal all-text search. Transaction replay, property-name scoped search, and string-value scoped search are reserved for later editing/search work and fail clearly when unsupported.

@@ -49,3 +49,7 @@ When this index changes, review:
 - `docs/PUBLIC-DOCS.md`
 - `public-docs/`
 - `docs/TESTING.md`
+
+## Prepared Document Storage Guardrail
+
+Prepared-document storage work must preserve the storage-provider abstraction. Public APIs and public documentation must describe import, open, search, transaction, and export behavior without exposing the default file-backed directory layout as a consumer contract.

@@ -9,4 +9,6 @@ public sealed record JsonDocumentImportOptions
     public bool BuildPathIndex { get; init; } = true;
 
     public bool AllowInvalidJson { get; init; }
+
+    public int? SourceChunkSizeBytes { get; init; }
 }

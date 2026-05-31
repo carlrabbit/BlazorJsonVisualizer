@@ -23,6 +23,7 @@ Milestones define the sequencing of work: what is in scope, what is out of scope
 |---|---|---|
 | `milestones/milestone-0010-visual-identity-system-and-theme-playground.md` | Active | Creates the first dark-only token-based visual identity system and Blazor theme playground. |
 | `milestones/milestone-0012-prepared-document-import-storage-indexing-export.md` | Active | Defines and implements the prepared-document import, storage, indexing, and export lifecycle for huge JSON workflows. |
+| `milestones/milestone-0013-department-scale-prepared-document-storage-engine.md` | Active | Implements the department-scale prepared document storage engine, default file-backed provider, indexes, search, export, and concurrency behavior. |
 
 ## Authority
 

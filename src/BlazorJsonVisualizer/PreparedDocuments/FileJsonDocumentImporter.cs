@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
+using BlazorJsonVisualizer.Storage;
 
 namespace BlazorJsonVisualizer.PreparedDocuments;
 
@@ -22,157 +22,292 @@ public sealed class FileJsonDocumentImporter(FilePreparedJsonDocumentStore store
         var documentId = string.IsNullOrWhiteSpace(options.DocumentId)
             ? Guid.NewGuid().ToString("n")
             : options.DocumentId;
-
-        var documentPath = store.GetDocumentPath(documentId);
-        if (Directory.Exists(documentPath))
+        var chunkSize = options.SourceChunkSizeBytes ?? store.SourceChunkSizeBytes;
+        if (chunkSize <= 0)
         {
-            throw new InvalidOperationException($"Prepared document '{documentId}' already exists.");
+            throw new ArgumentOutOfRangeException(nameof(options), "Source chunk size must be greater than zero.");
         }
 
-        Directory.CreateDirectory(documentPath);
+        PreparedDocumentContainer? container = null;
+        PreparedDocumentWriteLease? writeLease = null;
         var createdAt = DateTimeOffset.UtcNow;
 
         try
         {
-            var sourcePath = Path.Combine(documentPath, PreparedDocumentFileNames.SourceFileName);
-            var (sourceLength, sourceHash) = await CopySourceWithHashAsync(source, sourcePath, cancellationToken);
+            container = await store.CreateContainerAsync(documentId, cancellationToken);
+            writeLease = await container.AcquireWriteLeaseAsync(cancellationToken);
 
-            await ValidateJsonIfRequiredAsync(sourcePath, options.AllowInvalidJson, cancellationToken);
-            await WritePlaceholderArtifactsAsync(documentPath, options, cancellationToken);
+            await WriteManifestAsync(container, CreateManifest(documentId, createdAt, createdAt, 0, null, chunkSize, JsonDocumentPreparationState.Importing, options), cancellationToken);
 
-            var manifest = new PreparedDocumentManifest
-            {
-                DocumentId = documentId,
-                SourceLength = sourceLength,
-                SourceHash = sourceHash,
-                CreatedAt = createdAt,
-                LatestRevision = 1,
-                State = JsonDocumentPreparationState.Ready,
-                Indexes = new PreparedDocumentManifestIndexes
-                {
-                    Structure = new PreparedDocumentManifestIndexEntry { State = PreparedDocumentIndexState.Ready },
-                    Search = new PreparedDocumentManifestIndexEntry
-                    {
-                        State = options.BuildSearchIndex ? PreparedDocumentIndexState.Ready : PreparedDocumentIndexState.Missing
-                    },
-                    Path = new PreparedDocumentManifestIndexEntry
-                    {
-                        State = options.BuildPathIndex ? PreparedDocumentIndexState.Ready : PreparedDocumentIndexState.Missing
-                    }
-                },
-                Transactions = new PreparedDocumentManifestTransactions
-                {
-                    Count = 0,
-                    LatestRevision = 1
-                }
-            };
+            var importResult = await ImportSourceChunksAsync(source, container, chunkSize, cancellationToken);
+            await ValidateJsonIfRequiredAsync(container, importResult.ChunkNames, options.AllowInvalidJson, cancellationToken);
+            await WriteIndexArtifactsAsync(container, importResult, options, cancellationToken);
 
-            await store.WriteManifestAsync(documentId, manifest, cancellationToken);
-
-            return new PreparedJsonDocumentInfo(
+            var readyAt = DateTimeOffset.UtcNow;
+            var manifest = CreateManifest(
                 documentId,
-                sourceLength,
-                sourceHash,
+                createdAt,
+                readyAt,
+                importResult.SourceLengthBytes,
+                importResult.SourceHash,
+                chunkSize,
                 JsonDocumentPreparationState.Ready,
-                createdAt);
+                options);
+
+            await WriteManifestAsync(container, manifest, cancellationToken);
+
+            return new PreparedJsonDocumentInfo(documentId, importResult.SourceLengthBytes, importResult.SourceHash, JsonDocumentPreparationState.Ready, createdAt);
         }
         catch
         {
-            TryDeleteDirectory(documentPath);
+            if (container is not null)
+            {
+                try
+                {
+                    await WriteManifestAsync(container, CreateManifest(documentId, createdAt, DateTimeOffset.UtcNow, 0, null, chunkSize, JsonDocumentPreparationState.Failed, options), CancellationToken.None);
+                }
+                catch
+                {
+                    // Best-effort failed-state marker before cleanup.
+                }
+            }
+
+            await DisposeLeaseAsync(writeLease);
+            TryDeleteDirectory(store.GetDocumentPath(documentId));
+            throw;
+        }
+        finally
+        {
+            await DisposeLeaseAsync(writeLease);
+        }
+    }
+
+    private static PreparedDocumentManifest CreateManifest(
+        string documentId,
+        DateTimeOffset createdAt,
+        DateTimeOffset updatedAt,
+        long sourceLengthBytes,
+        string? sourceHash,
+        int chunkSize,
+        JsonDocumentPreparationState state,
+        JsonDocumentImportOptions options)
+        => new()
+        {
+            DocumentId = documentId,
+            SourceLength = sourceLengthBytes,
+            SourceLengthBytes = sourceLengthBytes,
+            SourceHash = sourceHash,
+            SourceChunkSizeBytes = chunkSize,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt,
+            LatestRevision = 1,
+            State = state,
+            Indexes = new PreparedDocumentManifestIndexes
+            {
+                Line = new PreparedDocumentManifestIndexEntry { State = state == JsonDocumentPreparationState.Ready ? PreparedDocumentIndexState.Ready : PreparedDocumentIndexState.Building },
+                Structure = new PreparedDocumentManifestIndexEntry { State = state == JsonDocumentPreparationState.Ready ? PreparedDocumentIndexState.Ready : PreparedDocumentIndexState.Building },
+                Search = new PreparedDocumentManifestIndexEntry { State = options.BuildSearchIndex && state == JsonDocumentPreparationState.Ready ? PreparedDocumentIndexState.Ready : PreparedDocumentIndexState.Missing },
+                Path = new PreparedDocumentManifestIndexEntry { State = options.BuildPathIndex && state == JsonDocumentPreparationState.Ready ? PreparedDocumentIndexState.Ready : PreparedDocumentIndexState.Missing }
+            },
+            Transactions = new PreparedDocumentManifestTransactions
+            {
+                State = PreparedDocumentIndexState.Ready,
+                Count = 0,
+                LatestRevision = 1
+            }
+        };
+
+    private static async ValueTask<ImportResult> ImportSourceChunksAsync(
+        Stream source,
+        PreparedDocumentContainer container,
+        int chunkSize,
+        CancellationToken cancellationToken)
+    {
+        using var sha256 = SHA256.Create();
+        var buffer = new byte[Math.Min(chunkSize, 64 * 1024)];
+        var lineOffsets = new List<long> { 0 };
+        var chunkNames = new List<string>();
+        var chunkLengths = new List<long>();
+        long totalBytes = 0;
+        var chunkIndex = 0;
+        var bytesInChunk = 0;
+        PreparedDocumentObjectWriter? chunkWriter = null;
+
+        try
+        {
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var read = await source.ReadAsync(buffer, cancellationToken);
+                if (read == 0)
+                {
+                    break;
+                }
+
+                var consumed = 0;
+                while (consumed < read)
+                {
+                    if (chunkWriter is null)
+                    {
+                        var chunkName = $"source/chunks/{chunkIndex:D10}.chunk";
+                        chunkNames.Add(chunkName);
+                        chunkWriter = await container.CreateTemporaryObjectAsync(new PreparedDocumentObjectName(chunkName), cancellationToken);
+                        bytesInChunk = 0;
+                    }
+
+                    var writable = Math.Min(read - consumed, chunkSize - bytesInChunk);
+                    await chunkWriter.Stream.WriteAsync(buffer.AsMemory(consumed, writable), cancellationToken);
+                    sha256.TransformBlock(buffer, consumed, writable, null, 0);
+                    TrackLineOffsets(buffer.AsSpan(consumed, writable), totalBytes, lineOffsets);
+                    totalBytes += writable;
+                    bytesInChunk += writable;
+                    consumed += writable;
+
+                    if (bytesInChunk == chunkSize)
+                    {
+                        chunkLengths.Add(bytesInChunk);
+                        await chunkWriter.CommitAsync(cancellationToken);
+                        await chunkWriter.DisposeAsync();
+                        chunkWriter = null;
+                        chunkIndex++;
+                    }
+                }
+            }
+
+            if (chunkWriter is not null)
+            {
+                chunkLengths.Add(bytesInChunk);
+                await chunkWriter.CommitAsync(cancellationToken);
+                await chunkWriter.DisposeAsync();
+            }
+
+            sha256.TransformFinalBlock([], 0, 0);
+            var hash = "sha256:" + Convert.ToHexString(sha256.Hash!).ToLowerInvariant();
+            return new ImportResult(totalBytes, hash, chunkSize, chunkNames, chunkLengths, lineOffsets);
+        }
+        catch
+        {
+            if (chunkWriter is not null)
+            {
+                await chunkWriter.AbortAsync(CancellationToken.None);
+                await chunkWriter.DisposeAsync();
+            }
+
             throw;
         }
     }
 
-    private static async ValueTask<(long SourceLength, string SourceHash)> CopySourceWithHashAsync(
-        Stream source,
-        string destinationPath,
-        CancellationToken cancellationToken)
+    private static void TrackLineOffsets(ReadOnlySpan<byte> bytes, long baseOffset, List<long> lineOffsets)
     {
-        await using var destination = File.Create(destinationPath);
-        using var sha256 = SHA256.Create();
-        var buffer = new byte[16 * 1024];
-        long totalBytes = 0;
-
-        while (true)
+        for (var index = 0; index < bytes.Length; index++)
         {
-            var bytesRead = await source.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken);
-            if (bytesRead == 0)
+            if (bytes[index] == (byte)'\n')
             {
-                break;
+                lineOffsets.Add(baseOffset + index + 1);
             }
-
-            await destination.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
-            sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
-            totalBytes += bytesRead;
         }
-
-        sha256.TransformFinalBlock([], 0, 0);
-        var hashHex = Convert.ToHexString(sha256.Hash!);
-        return (totalBytes, hashHex);
     }
 
-    private static async ValueTask ValidateJsonIfRequiredAsync(string sourcePath, bool allowInvalidJson, CancellationToken cancellationToken)
+    private static async ValueTask ValidateJsonIfRequiredAsync(
+        PreparedDocumentContainer container,
+        IReadOnlyList<string> chunkNames,
+        bool allowInvalidJson,
+        CancellationToken cancellationToken)
     {
         if (allowInvalidJson)
         {
             return;
         }
 
-        await using var sourceStream = File.OpenRead(sourcePath);
+        await using var sourceStream = new ChunkSequenceReadStream(container, chunkNames, cancellationToken);
         try
         {
             await JsonDocument.ParseAsync(sourceStream, cancellationToken: cancellationToken);
         }
-        catch (JsonException jsonException)
+        catch (JsonException exception)
         {
-            throw new InvalidDataException("Source stream is not valid JSON.", jsonException);
+            throw new InvalidDataException("Source stream is not valid JSON.", exception);
         }
     }
 
-    private static async ValueTask WritePlaceholderArtifactsAsync(
-        string documentPath,
+    private static async ValueTask WriteIndexArtifactsAsync(
+        PreparedDocumentContainer container,
+        ImportResult result,
         JsonDocumentImportOptions options,
         CancellationToken cancellationToken)
     {
-        await File.WriteAllTextAsync(
-            Path.Combine(documentPath, PreparedDocumentFileNames.StructureIndexFileName),
-            "{\"state\":\"ready\"}",
-            Encoding.UTF8,
+        await FilePreparedJsonDocumentStore.WriteJsonObjectAsync(
+            container,
+            new PreparedDocumentObjectName(PreparedDocumentFileNames.SourceChunksIndexFileName),
+            new { chunkSizeBytes = result.ChunkSizeBytes, chunks = result.ChunkNames.Select((name, i) => new { name, length = result.ChunkLengths[i] }).ToArray() },
             cancellationToken);
 
-        await File.WriteAllTextAsync(
-            Path.Combine(documentPath, PreparedDocumentFileNames.SearchIndexFileName),
-            options.BuildSearchIndex ? "{\"state\":\"ready\"}" : "{\"state\":\"missing\"}",
-            Encoding.UTF8,
+        await FilePreparedJsonDocumentStore.WriteJsonObjectAsync(
+            container,
+            new PreparedDocumentObjectName(PreparedDocumentFileNames.LineIndexFileName),
+            new { version = 1, offsetKind = "utf8-byte", lineStartOffsets = result.LineStartOffsets },
             cancellationToken);
 
-        await File.WriteAllTextAsync(
-            Path.Combine(documentPath, PreparedDocumentFileNames.PathIndexFileName),
-            options.BuildPathIndex ? "{\"state\":\"ready\"}" : "{\"state\":\"missing\"}",
-            Encoding.UTF8,
+        await FilePreparedJsonDocumentStore.WriteJsonObjectAsync(
+            container,
+            new PreparedDocumentObjectName(PreparedDocumentFileNames.StructureIndexFileName),
+            new { version = 1, offsetKind = "utf8-byte", state = "ready" },
             cancellationToken);
 
-        await File.WriteAllTextAsync(
-            Path.Combine(documentPath, PreparedDocumentFileNames.TransactionsFileName),
-            "{\"formatVersion\":1,\"transactions\":[]}",
-            Encoding.UTF8,
+        await FilePreparedJsonDocumentStore.WriteJsonObjectAsync(
+            container,
+            new PreparedDocumentObjectName(PreparedDocumentFileNames.SearchIndexFileName),
+            new { version = 1, state = options.BuildSearchIndex ? "ready" : "missing", scope = "literal-streaming" },
+            cancellationToken);
+
+        await FilePreparedJsonDocumentStore.WriteJsonObjectAsync(
+            container,
+            new PreparedDocumentObjectName(PreparedDocumentFileNames.PathIndexFileName),
+            new { version = 1, state = options.BuildPathIndex ? "ready" : "missing" },
+            cancellationToken);
+
+        await FilePreparedJsonDocumentStore.WriteObjectAsync(
+            container,
+            new PreparedDocumentObjectName(PreparedDocumentFileNames.TransactionsFileName),
+            async (stream, ct) =>
+            {
+                await using var writer = new StreamWriter(stream, leaveOpen: true);
+                await writer.WriteLineAsync("{\"formatVersion\":1,\"transactions\":[]}".AsMemory(), ct);
+            },
             cancellationToken);
     }
 
-    private static void TryDeleteDirectory(string directoryPath)
+    private static ValueTask WriteManifestAsync(PreparedDocumentContainer container, PreparedDocumentManifest manifest, CancellationToken cancellationToken)
+        => FilePreparedJsonDocumentStore.WriteJsonObjectAsync(container, new PreparedDocumentObjectName(PreparedDocumentFileNames.ManifestFileName), manifest, cancellationToken);
+
+    private static async ValueTask DisposeLeaseAsync(PreparedDocumentWriteLease? lease)
     {
-        if (!Directory.Exists(directoryPath))
+        if (lease is not null)
         {
-            return;
-        }
-
-        try
-        {
-            Directory.Delete(directoryPath, recursive: true);
-        }
-        catch
-        {
-            // Ignore cleanup failure after import failure.
+            await lease.DisposeAsync();
         }
     }
+
+    private static void TryDeleteDirectory(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            try
+            {
+                Directory.Delete(path, recursive: true);
+            }
+            catch
+            {
+                // Best-effort cleanup for failed imports.
+            }
+        }
+    }
+
+    private sealed record ImportResult(
+        long SourceLengthBytes,
+        string SourceHash,
+        int ChunkSizeBytes,
+        IReadOnlyList<string> ChunkNames,
+        IReadOnlyList<long> ChunkLengths,
+        IReadOnlyList<long> LineStartOffsets);
 }

@@ -15,3 +15,9 @@ For huge JSON documents, import the JSON stream first. Import creates a prepared
 See:
 
 - `public-docs/guides/huge-json-documents.md`
+
+## Huge documents
+
+For huge JSON documents, import the JSON stream into a prepared document store first. The prepared document can then be reopened, searched, and exported without treating the entire source as one UI string.
+
+See `public-docs/guides/huge-json-documents.md` for the current lifecycle and limitations.

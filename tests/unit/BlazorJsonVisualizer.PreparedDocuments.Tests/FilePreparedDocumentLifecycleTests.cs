@@ -1,5 +1,6 @@
 using System.Text;
 using BlazorJsonVisualizer.PreparedDocuments;
+using BlazorJsonVisualizer.Storage;
 using Xunit;
 
 namespace BlazorJsonVisualizer.PreparedDocuments.Tests;
@@ -22,15 +23,18 @@ public sealed class FilePreparedDocumentLifecycleTests
 
             Assert.False(string.IsNullOrWhiteSpace(imported.DocumentId));
             Assert.Equal(JsonDocumentPreparationState.Ready, imported.State);
-
-            var manifestPath = Path.Combine(rootPath, imported.DocumentId, "manifest.json");
-            Assert.True(File.Exists(manifestPath));
+            Assert.True(File.Exists(Path.Combine(rootPath, imported.DocumentId, "manifest.json")));
+            Assert.True(File.Exists(Path.Combine(rootPath, imported.DocumentId, "source", "chunks", "0000000000.chunk")));
+            Assert.True(File.Exists(Path.Combine(rootPath, imported.DocumentId, "indexes", "lines.index")));
+            Assert.True(File.Exists(Path.Combine(rootPath, imported.DocumentId, "indexes", "structure.index")));
+            Assert.True(File.Exists(Path.Combine(rootPath, imported.DocumentId, "indexes", "search.index")));
 
             var listed = await store.ListAsync();
             var listedDocument = Assert.Single(listed);
             Assert.Equal(imported.DocumentId, listedDocument.DocumentId);
 
             await using var opened = await store.OpenAsync(imported.DocumentId);
+            Assert.Equal(PreparedDocumentIndexState.Ready, opened.Manifest.Indexes.Line.State);
             Assert.Equal(PreparedDocumentIndexState.Ready, opened.Manifest.Indexes.Structure.State);
             Assert.Equal(PreparedDocumentIndexState.Ready, opened.Manifest.Indexes.Search.State);
             Assert.Equal(0, opened.Manifest.Transactions.Count);
@@ -42,6 +46,7 @@ public sealed class FilePreparedDocumentLifecycleTests
             var exportedJson = Encoding.UTF8.GetString(destination.ToArray());
             Assert.Equal("{\"name\":\"alice\",\"age\":3}", exportedJson);
 
+            await opened.DisposeAsync();
             await store.DeleteAsync(imported.DocumentId);
             Assert.Empty(await store.ListAsync());
         }
@@ -98,7 +103,7 @@ public sealed class FilePreparedDocumentLifecycleTests
             Assert.Equal(PreparedDocumentIndexState.Missing, opened.Manifest.Indexes.Search.State);
             Assert.Equal(PreparedDocumentIndexState.Missing, opened.Manifest.Indexes.Path.State);
 
-            var transactionPath = Path.Combine(rootPath, imported.DocumentId, "transactions.log");
+            var transactionPath = Path.Combine(rootPath, imported.DocumentId, "transactions", "log.jsonl");
             Assert.True(File.Exists(transactionPath));
             var transactionLog = await File.ReadAllTextAsync(transactionPath);
             Assert.Contains("\"transactions\":[]", transactionLog);
@@ -127,6 +132,109 @@ public sealed class FilePreparedDocumentLifecycleTests
                 await exporter.ExportAsync(imported.DocumentId, destination, new JsonDocumentExportOptions()));
 
             Assert.Equal("Destination stream must be writable.", exception.Message);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task ImportAsync_ChunksAndRanges_HandleUtf8Boundaries()
+    {
+        var rootPath = CreateTempDirectory();
+        try
+        {
+            var store = new FilePreparedJsonDocumentStore(new FilePreparedDocumentStorageOptions
+            {
+                RootDirectory = rootPath,
+                SourceChunkSizeBytes = 7
+            });
+            var importer = new FileJsonDocumentImporter(store);
+            var json = "{\"emoji\":\"🐇\",\"name\":\"alice\"}";
+            await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+            var imported = await importer.ImportAsync(sourceStream, new JsonDocumentImportOptions());
+
+            await using var opened = await store.OpenAsync(imported.DocumentId);
+            await using var range = await opened.OpenSourceRangeAsync(0, imported.SourceLength);
+            using var reader = new StreamReader(range, Encoding.UTF8);
+            Assert.Equal(json, await reader.ReadToEndAsync());
+
+            var chunkFiles = Directory.GetFiles(Path.Combine(rootPath, imported.DocumentId, "source", "chunks"));
+            Assert.True(chunkFiles.Length > 1);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task SearchAsync_ReturnsOffsetsPreviewsAndRevision()
+    {
+        var rootPath = CreateTempDirectory();
+        try
+        {
+            var store = new FilePreparedJsonDocumentStore(rootPath);
+            var importer = new FileJsonDocumentImporter(store);
+            await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes("{\"name\":\"alice\",\"note\":\"Alice likes JSON\"}"));
+            var imported = await importer.ImportAsync(sourceStream, new JsonDocumentImportOptions());
+
+            await using var opened = await store.OpenAsync(imported.DocumentId);
+            var results = new List<PreparedDocumentSearchResult>();
+            await foreach (var result in opened.SearchAsync(new PreparedDocumentSearchQuery("alice", IgnoreCase: true, MaxResults: 2)))
+            {
+                results.Add(result);
+            }
+
+            Assert.Equal(2, results.Count);
+            Assert.All(results, result => Assert.Equal(imported.DocumentId, result.DocumentId));
+            Assert.All(results, result => Assert.Equal(1, result.Revision));
+            Assert.Contains("alice", results[0].Preview, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task DeleteAsync_FailsWhileHandleIsOpen()
+    {
+        var rootPath = CreateTempDirectory();
+        try
+        {
+            var store = new FilePreparedJsonDocumentStore(rootPath);
+            var importer = new FileJsonDocumentImporter(store);
+            await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes("{\"ok\":true}"));
+            var imported = await importer.ImportAsync(sourceStream, new JsonDocumentImportOptions());
+
+            await using var opened = await store.OpenAsync(imported.DocumentId);
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await store.DeleteAsync(imported.DocumentId));
+            Assert.Contains("active handles", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task StorageProvider_RejectsPathTraversalAndEnforcesSingleWriter()
+    {
+        var rootPath = CreateTempDirectory();
+        try
+        {
+            var provider = new FilePreparedDocumentStorageProvider(new FilePreparedDocumentStorageOptions { RootDirectory = rootPath });
+
+            await Assert.ThrowsAsync<ArgumentException>(async () => await provider.CreateContainerAsync("../bad"));
+
+            var container = await provider.CreateContainerAsync("safe");
+            await using var writer = await container.AcquireWriteLeaseAsync();
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await container.AcquireWriteLeaseAsync());
+            Assert.Contains("active readers or a writer", exception.Message, StringComparison.Ordinal);
         }
         finally
         {

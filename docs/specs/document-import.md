@@ -77,3 +77,9 @@ When this spec changes, review:
 - `docs/ENGINEERING.md`
 - `docs/PUBLIC-DOCS.md`
 - `public-docs/getting-started.md`
+
+## Storage Engine Import Behavior
+
+The default import implementation streams the source into bounded UTF-8 byte chunks, computes a SHA-256 source hash, records line-start byte offsets, initializes structural/search/path index artifacts, and commits the manifest to `ready` only after required artifacts are written.
+
+Failed or cancelled imports must not leave a ready prepared document. The file-backed implementation performs best-effort cleanup of the document container after marking failure where practical.

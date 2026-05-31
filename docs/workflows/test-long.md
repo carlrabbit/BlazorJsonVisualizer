@@ -6,18 +6,17 @@ Describes the long-running test workflow for BlazorJsonVisualizer.
 
 ## Status
 
-Long-running tests are not yet implemented. This document describes the intended workflow when they are added.
+Prepared-document storage long-running tests are implemented as explicit slow-category tests. They are not part of normal CI, `./eng/test.sh`, or `./eng/check.sh`.
 
 ## Command
 
 Long-running tests must not run through `./eng/test.sh` or `./eng/check.sh`.
 
-When implemented, long-running tests will use a dedicated command or CI workflow trigger.
+Use the dedicated command:
 
-Candidate command (not yet implemented):
 ```sh
-./eng/e2e.sh          # browser automation
-./eng/benchmark.sh    # benchmarks
+./eng/long-running-tests.sh          # full explicit long-running data sizes
+./eng/long-running-tests.sh --fast   # minimal data sizes for command validation
 ```
 
 ## Trigger
@@ -26,6 +25,11 @@ Long-running tests must be triggered explicitly. They must not run automatically
 
 ## What belongs here
 
+- prepared-document 100 MB and 500 MB import smoke tests
+- 100 prepared documents in one store
+- 10 concurrent prepared-document sessions
+- large search latency smoke tests
+- large export smoke tests
 - huge JSON document tests
 - stress tests
 - browser endurance tests

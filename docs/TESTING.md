@@ -18,7 +18,7 @@ Examples:
 
 ## Long-running tests
 
-Long-running tests must not run automatically unless explicitly requested.
+Long-running tests must not run automatically unless explicitly requested. Use `./eng/long-running-tests.sh` for explicit full-size runs and `./eng/long-running-tests.sh --fast` only to validate the long-running inventory with reduced data sizes.
 
 Examples:
 

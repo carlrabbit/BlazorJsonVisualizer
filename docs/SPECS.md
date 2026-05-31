@@ -32,3 +32,9 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/document-export.md`
 - `docs/specs/search-index.md`
 - `docs/specs/transaction-log.md`
+- `docs/specs/prepared-document-storage-engine.md`
+- `docs/specs/prepared-document-storage-abstraction.md`
+- `docs/specs/file-prepared-document-store.md`
+- `docs/specs/prepared-document-storage-format.md`
+- `docs/specs/prepared-document-concurrency.md`
+- `docs/specs/prepared-document-search-engine.md`
