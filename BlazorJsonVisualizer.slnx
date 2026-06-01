@@ -8,8 +8,12 @@
   <Folder Name="/src/">
     <Project Path="src/BlazorJsonVisualizer.SampleApp/BlazorJsonVisualizer.SampleApp.csproj" />
     <Project Path="src/BlazorJsonVisualizer/BlazorJsonVisualizer.csproj" />
+    <Project Path="src/BlazorJsonVisualizer.Storage.EFCore/BlazorJsonVisualizer.Storage.EFCore.csproj" />
+    <Project Path="src/BlazorJsonVisualizer.Storage.EFCore.SqlServer/BlazorJsonVisualizer.Storage.EFCore.SqlServer.csproj" />
   </Folder>
   <Folder Name="/tests/unit/">
     <Project Path="tests/unit/BlazorJsonVisualizer.PreparedDocuments.Tests/BlazorJsonVisualizer.PreparedDocuments.Tests.csproj" />
+    <Project Path="tests/unit/BlazorJsonVisualizer.Storage.EFCore.Tests/BlazorJsonVisualizer.Storage.EFCore.Tests.csproj" />
+    <Project Path="tests/unit/BlazorJsonVisualizer.Storage.EFCore.SqlServer.Tests/BlazorJsonVisualizer.Storage.EFCore.SqlServer.Tests.csproj" />
   </Folder>
 </Solution>
