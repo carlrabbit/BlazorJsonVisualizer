@@ -29,6 +29,7 @@ Architecture documentation is intentionally lightweight while the repository is 
 | `docs/architecture/document-model.md` | Describes the structure-first document model and overlay boundaries. |
 | `docs/architecture/plugin-model.md` | Describes planned Layer 3 plugin/projection boundaries. |
 | `docs/architecture/prepared-document-runtime-boundary.md` | Describes the prepared-document store, runtime bridge, Blazor host, and TypeScript runtime ownership boundary for range-backed Layer 1 viewing. |
+| `docs/architecture/ef-core-prepared-document-storage-boundary.md` | Describes the EF Core storage backend boundary, user-owned DbContext ownership, and SQL Server optimization layer. |
 
 ## Authority
 

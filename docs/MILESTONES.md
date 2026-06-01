@@ -27,6 +27,7 @@ Milestones define sequencing: what is in scope, what is out of scope, what must 
 | `milestones/milestone-0013-department-scale-prepared-document-storage-engine.md` | Active | Implements the department-scale prepared document storage engine, default file-backed provider, indexes, search, export, and concurrency behavior. |
 | `milestones/milestone-0014-data-ingestion-adapters-diagnostics-import-job-lifecycle.md` | Implemented / synchronized | Implements ingestion sources, import jobs, progress, cancellation, diagnostics, and encoding policy for huge JSON import. |
 | `milestones/milestone-0015-prepared-document-runtime-bridge-range-backed-layer1-viewer.md` | Planned | Implements the prepared-document runtime bridge and range-backed Layer 1 viewer path. |
+| `milestones/milestone-0016-ef-core-prepared-document-storage-backend.md` | Planned | Implements the EF Core prepared-document storage backend, user-owned DbContext contract, and opt-in SQL Server storage optimizations. |
 
 ## Spec Alignment
 

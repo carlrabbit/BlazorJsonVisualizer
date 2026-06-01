@@ -39,6 +39,12 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/prepared-document-concurrency.md`
 - `docs/specs/prepared-document-search-engine.md`
 
+## EF Core storage specs
+
+- `docs/specs/ef-core-prepared-document-storage.md`
+- `docs/specs/ef-core-prepared-document-dbcontext-contract.md`
+- `docs/specs/sql-server-prepared-document-storage-optimizations.md`
+
 ## Data ingestion specs
 
 - `docs/specs/data-ingestion.md`

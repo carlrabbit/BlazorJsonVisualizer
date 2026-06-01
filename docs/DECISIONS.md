@@ -24,6 +24,7 @@ Decision records document why a particular approach was chosen over alternatives
 | Document | Purpose |
 |---|---|
 | `decisions/0005-token-based-visual-identity.md` | Accepts semantic JSON design tokens as the public visual identity contract and defines the first dark-only visual identity playground direction. |
+| `decisions/0006-user-owned-ef-core-dbcontext-for-prepared-document-storage.md` | Accepts user-owned DbContext integration through a DbSet contract and model-builder extension for EF Core prepared-document storage. |
 
 ## Authority
 

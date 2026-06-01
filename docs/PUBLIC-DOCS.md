@@ -27,7 +27,7 @@ Public docs are currently **Preview**. They are allowed to be intentionally inco
 | Installation docs | `public-docs/installation.md` | Planned |
 | Package docs | `public-docs/packages.md`, `public-docs/nuget/package-readme.md` | Planned |
 | Public API documentation | `public-docs/api/` | Preview for implemented APIs |
-| Diagnostics reference | `public-docs/diagnostics.md`, `public-docs/diagnostics/import-diagnostics.md` | Preview for prepared-document and ingestion diagnostics |
+| Diagnostics reference | `public-docs/diagnostics.md`, `public-docs/diagnostics/import-diagnostics.md`, `public-docs/diagnostics/ef-core-storage-diagnostics.md` | Preview for prepared-document, ingestion, and EF Core storage diagnostics |
 | Samples documentation | `public-docs/samples.md`, `public-docs/samples/` | Preview for repository samples |
 | Release notes | `public-docs/release-notes.md` | Pre-release placeholder |
 | Versioning policy | `public-docs/versioning.md` | Planned |
@@ -35,6 +35,8 @@ Public docs are currently **Preview**. They are allowed to be intentionally inco
 | Huge JSON lifecycle guide | `public-docs/guides/huge-json-documents.md` | Preview |
 | Huge JSON import guide | `public-docs/guides/import-huge-json.md` | Preview for implemented ingestion behavior |
 | Prepared-document opening guide | `public-docs/guides/open-prepared-document.md` | Preview planned workflow |
+| EF Core storage guide | `public-docs/guides/ef-core-prepared-document-storage.md` | Preview for planned/implemented EF Core storage backend |
+| SQL Server storage optimization guide | `public-docs/guides/sql-server-prepared-document-storage-optimizations.md` | Preview for opt-in SQL Server storage recommendations |
 
 ## Synchronization Rules
 
@@ -52,6 +54,7 @@ When any listed surface changes, keep related public surfaces aligned.
 - When prepared-document lifecycle behavior changes, review and update `docs/specs/prepared-document.md`, `public-docs/concepts.md`, `public-docs/getting-started.md`, and `public-docs/guides/huge-json-documents.md`.
 - When ingestion behavior or import diagnostics change, review and update `docs/specs/data-ingestion.md`, `docs/specs/ingestion-sources.md`, `docs/specs/import-jobs.md`, `docs/specs/import-diagnostics.md`, `public-docs/guides/import-huge-json.md`, `public-docs/diagnostics.md`, and `public-docs/diagnostics/import-diagnostics.md`.
 - When prepared-document runtime viewing changes, review and update `docs/specs/prepared-document-runtime-bridge.md`, `docs/specs/prepared-document-runtime-protocol.md`, `docs/specs/range-backed-layer1-viewer.md`, `public-docs/guides/open-prepared-document.md`, `public-docs/guides/huge-json-documents.md`, and `public-docs/samples.md`.
+- When EF Core prepared-document storage behavior changes, review and update `docs/specs/ef-core-prepared-document-storage.md`, `docs/specs/ef-core-prepared-document-dbcontext-contract.md`, `docs/specs/sql-server-prepared-document-storage-optimizations.md`, `public-docs/guides/ef-core-prepared-document-storage.md`, `public-docs/guides/sql-server-prepared-document-storage-optimizations.md`, `public-docs/diagnostics.md`, and `public-docs/diagnostics/ef-core-storage-diagnostics.md`.
 
 ## Release Readiness
 

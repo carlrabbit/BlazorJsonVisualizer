@@ -142,7 +142,7 @@ The repository status that determines how much process, public-package, architec
 
 ## Engineering Guide
 
-The concrete engineering substrate documentation: command contracts, validation tiers, build tooling, toolchain setup, implementation constraints, building blocks, and optional modules.
+The concrete engineering substrate documentation: command contracts, validation tiers, build tooling, toolchain setup, implementation constraints, building blocks, optional modules, and concrete engineering commands.
 
 ## Command Contract
 
@@ -155,14 +155,6 @@ The designation of which document is the single source of truth for a given topi
 ## Document Contract
 
 The cross-reference rule that lists which documents must be reviewed when an authoritative document changes.
-
-## Building Block
-
-A modular capability package from the Engineering Guide. Each block adds specific files, commands, and conventions to the repository.
-
-## Optional Module
-
-An engineering capability that is absent by default and must be explicitly activated in a milestone. Examples: Playwright, BenchmarkDotNet, NuGet packaging, GitHub Pages.
 
 ## Public Documentation
 
@@ -259,3 +251,27 @@ A bounded slice of imported JSON source stored independently so range reads and 
 ## Index Artifact
 
 A persisted derived file or object containing rebuildable index data, such as line offsets, structural nodes, search terms, or path mappings.
+
+## EF Core Prepared Document Storage
+
+A prepared-document storage backend that persists prepared-document artifacts through Entity Framework Core and a consumer-owned application database.
+
+## EF Core Storage DbContext Contract
+
+An interface implemented by a user-owned DbContext to expose the DbSets required by the EF Core prepared-document storage backend.
+
+## User-Owned DbContext
+
+An application DbContext controlled by the consumer, including provider configuration, migrations, schema, connection string, and deployment.
+
+## Model Builder Extension
+
+A library-provided extension method that configures BlazorJsonVisualizer EF Core storage entities in a consumer-owned DbContext.
+
+## SQL Server Storage Optimization
+
+An optional SQL Server-specific migration helper or script that improves EF Core prepared-document storage behavior without being required for correctness.
+
+## Provider-Neutral EF Core Model
+
+The EF Core entity model and configuration that must work without SQL Server-specific features.
