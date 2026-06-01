@@ -63,6 +63,8 @@ The runtime may cache bounded row windows, but cache invalidation must occur whe
 - bridge reports stale data;
 - session closes.
 
+The first milestone implementation may use a fixed-height scroll container with simple line-window requests and top/bottom spacers rather than pixel-perfect virtualization. This remains in scope as long as row requests stay bounded and scrolling causes additional prepared row requests instead of transferring the entire document into browser memory.
+
 ## Render Row Requirements
 
 Prepared render rows must follow the row concepts from `docs/specs/viewport-model.md` and add prepared-document location metadata where available.

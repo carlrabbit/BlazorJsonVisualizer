@@ -40,10 +40,10 @@ var documentId = result.Document!.DocumentId;
 ```
 
 ```razor
-<JsonVisualizer DocumentId="@documentId" />
+<JsonVisualizer PreparedDocumentId="@documentId" />
 ```
 
-The final component parameters and service names may differ while the package remains preview/planned.
+Applications must also register the prepared-document runtime bridge service used by the component host so the browser runtime can request metadata, rows, search results, reveal targets, and bounded source ranges for the prepared document.
 
 ## Runtime Behavior
 

@@ -1,38 +1,48 @@
 ﻿@page "/"
 @rendermode InteractiveServer
+@using System.Text
 @using System.Text.Json
+@using BlazorJsonVisualizer.PreparedDocuments
+@inject IPreparedJsonDocumentStore PreparedDocumentStore
+@inject IJsonDocumentImporter JsonDocumentImporter
 
 <PageTitle>Layer 1 JSON Viewer Sample</PageTitle>
 
 <h1>Layer 1 JSON Viewer Sample</h1>
 
 <p>
-    This sample demonstrates Layer 1 JSON viewing and navigation behavior.
-    The component below loads a small embedded JSON document and mounts it in the visualizer.
+    This sample demonstrates the prepared-document Layer 1 viewing path.
+    The component below opens a small prepared document through the runtime bridge instead of loading the whole JSON source into the browser as one string.
 </p>
 
-<JsonVisualizer @ref="_visualizer"
-                SessionId="layer1-session"
-                DocumentId="layer1-document"
-                Text="@SampleJson"
-                RuntimeEvent="HandleRuntimeEvent" />
+@if (string.IsNullOrWhiteSpace(_preparedDocumentId))
+{
+    <p>Preparing sample document…</p>
+}
+else
+{
+    <JsonVisualizer @ref="_visualizer"
+                   SessionId="layer1-session"
+                   PreparedDocumentId="@_preparedDocumentId"
+                   RuntimeEvent="HandleRuntimeEvent" />
+}
 
 <section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
-        <h2 style="font-size: 1.1rem; margin-top: 0;">Reveal path</h2>
-        <p style="margin-top: 0;">Enter an indexed path such as <code>$.document.nested.items</code>.</p>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Reveal JSON Pointer</h2>
+        <p style="margin-top: 0;">Enter a prepared-document JSON Pointer such as <code>/document/nested/items</code>.</p>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
             <input @bind="_revealPath"
                    style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
-                   aria-label="Reveal path" />
-            <button @onclick="RevealPathAsync"
-                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
-                Reveal path
+                   aria-label="Reveal JSON Pointer" />
+            <button @onclick="RevealPreparedPathAsync"
+                   style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                Reveal JSON Pointer
             </button>
         </div>
         <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button @onclick='() => SetRevealPath("$.document.nested")'>Reveal nested</button>
-            <button @onclick='() => SetRevealPath("$.features")'>Reveal features</button>
+            <button @onclick='() => SetRevealPath("/document/nested")'>Reveal nested</button>
+            <button @onclick='() => SetRevealPath("/features")'>Reveal features</button>
         </div>
     </section>
 
@@ -45,7 +55,7 @@
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
-        <h2 style="font-size: 1.1rem; margin-top: 0;">Parse diagnostics</h2>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Prepared diagnostics</h2>
         @if (_diagnostics.Count == 0)
         {
             <p>No diagnostics.</p>
@@ -60,13 +70,47 @@
             </ul>
         }
     </section>
+
+    <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Prepared search</h2>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_searchQuery"
+                   style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                   aria-label="Search prepared document" />
+            <button @onclick="SearchPreparedDocumentAsync"
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                Search
+            </button>
+        </div>
+        @if (_searchResults.Count == 0)
+        {
+            <p style="margin-top: 0.75rem;">No results yet.</p>
+        }
+        else
+        {
+            <ul style="margin-top: 0.75rem;">
+                @foreach (var result in _searchResults)
+                {
+                    <li>
+                        <button @onclick="() => RevealPreparedSearchResultAsync(result)">Reveal</button>
+                        <code>@result.Path</code>
+                        <span style="margin-left: 0.5rem;">@result.Preview</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
 </section>
 
 @code {
+    private const string SamplePreparedDocumentId = "layer1-prepared-sample";
     private JsonVisualizer? _visualizer;
-    private string _revealPath = "$.document.nested";
+    private string? _preparedDocumentId;
+    private string _revealPath = "/document/nested";
+    private string _searchQuery = "viewing";
     private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer1-session", "Waiting for runtime event.");
     private List<RuntimeDiagnosticDto> _diagnostics = [];
+    private List<PreparedSearchResultDto> _searchResults = [];
 
     private const string SampleJson = """
 {
@@ -83,19 +127,59 @@
 }
 """;
 
-    private async Task RevealPathAsync()
+protected override async Task OnInitializedAsync()
     {
-        if (_visualizer is null)
+    var existing = await PreparedDocumentStore.GetAsync(SamplePreparedDocumentId);
+    if (existing is null)
+    {
+        await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(SampleJson));
+        var imported = await JsonDocumentImporter.ImportAsync(sourceStream, new JsonDocumentImportOptions
         {
-            return;
-        }
-
-        await _visualizer.RevealPathAsync(_revealPath);
+            DocumentId = SamplePreparedDocumentId,
+            BuildPathIndex = true,
+            BuildSearchIndex = true
+        });
+        _preparedDocumentId = imported.DocumentId;
+        return;
     }
 
-    private void SetRevealPath(string path)
+    _preparedDocumentId = existing.DocumentId;
+}
+
+private async Task RevealPreparedPathAsync()
+{
+    if (_visualizer is null)
     {
-        _revealPath = path;
+        return;
+    }
+
+    await _visualizer.RevealPreparedJsonPointerAsync(_revealPath);
+}
+
+private async Task SearchPreparedDocumentAsync()
+{
+    if (_visualizer is null)
+    {
+        return;
+    }
+
+    var page = await _visualizer.SearchPreparedDocumentAsync(_searchQuery);
+    _searchResults = page.Results.ToList();
+}
+
+private async Task RevealPreparedSearchResultAsync(PreparedSearchResultDto result)
+{
+    if (_visualizer is null)
+    {
+        return;
+    }
+
+    await _visualizer.RevealPreparedSearchResultAsync(result);
+}
+
+private void SetRevealPath(string path)
+{
+    _revealPath = path;
     }
 
     private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)

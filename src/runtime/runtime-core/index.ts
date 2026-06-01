@@ -38,6 +38,166 @@ export interface LoadTextDocumentCommand {
   contentType: JsonContentType;
 }
 
+export interface PreparedViewportRequestDto {
+  firstRow: number;
+  rowCount: number;
+}
+
+export interface PreparedOpenRequestDto {
+  sessionId: string;
+  documentId: string;
+  initialViewport?: PreparedViewportRequestDto | undefined;
+}
+
+export interface PreparedIndexStateDto {
+  name: string;
+  state: "missing" | "building" | "ready" | "stale" | "failed";
+  version?: number | undefined;
+  message?: string | undefined;
+}
+
+export interface PreparedDocumentMetadataDto {
+  sessionId: string;
+  documentId: string;
+  revision: number;
+  sourceByteLength: number;
+  sourceEncoding: "utf-8";
+  documentState: "ready" | "failed" | "deleted" | "unknown";
+  indexes: Record<string, PreparedIndexStateDto>;
+  capabilities: string[];
+}
+
+export interface PreparedOpenResultDto {
+  success: boolean;
+  sessionId: string;
+  documentId: string;
+  revision?: number | undefined;
+  metadata?: PreparedDocumentMetadataDto | undefined;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
+export interface PreparedTextRangeRequestDto {
+  sessionId: string;
+  startByteOffset: number;
+  maxByteLength: number;
+}
+
+export interface PreparedTextRangeDto {
+  sessionId: string;
+  documentId: string;
+  revision: number;
+  requestedStartByteOffset: number;
+  actualStartByteOffset: number;
+  actualEndByteOffset: number;
+  text: string;
+  truncated: boolean;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
+export interface PreparedRowsRequestDto {
+  sessionId: string;
+  firstRow: number;
+  rowCount: number;
+  foldStateRevision?: number | undefined;
+}
+
+export interface PreparedRenderRowDto {
+  rowIndex: number;
+  kind: "node" | "foldPlaceholder" | "diagnostic";
+  nodeId?: string | undefined;
+  depth: number;
+  text: string;
+  folded?: boolean | undefined;
+  startByteOffset?: number | undefined;
+  endByteOffset?: number | undefined;
+  path?: string | undefined;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
+export interface PreparedRowsResultDto {
+  sessionId: string;
+  documentId: string;
+  revision: number;
+  firstRow: number;
+  rowCount: number;
+  totalKnownRows?: number | undefined;
+  rows: PreparedRenderRowDto[];
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
+export interface PreparedFoldStateRequestDto {
+  sessionId: string;
+  nodeId: string;
+  folded: boolean;
+}
+
+export interface PreparedFoldStateResultDto {
+  success: boolean;
+  foldStateRevision: number;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
+export interface PreparedSearchRequestDto {
+  sessionId: string;
+  query: string;
+  scope?: "allText" | "propertyNames" | "stringValues" | undefined;
+  ignoreCase?: boolean | undefined;
+  maxResults: number;
+  continuationToken?: string | undefined;
+}
+
+export interface PreparedSearchResultDto {
+  resultId: string;
+  startByteOffset: number;
+  endByteOffset: number;
+  preview: string;
+  path?: string | undefined;
+  nodeId?: string | undefined;
+}
+
+export interface PreparedSearchResultPageDto {
+  sessionId: string;
+  documentId: string;
+  revision: number;
+  results: PreparedSearchResultDto[];
+  continuationToken?: string | undefined;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
+export type PreparedRevealTargetDto =
+  | { kind: "byteRange"; startByteOffset: number; endByteOffset?: number | undefined }
+  | { kind: "searchResult"; resultId?: string | undefined; startByteOffset: number; endByteOffset: number }
+  | { kind: "jsonPointer"; path: string }
+  | { kind: "node"; nodeId: string };
+
+export type PreparedRevealFailureReasonDto =
+  | "notFound"
+  | "invalidTarget"
+  | "notIndexed"
+  | "indexMissing"
+  | "indexStale"
+  | "indexFailed"
+  | "sessionNotFound"
+  | "documentNotReady"
+  | "unsupported";
+
+export interface PreparedRevealRequestDto {
+  sessionId: string;
+  target: PreparedRevealTargetDto;
+}
+
+export interface PreparedRevealResultDto {
+  success: boolean;
+  sessionId: string;
+  documentId: string;
+  reason?: PreparedRevealFailureReasonDto | undefined;
+  rowIndex?: number | undefined;
+  nodeId?: string | undefined;
+  viewport?: PreparedViewportRequestDto | undefined;
+  expandedNodeIds?: string[] | undefined;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
 export interface SetViewportCommand {
   sessionId: string;
   width: number;
