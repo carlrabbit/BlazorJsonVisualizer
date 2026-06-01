@@ -806,7 +806,6 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
     private sealed class PreparedNodeBuilder(long[] lineStartOffsets, IDictionary<string, PreparedNodeRecord> nodesById, IDictionary<string, PreparedNodeRecord> nodesByPath)
     {
         private int nextNodeId = 1;
-        private readonly byte[] sourceBytes = [];
 
         public void Build(byte[] bytes)
         {
