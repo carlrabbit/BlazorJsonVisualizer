@@ -148,6 +148,7 @@ export interface PreparedSearchRequestDto {
 
 export interface PreparedSearchResultDto {
   resultId: string;
+  revision: number;
   startByteOffset: number;
   endByteOffset: number;
   preview: string;

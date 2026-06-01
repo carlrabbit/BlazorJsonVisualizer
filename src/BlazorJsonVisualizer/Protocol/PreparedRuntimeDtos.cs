@@ -105,6 +105,7 @@ public sealed record PreparedSearchResultPageDto(
 
 public sealed record PreparedSearchResultDto(
     string ResultId,
+    long Revision,
     long StartByteOffset,
     long EndByteOffset,
     string Preview,

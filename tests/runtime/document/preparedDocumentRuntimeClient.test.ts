@@ -24,7 +24,7 @@ const bridge = {
         sessionId: "prepared-session",
         documentId: "prepared-document",
         revision: 1,
-        results: [{ resultId: "r1", startByteOffset: 5, endByteOffset: 12, preview: "viewing" }]
+        results: [{ resultId: "r1", revision: 1, startByteOffset: 5, endByteOffset: 12, preview: "viewing" }]
       } as T;
     }
 
