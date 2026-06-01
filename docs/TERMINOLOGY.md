@@ -100,6 +100,34 @@ A rebuildable index created from document content or transactions, such as struc
 
 A derived index used to support search over a prepared document without limiting results to visible viewport rows.
 
+## Search Result Reveal
+
+The Layer 1 operation that resolves a search result to a viewport row/window and focuses or marks the matching location.
+
+## Degraded State
+
+A viewer or runtime state where an operation is unavailable, stale, partial, or failed due to missing index data, unsupported provider behavior, revision mismatch, or storage failure.
+
+## Layer 1 Diagnostic
+
+A structured diagnostic emitted by Layer 1 viewer/search/edit/export operations for normal user/request failures.
+
+## Controlled Edit
+
+A constrained Layer 1 editing operation that targets a known structural location and produces a validated transaction.
+
+## Freeform Text Editing
+
+Arbitrary text mutation of the JSON source. This is explicitly not part of the first prepared-document editing model.
+
+## Changed Region
+
+A section of exported JSON materialized from transactions rather than copied byte-for-byte from the original source chunks.
+
+## Revision Consistency
+
+The guarantee that runtime rows, search results, transactions, and export identify the document revision they are based on and do not silently mix incompatible revisions.
+
 ## Compaction
 
 The process of incorporating transactions into a newer prepared representation to reduce replay cost or storage fragmentation.
