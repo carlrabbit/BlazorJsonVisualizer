@@ -48,7 +48,7 @@ Wraps a caller-provided `Stream`.
 Rules:
 
 - length may be supplied explicitly or inferred when the stream supports length;
-- the adapter must document whether disposing the import stream disposes the caller-provided stream;
+- the adapter must document whether disposing the import stream disposes the caller-provided stream; the default implementation leaves the caller-provided stream open unless configured otherwise;
 - display name defaults to a neutral value when not supplied.
 
 ### File Path Source

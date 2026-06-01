@@ -30,11 +30,13 @@ public sealed class FileJsonDocumentImporter(FilePreparedJsonDocumentStore store
 
         PreparedDocumentContainer? container = null;
         PreparedDocumentWriteLease? writeLease = null;
+        var containerCreated = false;
         var createdAt = DateTimeOffset.UtcNow;
 
         try
         {
             container = await store.CreateContainerAsync(documentId, cancellationToken);
+            containerCreated = true;
             writeLease = await container.AcquireWriteLeaseAsync(cancellationToken);
 
             await WriteManifestAsync(container, CreateManifest(documentId, createdAt, createdAt, 0, null, chunkSize, JsonDocumentPreparationState.Importing, options), cancellationToken);
@@ -73,7 +75,10 @@ public sealed class FileJsonDocumentImporter(FilePreparedJsonDocumentStore store
             }
 
             await DisposeLeaseAsync(writeLease);
-            TryDeleteDirectory(store.GetDocumentPath(documentId));
+            if (containerCreated)
+            {
+                TryDeleteDirectory(store.GetDocumentPath(documentId));
+            }
             throw;
         }
         finally
