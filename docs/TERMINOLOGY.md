@@ -60,6 +60,22 @@ A deterministic runtime operation that changes document state and may produce pa
 
 The original JSON input stream supplied by the user before repository-specific preparation occurs.
 
+## Data Ingestion
+
+The public-facing workflow that accepts a raw JSON source, runs an import job, reports progress and diagnostics, and produces a prepared document when successful.
+
+## Ingestion Source
+
+An application-provided source adapter for raw JSON input. A source exposes display metadata and opens a readable stream without making file paths the universal ingestion contract.
+
+## Import Job
+
+A potentially long-running ingestion operation with lifecycle state, progress, cancellation, diagnostics, and a final import result.
+
+## Import Diagnostic
+
+A stable diagnostic emitted for source, encoding, JSON validity, cancellation, finalization, or optional-index findings during ingestion.
+
 ## Prepared Document
 
 A persistent internal representation of an imported JSON source, including source storage, metadata, derived indexes, and change tracking.
@@ -95,6 +111,18 @@ A policy that defines how JSON output is generated from prepared document state.
 ## Format Preservation
 
 The degree to which exported JSON preserves original source bytes, whitespace, ordering, and formatting.
+
+## Prepared Document Runtime Bridge
+
+The .NET-side adapter that opens prepared documents from the store and exposes bounded runtime-oriented operations for metadata, rows, ranges, search, reveal, diagnostics, and session disposal.
+
+## Prepared Document Runtime Protocol
+
+The explicit Blazor/TypeScript DTO and operation contract used by prepared-document sessions. It is distinct from storage-provider internals and from small-document full-text runtime loading.
+
+## Range-Backed Layer 1 Viewer
+
+A Layer 1 viewer mode that renders a prepared document through bounded row, range, search, and reveal requests instead of loading the entire JSON source into the browser as one string.
 
 ## Short-Running Test
 

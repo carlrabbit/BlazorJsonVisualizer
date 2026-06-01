@@ -6,13 +6,13 @@ BlazorJsonVisualizer is a Blazor-facing package for a standalone TypeScript brow
 
 BlazorJsonVisualizer is in **Exploration / Active Design** mode.
 
-The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, search/indexing, visual identity, and related browser/Blazor boundaries. Architecture is emerging and should be documented only where durable boundaries need explanation.
+The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, ingestion, prepared-document storage, search/indexing, visual identity, and browser/Blazor boundaries. Architecture remains emerging and should be documented only where durable subsystem boundaries need explanation.
 
-Public package publication is **preview/planned**. Public docs are preview surfaces and may intentionally describe planned workflows separately from currently supported behavior. Release readiness is future work and must not be treated as a normal implementation requirement.
+Public package publication is **preview/planned**. Public docs are preview surfaces and may intentionally distinguish implemented repository behavior from planned consumer workflows. Release readiness is future work and must not be treated as a normal implementation requirement.
 
 ## Quick start
 
-A finalized consumer quick start is planned for first package release.
+A finalized consumer quick start is planned for the first package release.
 
 For now, contributors can build and validate with:
 
@@ -43,6 +43,9 @@ These preview docs describe currently useful concepts and planned consumer workf
 - [Versioning](public-docs/versioning.md)
 - [Release notes](public-docs/release-notes.md)
 - [Huge JSON documents](public-docs/guides/huge-json-documents.md)
+- [Import huge JSON](public-docs/guides/import-huge-json.md)
+- [Open a prepared document](public-docs/guides/open-prepared-document.md)
+- [Import diagnostics](public-docs/diagnostics/import-diagnostics.md)
 
 ## Contributor documentation
 
@@ -52,6 +55,7 @@ These preview docs describe currently useful concepts and planned consumer workf
 - [`docs/DECISIONS.md`](docs/DECISIONS.md)
 - [`docs/ENGINEERING.md`](docs/ENGINEERING.md)
 - [`docs/PUBLIC-DOCS.md`](docs/PUBLIC-DOCS.md)
+- [`docs/MILESTONES.md`](docs/MILESTONES.md)
 
 ## Canonical engineering commands
 

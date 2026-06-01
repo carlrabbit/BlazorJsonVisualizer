@@ -27,12 +27,14 @@ Public docs are currently **Preview**. They are allowed to be intentionally inco
 | Installation docs | `public-docs/installation.md` | Planned |
 | Package docs | `public-docs/packages.md`, `public-docs/nuget/package-readme.md` | Planned |
 | Public API documentation | `public-docs/api/` | Preview for implemented APIs |
-| Diagnostics reference | `public-docs/diagnostics.md` | Preview/planned |
+| Diagnostics reference | `public-docs/diagnostics.md`, `public-docs/diagnostics/import-diagnostics.md` | Preview for prepared-document and ingestion diagnostics |
 | Samples documentation | `public-docs/samples.md`, `public-docs/samples/` | Preview for repository samples |
 | Release notes | `public-docs/release-notes.md` | Pre-release placeholder |
 | Versioning policy | `public-docs/versioning.md` | Planned |
 | Theme JSON contract | `public-docs/concepts.md`, `public-docs/samples/visual-identity-playground.md` | Preview |
-| Huge JSON lifecycle guide | `public-docs/guides/huge-json-documents.md` | Preview planned workflow |
+| Huge JSON lifecycle guide | `public-docs/guides/huge-json-documents.md` | Preview |
+| Huge JSON import guide | `public-docs/guides/import-huge-json.md` | Preview for implemented ingestion behavior |
+| Prepared-document opening guide | `public-docs/guides/open-prepared-document.md` | Preview planned workflow |
 
 ## Synchronization Rules
 
@@ -48,6 +50,8 @@ When any listed surface changes, keep related public surfaces aligned.
 - Website content, if used later, must originate from `public-docs/website/` and remain consistent with README and release notes.
 - When the theme JSON contract changes, review and update `docs/specs/theme-token-format.md`, `public-docs/concepts.md`, `public-docs/samples/visual-identity-playground.md`, and `public-docs/release-notes.md`.
 - When prepared-document lifecycle behavior changes, review and update `docs/specs/prepared-document.md`, `public-docs/concepts.md`, `public-docs/getting-started.md`, and `public-docs/guides/huge-json-documents.md`.
+- When ingestion behavior or import diagnostics change, review and update `docs/specs/data-ingestion.md`, `docs/specs/ingestion-sources.md`, `docs/specs/import-jobs.md`, `docs/specs/import-diagnostics.md`, `public-docs/guides/import-huge-json.md`, `public-docs/diagnostics.md`, and `public-docs/diagnostics/import-diagnostics.md`.
+- When prepared-document runtime viewing changes, review and update `docs/specs/prepared-document-runtime-bridge.md`, `docs/specs/prepared-document-runtime-protocol.md`, `docs/specs/range-backed-layer1-viewer.md`, `public-docs/guides/open-prepared-document.md`, `public-docs/guides/huge-json-documents.md`, and `public-docs/samples.md`.
 
 ## Release Readiness
 

@@ -25,6 +25,8 @@ Milestones define sequencing: what is in scope, what is out of scope, what must 
 | `milestones/milestone-0010-visual-identity-system-and-theme-playground.md` | Active | Creates the first dark-only token-based visual identity system and Blazor theme playground. |
 | `milestones/milestone-0012-prepared-document-import-storage-indexing-export.md` | Active | Defines and implements the prepared-document import, storage, indexing, and export lifecycle for huge JSON workflows. |
 | `milestones/milestone-0013-department-scale-prepared-document-storage-engine.md` | Active | Implements the department-scale prepared document storage engine, default file-backed provider, indexes, search, export, and concurrency behavior. |
+| `milestones/milestone-0014-data-ingestion-adapters-diagnostics-import-job-lifecycle.md` | Implemented / synchronized | Implements ingestion sources, import jobs, progress, cancellation, diagnostics, and encoding policy for huge JSON import. |
+| `milestones/milestone-0015-prepared-document-runtime-bridge-range-backed-layer1-viewer.md` | Planned | Implements the prepared-document runtime bridge and range-backed Layer 1 viewer path. |
 
 ## Spec Alignment
 
@@ -34,8 +36,8 @@ When a spec exists, milestone documents should point to that spec instead of dup
 
 This document is authoritative for:
 
-- the index of milestone documents under `docs/milestones/`
-- the milestone sequencing model
+- the index of milestone documents under `docs/milestones/`;
+- the milestone sequencing model.
 
 ## Document Contract
 

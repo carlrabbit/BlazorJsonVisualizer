@@ -2,7 +2,9 @@
 
 ## Purpose
 
-Defines the boundary between the Blazor host and the TypeScript browser runtime.
+Defines the general boundary between the Blazor host and the TypeScript browser runtime.
+
+More specialized prepared-document operations are defined by `docs/specs/prepared-document-runtime-protocol.md`.
 
 ## Ownership
 
@@ -13,7 +15,7 @@ Defines the boundary between the Blazor host and the TypeScript browser runtime.
 
 The protocol uses explicit DTOs. Do not expose internal runtime classes over the boundary.
 
-## Host-to-runtime messages
+## General host-to-runtime messages
 
 ### `createSession`
 
@@ -35,7 +37,9 @@ Fields:
 
 ### `loadTextDocument`
 
-Loads an initial full text document. This is acceptable for early milestones only. Later large-document support may add streaming/chunked loading.
+Loads an initial full text document. This is acceptable for small documents and early/full-text Layer 1 workflows.
+
+Huge prepared-document workflows must use `docs/specs/prepared-document-runtime-protocol.md` instead of transferring the whole source as one browser-side string.
 
 Fields:
 
@@ -54,7 +58,7 @@ Fields:
 - `width: number`
 - `height: number`
 
-## Additional host-to-runtime messages for Milestone 003
+## Layer 1 host-to-runtime messages
 
 ### `toggleFold`
 
@@ -70,7 +74,7 @@ Fields:
 - `sessionId: string`
 - `path: string`
 
-## Additional host-to-runtime messages for Milestone 004
+## Editing host-to-runtime messages
 
 ### `applyTransaction`
 
@@ -91,7 +95,7 @@ Fields:
 
 - `sessionId: string`
 
-## Additional host-to-runtime messages for Milestone 005
+## Schema-overlay host-to-runtime messages
 
 ### `attachSchema`
 
@@ -115,7 +119,7 @@ Fields:
 - `sessionId: string`
 - `path: string`
 
-## Additional host-to-runtime messages for Milestone 006
+## Projection host-to-runtime messages
 
 ### `createProjection`
 
@@ -230,14 +234,12 @@ Fields:
 
 ### `placeholderEvent`
 
-Temporary event used by Milestone 002 to prove roundtrip interop.
+Temporary event used by early runtime skeleton work to prove roundtrip interop.
 
 Fields:
 
 - `sessionId: string`
 - `message: string`
-
-## Additional runtime-to-host events for Milestone 003
 
 ### `documentLoaded`
 
@@ -253,8 +255,6 @@ Fields:
 
 - `sessionId: string`
 - `diagnostics: RuntimeDiagnosticDto[]`
-
-## Additional runtime-to-host events for Milestone 004
 
 ### `transactionApplied`
 
@@ -280,8 +280,6 @@ Fields:
 - `transactionId: string`
 - `reason: string`
 
-## Additional runtime-to-host events for Milestone 005
-
 ### `schemaAttached`
 
 Fields:
@@ -302,8 +300,6 @@ Fields:
 
 - `sessionId: string`
 - `affectedNodeIds: string[]`
-
-## Additional runtime-to-host events for Milestone 006
 
 ### `projectionCreated`
 
@@ -331,11 +327,11 @@ Fields:
 
 ## Versioning
 
-Every runtime entry point must expose a runtime protocol version string. Breaking protocol changes must update this spec.
+Every runtime entry point must expose a runtime protocol version string. Breaking protocol changes must update this spec and, when prepared-document behavior is affected, `docs/specs/prepared-document-runtime-protocol.md`.
 
-## Layer 1 Modular Commands (Milestone 009)
+## Layer 1 Modular Commands
 
-The Layer 1 modular host (`runtime-blazor/src/layer1Host.ts`) exposes these functions:
+The Layer 1 modular host (`runtime-blazor/src/layer1Host.ts`) exposes these functions for small/full-text Layer 1 sessions:
 
 ```ts
 function layer1CreateSession(sessionId: string, sourceText: string): void
@@ -347,3 +343,21 @@ function layer1DisposeSession(sessionId: string): void
 ```
 
 These functions operate on the Layer 1 `DocumentSession` model and are independent of the full `SessionRegistry`-based runtime.
+
+Range-backed prepared-document Layer 1 sessions are governed by `docs/specs/range-backed-layer1-viewer.md` and `docs/specs/prepared-document-runtime-protocol.md`.
+
+## Authority
+
+This document is authoritative for the general Blazor-host-to-browser-runtime protocol boundary.
+
+It is not authoritative for prepared-document storage layout, ingestion job behavior, or public documentation wording.
+
+## Document Contract
+
+When this document changes, review:
+
+- `docs/specs/prepared-document-runtime-protocol.md`
+- `docs/specs/document-session.md`
+- `docs/specs/range-backed-layer1-viewer.md`
+- `docs/ARCHITECTURE.md`
+- `docs/TERMINOLOGY.md`

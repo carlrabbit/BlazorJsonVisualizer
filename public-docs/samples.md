@@ -15,7 +15,9 @@ Sample docs list useful repository samples now, but they are not release-ready e
 ## Guides
 
 - `public-docs/guides/huge-json-documents.md` explains the prepared-document lifecycle used for huge JSON workflows.
+- `public-docs/guides/import-huge-json.md` explains huge JSON ingestion and import diagnostics.
+- `public-docs/guides/open-prepared-document.md` explains the prepared-document viewing workflow.
 
 ## Planned
 
-Dedicated UI samples for huge-document import, search, and export are planned after the storage engine stabilizes.
+Dedicated UI samples for huge-document import, prepared-document opening, search, and export are planned after the storage and runtime bridge stabilize.

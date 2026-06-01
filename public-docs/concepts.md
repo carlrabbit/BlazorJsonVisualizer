@@ -22,7 +22,7 @@ Plugins may define plugin-local tokens under their plugin identifier.
 
 See:
 
-- public-docs/samples/visual-identity-playground.md
+- `public-docs/samples/visual-identity-playground.md`
 
 ### Planned
 
@@ -40,8 +40,33 @@ Prepared-document storage details are internal. Consumers should use the prepare
 
 See:
 
-- public-docs/guides/huge-json-documents.md
+- `public-docs/guides/huge-json-documents.md`
 
 ### Current limits
 
 Prepared-document APIs and docs are preview surfaces while package publication is planned.
+
+## Data Ingestion
+
+### Supported now
+
+The ingestion workflow accepts raw JSON through source adapters, starts an import job, reports progress and diagnostics, and produces a prepared document when import succeeds.
+
+Default source adapters include stream and file-path sources. Browser upload, cloud-object ingestion, resumable upload, and batch import remain planned or out of scope unless documented separately.
+
+See:
+
+- `public-docs/guides/import-huge-json.md`
+- `public-docs/diagnostics/import-diagnostics.md`
+
+## Range-Backed Viewing
+
+### Preview planned workflow
+
+A prepared document can be opened through a range-backed Layer 1 viewer workflow. The viewer requests bounded rows, source ranges, search result pages, and reveal targets instead of loading the complete JSON document into the browser as one string.
+
+Prepared-document runtime sessions are read-only in this workflow.
+
+See:
+
+- `public-docs/guides/open-prepared-document.md`

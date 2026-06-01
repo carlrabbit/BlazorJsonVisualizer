@@ -12,19 +12,19 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/schema-overlay-model.md`
 - `docs/specs/projection-plugin-model.md`
 
-## Layer 1 specs (Milestone 009)
+## Layer 1 specs
 
 - `docs/specs/json-tokenizer.md`
 - `docs/specs/layer1-rendering.md`
 - `docs/specs/path-navigation.md`
 
-## Visual identity specs (Milestone 010)
+## Visual identity specs
 
 - `docs/specs/visual-identity.md`
 - `docs/specs/theme-token-format.md`
 - `docs/specs/visual-identity-playground.md`
 
-## Prepared document specs (Milestone 012)
+## Prepared document specs
 
 - `docs/specs/prepared-document.md`
 - `docs/specs/document-import.md`
@@ -38,3 +38,31 @@ Specs are authoritative behavioral documents. Implementation must either conform
 - `docs/specs/prepared-document-storage-format.md`
 - `docs/specs/prepared-document-concurrency.md`
 - `docs/specs/prepared-document-search-engine.md`
+
+## Data ingestion specs
+
+- `docs/specs/data-ingestion.md`
+- `docs/specs/ingestion-sources.md`
+- `docs/specs/import-jobs.md`
+- `docs/specs/import-diagnostics.md`
+- `docs/specs/encoding-and-offsets.md`
+
+## Prepared document runtime specs
+
+- `docs/specs/prepared-document-runtime-bridge.md`
+- `docs/specs/prepared-document-runtime-protocol.md`
+- `docs/specs/range-backed-layer1-viewer.md`
+
+## Authority
+
+This document is authoritative for the index of behavioral specs under `docs/specs/`.
+
+## Document Contract
+
+When this index changes, review:
+
+- `README.md`
+- `AGENTS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MILESTONES.md`
+- `docs/PUBLIC-DOCS.md`

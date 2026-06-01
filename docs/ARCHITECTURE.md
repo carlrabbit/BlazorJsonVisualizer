@@ -28,19 +28,20 @@ Architecture documentation is intentionally lightweight while the repository is 
 | `docs/architecture/blazor-integration.md` | Describes Blazor host responsibilities and non-responsibilities. |
 | `docs/architecture/document-model.md` | Describes the structure-first document model and overlay boundaries. |
 | `docs/architecture/plugin-model.md` | Describes planned Layer 3 plugin/projection boundaries. |
+| `docs/architecture/prepared-document-runtime-boundary.md` | Describes the prepared-document store, runtime bridge, Blazor host, and TypeScript runtime ownership boundary for range-backed Layer 1 viewing. |
 
 ## Authority
 
 This document is authoritative for:
 
-- the index of architecture documents under `docs/architecture/`
-- what counts as an architecture document
+- the index of architecture documents under `docs/architecture/`;
+- what counts as an architecture document.
 
 This document is not authoritative for:
 
-- product behavior (use specs)
-- engineering commands (use engineering docs)
-- implementation process or validation tiers (use engineering docs)
+- product behavior (use specs);
+- engineering commands (use engineering docs);
+- implementation process or validation tiers (use engineering docs).
 
 ## Document Contract
 
