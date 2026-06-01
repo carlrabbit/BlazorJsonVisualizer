@@ -137,14 +137,23 @@
         await _interop.RevealPathAsync(new RevealPathCommand(EffectiveSessionId, path));
     }
 
-    public async Task<PreparedSearchResultPageDto> SearchPreparedDocumentAsync(string query, int maxResults = 25)
+    public async Task<PreparedSearchResultPageDto> SearchPreparedDocumentAsync(
+        string query,
+        int maxResults = 25,
+        bool ignoreCase = true,
+        string? continuationToken = null)
     {
         if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId) || string.IsNullOrWhiteSpace(query))
         {
             return new PreparedSearchResultPageDto(EffectiveSessionId, EffectivePreparedDocumentId, 0, []);
         }
 
-        return await _interop.SearchPreparedDocumentAsync(new PreparedSearchRequestDto(EffectiveSessionId, query, MaxResults: maxResults));
+        return await _interop.SearchPreparedDocumentAsync(new PreparedSearchRequestDto(
+            EffectiveSessionId,
+            query,
+            IgnoreCase: ignoreCase,
+            MaxResults: maxResults,
+            ContinuationToken: continuationToken));
     }
 
     public async Task<PreparedRevealResultDto> RevealPreparedJsonPointerAsync(string jsonPointer)

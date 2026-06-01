@@ -2719,6 +2719,7 @@ var PreparedDocumentHost = class {
       viewport: request.initialViewport ?? DEFAULT_VIEWPORT,
       foldStateRevision: 0,
       diagnostics: openResult.diagnostics ?? [],
+      metadata: openResult.metadata,
       rows: void 0,
       totalKnownRows: 0
     };
@@ -2779,6 +2780,9 @@ var PreparedDocumentHost = class {
     session.hostElement.append(this.createStyles());
     const runtime = document.createElement("section");
     runtime.className = "bjv-prepared-runtime";
+    if (session.metadata !== void 0) {
+      runtime.append(this.createMetadataPanel(session.metadata));
+    }
     if (session.diagnostics.length > 0) {
       runtime.append(this.createDiagnosticsPanel(session.diagnostics));
     }
@@ -2802,7 +2806,7 @@ var PreparedDocumentHost = class {
   }
   createRowElement(session, row) {
     const rowElement = document.createElement("div");
-    rowElement.className = "bjv-prepared-row";
+    rowElement.className = row.nodeId === session.focusedNodeId ? "bjv-prepared-row bjv-prepared-row-focused" : "bjv-prepared-row";
     rowElement.style.paddingLeft = `${Math.max(0, row.depth) * 0.75}rem`;
     if (row.nodeId != null) {
       rowElement.dataset.nodeId = row.nodeId;
@@ -2862,6 +2866,38 @@ var PreparedDocumentHost = class {
     await this.emitDiagnostics(session);
     this.render(session);
   }
+  createMetadataPanel(metadata) {
+    const panel = document.createElement("section");
+    panel.className = "bjv-prepared-metadata";
+    const title = document.createElement("h2");
+    title.textContent = "Prepared document";
+    panel.append(title);
+    const summary = document.createElement("dl");
+    summary.className = "bjv-prepared-metadata-list";
+    this.appendMetadataItem(summary, "Document", metadata.documentId);
+    this.appendMetadataItem(summary, "Revision", metadata.revision.toString());
+    this.appendMetadataItem(summary, "Bytes", metadata.sourceByteLength.toString());
+    this.appendMetadataItem(summary, "State", metadata.documentState);
+    this.appendMetadataItem(summary, "Encoding", metadata.sourceEncoding);
+    this.appendMetadataItem(summary, "Operations", metadata.capabilities.length === 0 ? "none" : metadata.capabilities.join(", "));
+    panel.append(summary);
+    const indexes = document.createElement("ul");
+    indexes.className = "bjv-prepared-indexes";
+    for (const index of Object.values(metadata.indexes)) {
+      const item = document.createElement("li");
+      item.textContent = `${index.name}: ${index.state}`;
+      indexes.append(item);
+    }
+    panel.append(indexes);
+    return panel;
+  }
+  appendMetadataItem(list, termText, valueText) {
+    const term = document.createElement("dt");
+    term.textContent = termText;
+    const value = document.createElement("dd");
+    value.textContent = valueText;
+    list.append(term, value);
+  }
   createDiagnosticsPanel(diagnostics) {
     const panel = document.createElement("section");
     panel.className = "bjv-prepared-diagnostics";
@@ -2885,6 +2921,44 @@ var PreparedDocumentHost = class {
   gap: 0.75rem;
   font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
+.bjv-prepared-metadata {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: system-ui, sans-serif;
+}
+.bjv-prepared-metadata h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+.bjv-prepared-metadata-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+.bjv-prepared-metadata-list dt {
+  font-weight: 700;
+}
+.bjv-prepared-metadata-list dd {
+  margin: 0;
+}
+.bjv-prepared-indexes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0 0;
+  padding: 0;
+  list-style: none;
+}
+.bjv-prepared-indexes li {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  background: #dbeafe;
+}
 .bjv-prepared-scroll {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -2902,6 +2976,11 @@ var PreparedDocumentHost = class {
 }
 .bjv-prepared-row-text {
   white-space: pre;
+}
+.bjv-prepared-row-focused {
+  outline: 2px solid #facc15;
+  outline-offset: -2px;
+  background: #1e293b;
 }
 .bjv-prepared-fold,
 .bjv-prepared-fold-spacer {

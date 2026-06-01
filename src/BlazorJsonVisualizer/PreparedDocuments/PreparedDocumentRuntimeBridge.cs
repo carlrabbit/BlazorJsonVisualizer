@@ -185,25 +185,51 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
         }
 
         var boundedMaxResults = Math.Clamp(request.MaxResults, 0, MaxSearchResults);
+        var searchLimit = boundedMaxResults == 0 ? 0 : boundedMaxResults + 1;
         var results = new List<PreparedSearchResultDto>();
+        PreparedSearchResultDto? overflowResult = null;
         var ordinal = 0;
-        await foreach (var result in session.Handle.SearchAsync(
-            new PreparedDocumentSearchQuery(request.Query, request.IgnoreCase, PreparedDocumentSearchScope.AllText, boundedMaxResults, request.ContinuationToken),
-            cancellationToken))
+        try
         {
-            var node = session.FindNodeContainingOffset(result.StartOffset);
-            var dto = new PreparedSearchResultDto(
-                $"{result.StartOffset}:{result.EndOffset}:{ordinal++}",
-                result.StartOffset,
-                result.EndOffset,
-                result.Preview,
-                node?.Path,
-                node?.NodeId);
-            results.Add(dto);
+            await foreach (var result in session.Handle.SearchAsync(
+                new PreparedDocumentSearchQuery(request.Query, request.IgnoreCase, PreparedDocumentSearchScope.AllText, searchLimit, request.ContinuationToken),
+                cancellationToken))
+            {
+                var node = session.FindNodeContainingOffset(result.StartOffset);
+                var dto = new PreparedSearchResultDto(
+                    $"{result.StartOffset}:{result.EndOffset}:{ordinal++}",
+                    result.Revision,
+                    result.StartOffset,
+                    result.EndOffset,
+                    result.Preview,
+                    node?.Path,
+                    node?.NodeId);
+
+                if (results.Count < boundedMaxResults)
+                {
+                    results.Add(dto);
+                }
+                else
+                {
+                    overflowResult = dto;
+                    break;
+                }
+            }
+        }
+        catch (ArgumentException exception)
+        {
+            return new PreparedSearchResultPageDto(request.SessionId, session.Metadata.DocumentId, session.Metadata.Revision, [], Diagnostics: [CreateDiagnostic("prepared.invalidContinuationToken", exception.Message)]);
+        }
+        catch (NotSupportedException exception)
+        {
+            return new PreparedSearchResultPageDto(request.SessionId, session.Metadata.DocumentId, session.Metadata.Revision, [], Diagnostics: [CreateDiagnostic("prepared.searchUnsupportedScope", exception.Message)]);
         }
 
         session.RememberSearchResults(results);
-        return new PreparedSearchResultPageDto(request.SessionId, session.Metadata.DocumentId, session.Metadata.Revision, results, Diagnostics: []);
+        var continuationToken = overflowResult is null
+            ? null
+            : overflowResult.StartByteOffset.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return new PreparedSearchResultPageDto(request.SessionId, session.Metadata.DocumentId, session.Metadata.Revision, results, continuationToken, []);
     }
 
     public ValueTask<PreparedRevealResultDto> RevealAsync(PreparedRevealRequestDto request, CancellationToken cancellationToken = default)
@@ -667,7 +693,7 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
                 ["path"] = ToIndexState("path", handle.Manifest.Indexes.Path)
             };
 
-            var capabilities = new List<string> { "metadata", "readTextRange" };
+            var capabilities = new List<string> { "metadata", "readTextRange", "export" };
             if (IsReady(handle.Manifest.Indexes.Line))
             {
                 capabilities.Add("rows");

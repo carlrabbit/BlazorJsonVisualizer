@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @rendermode InteractiveServer
 @using System.Text
 @using System.Text.Json
@@ -6,14 +6,58 @@
 @inject IPreparedJsonDocumentStore PreparedDocumentStore
 @inject IJsonDocumentImporter JsonDocumentImporter
 
-<PageTitle>Layer 1 JSON Viewer Sample</PageTitle>
+<PageTitle>Layer 1 Prepared Document Viewer Sample</PageTitle>
 
-<h1>Layer 1 JSON Viewer Sample</h1>
+<h1>Layer 1 Prepared Document Viewer Sample</h1>
 
 <p>
-    This sample demonstrates the prepared-document Layer 1 viewing path.
-    The component below opens a small prepared document through the runtime bridge instead of loading the whole JSON source into the browser as one string.
+    This sample demonstrates the read-only prepared-document Layer 1 path: import or select a prepared document,
+    open it through the range-backed viewer, scroll bounded row windows, fold rows, search the prepared source,
+    page results, reveal results, and inspect diagnostics/index states.
 </p>
+
+<section style="margin-bottom: 1.5rem; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; display: grid; gap: 1rem;">
+    <div>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Prepared document selection</h2>
+        <p style="margin-top: 0;">The sample store is backed by a temporary file store and starts with a seeded document.</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <select @bind="_selectedDocumentId"
+                    style="min-width: 18rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                    aria-label="Prepared document">
+                @foreach (var document in _documents)
+                {
+                    <option value="@document.DocumentId">@document.DocumentId (@document.SourceLength bytes, @document.State)</option>
+                }
+            </select>
+            <button @onclick="OpenSelectedDocumentAsync"
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                Open selected
+            </button>
+        </div>
+    </div>
+
+    <div>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Import sample JSON</h2>
+        <textarea @bind="_importJson"
+                  rows="8"
+                  style="width: 100%; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; border: 1px solid #cbd5e1; border-radius: 4px; padding: 0.5rem;"
+                  aria-label="JSON to import"></textarea>
+        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_importDocumentId"
+                   placeholder="optional-document-id"
+                   style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
+                   aria-label="Optional import document id" />
+            <button @onclick="ImportJsonAsync"
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #047857; background: #047857; color: white; border-radius: 4px; cursor: pointer;">
+                Import and open
+            </button>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(_sampleMessage))
+        {
+            <p style="margin-bottom: 0;">@_sampleMessage</p>
+        }
+    </div>
+</section>
 
 @if (string.IsNullOrWhiteSpace(_preparedDocumentId))
 {
@@ -21,10 +65,11 @@
 }
 else
 {
-    <JsonVisualizer @ref="_visualizer"
-                   SessionId="layer1-session"
-                   PreparedDocumentId="@_preparedDocumentId"
-                   RuntimeEvent="HandleRuntimeEvent" />
+    <JsonVisualizer @key="_preparedDocumentId"
+                    @ref="_visualizer"
+                    SessionId="layer1-session"
+                    PreparedDocumentId="@_preparedDocumentId"
+                    RuntimeEvent="HandleRuntimeEvent" />
 }
 
 <section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
@@ -36,13 +81,14 @@ else
                    style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
                    aria-label="Reveal JSON Pointer" />
             <button @onclick="RevealPreparedPathAsync"
-                   style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
+                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
                 Reveal JSON Pointer
             </button>
         </div>
         <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <button @onclick='() => SetRevealPath("/document/nested")'>Reveal nested</button>
             <button @onclick='() => SetRevealPath("/features")'>Reveal features</button>
+            <button @onclick='() => SetRevealPath("/")'>Reveal root</button>
         </div>
     </section>
 
@@ -65,7 +111,7 @@ else
             <ul>
                 @foreach (var diagnostic in _diagnostics)
                 {
-                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.StartOffset-@diagnostic.EndOffset)</li>
+                    <li><strong>@diagnostic.Severity</strong>: @diagnostic.Message (@diagnostic.Code, @diagnostic.StartOffset-@diagnostic.EndOffset)</li>
                 }
             </ul>
         }
@@ -77,24 +123,41 @@ else
             <input @bind="_searchQuery"
                    style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
                    aria-label="Search prepared document" />
+            <label style="display: inline-flex; gap: 0.25rem; align-items: center;">
+                <input type="checkbox" @bind="_ignoreCase" /> Ignore case
+            </label>
             <button @onclick="SearchPreparedDocumentAsync"
                     style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
                 Search
             </button>
+            <button @onclick="ContinueSearchAsync" disabled="@string.IsNullOrWhiteSpace(_continuationToken)">
+                Next page
+            </button>
         </div>
+        @if (_searchDiagnostics.Count > 0)
+        {
+            <ul style="margin-top: 0.75rem; color: #7f1d1d;">
+                @foreach (var diagnostic in _searchDiagnostics)
+                {
+                    <li>@diagnostic.Message (@diagnostic.Code)</li>
+                }
+            </ul>
+        }
         @if (_searchResults.Count == 0)
         {
             <p style="margin-top: 0.75rem;">No results yet.</p>
         }
         else
         {
+            <p style="margin-bottom: 0;">Revision @_searchRevision. Continuation: @(string.IsNullOrWhiteSpace(_continuationToken) ? "end" : _continuationToken)</p>
             <ul style="margin-top: 0.75rem;">
                 @foreach (var result in _searchResults)
                 {
                     <li>
                         <button @onclick="() => RevealPreparedSearchResultAsync(result)">Reveal</button>
-                        <code>@result.Path</code>
+                        <code>@(result.Path ?? result.ResultId)</code>
                         <span style="margin-left: 0.5rem;">@result.Preview</span>
+                        <small style="margin-left: 0.5rem;">rev @result.Revision, bytes @result.StartByteOffset-@result.EndByteOffset</small>
                     </li>
                 }
             </ul>
@@ -106,17 +169,27 @@ else
     private const string SamplePreparedDocumentId = "layer1-prepared-sample";
     private JsonVisualizer? _visualizer;
     private string? _preparedDocumentId;
+    private string? _selectedDocumentId;
+    private string? _continuationToken;
     private string _revealPath = "/document/nested";
     private string _searchQuery = "viewing";
+    private string _importDocumentId = string.Empty;
+    private string _sampleMessage = string.Empty;
+    private bool _ignoreCase = true;
+    private long _searchRevision;
     private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer1-session", "Waiting for runtime event.");
+    private List<PreparedJsonDocumentInfo> _documents = [];
     private List<RuntimeDiagnosticDto> _diagnostics = [];
+    private List<RuntimeDiagnosticDto> _searchDiagnostics = [];
     private List<PreparedSearchResultDto> _searchResults = [];
+
+    private string _importJson = SampleJson;
 
     private const string SampleJson = """
 {
   "project": "BlazorJsonVisualizer",
   "layer": 1,
-  "features": ["viewing", "folding", "navigation"],
+  "features": ["viewing", "folding", "navigation", "search", "viewing again"],
   "document": {
     "kind": "sample",
     "nested": {
@@ -127,59 +200,128 @@ else
 }
 """;
 
-protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
-    var existing = await PreparedDocumentStore.GetAsync(SamplePreparedDocumentId);
-    if (existing is null)
+        await EnsureSeedDocumentAsync();
+        await RefreshDocumentListAsync();
+        _selectedDocumentId = _documents.FirstOrDefault()?.DocumentId;
+        _preparedDocumentId = _selectedDocumentId;
+    }
+
+    private async Task EnsureSeedDocumentAsync()
     {
-        await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(SampleJson));
-        var imported = await JsonDocumentImporter.ImportAsync(sourceStream, new JsonDocumentImportOptions
+        var existing = await PreparedDocumentStore.GetAsync(SamplePreparedDocumentId);
+        if (existing is not null)
         {
-            DocumentId = SamplePreparedDocumentId,
+            return;
+        }
+
+        await ImportJsonCoreAsync(SampleJson, SamplePreparedDocumentId);
+    }
+
+    private async Task RefreshDocumentListAsync()
+    {
+        _documents = (await PreparedDocumentStore.ListAsync()).ToList();
+    }
+
+    private Task OpenSelectedDocumentAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(_selectedDocumentId))
+        {
+            _preparedDocumentId = _selectedDocumentId;
+            _searchResults = [];
+            _searchDiagnostics = [];
+            _continuationToken = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task ImportJsonAsync()
+    {
+        try
+        {
+            var documentId = string.IsNullOrWhiteSpace(_importDocumentId)
+                ? $"layer1-import-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}"
+                : _importDocumentId.Trim();
+            var imported = await ImportJsonCoreAsync(_importJson, documentId);
+            await RefreshDocumentListAsync();
+            _selectedDocumentId = imported.DocumentId;
+            _preparedDocumentId = imported.DocumentId;
+            _sampleMessage = $"Imported and opened prepared document '{imported.DocumentId}'.";
+            _searchResults = [];
+            _searchDiagnostics = [];
+            _continuationToken = null;
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidDataException or IOException)
+        {
+            _sampleMessage = $"Import failed: {exception.Message}";
+        }
+    }
+
+    private async Task<PreparedJsonDocumentInfo> ImportJsonCoreAsync(string json, string documentId)
+    {
+        await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return await JsonDocumentImporter.ImportAsync(sourceStream, new JsonDocumentImportOptions
+        {
+            DocumentId = documentId,
             BuildPathIndex = true,
             BuildSearchIndex = true
         });
-        _preparedDocumentId = imported.DocumentId;
-        return;
     }
 
-    _preparedDocumentId = existing.DocumentId;
-}
-
-private async Task RevealPreparedPathAsync()
-{
-    if (_visualizer is null)
+    private async Task RevealPreparedPathAsync()
     {
-        return;
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.RevealPreparedJsonPointerAsync(_revealPath);
     }
 
-    await _visualizer.RevealPreparedJsonPointerAsync(_revealPath);
-}
-
-private async Task SearchPreparedDocumentAsync()
-{
-    if (_visualizer is null)
+    private async Task SearchPreparedDocumentAsync()
     {
-        return;
+        await SearchPreparedDocumentPageAsync(null);
     }
 
-    var page = await _visualizer.SearchPreparedDocumentAsync(_searchQuery);
-    _searchResults = page.Results.ToList();
-}
-
-private async Task RevealPreparedSearchResultAsync(PreparedSearchResultDto result)
-{
-    if (_visualizer is null)
+    private async Task ContinueSearchAsync()
     {
-        return;
+        if (string.IsNullOrWhiteSpace(_continuationToken))
+        {
+            return;
+        }
+
+        await SearchPreparedDocumentPageAsync(_continuationToken);
     }
 
-    await _visualizer.RevealPreparedSearchResultAsync(result);
-}
+    private async Task SearchPreparedDocumentPageAsync(string? continuationToken)
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
 
-private void SetRevealPath(string path)
-{
-    _revealPath = path;
+        var page = await _visualizer.SearchPreparedDocumentAsync(_searchQuery, maxResults: 3, ignoreCase: _ignoreCase, continuationToken: continuationToken);
+        _searchResults = page.Results.ToList();
+        _continuationToken = page.ContinuationToken;
+        _searchDiagnostics = page.Diagnostics?.ToList() ?? [];
+        _searchRevision = page.Revision;
+    }
+
+    private async Task RevealPreparedSearchResultAsync(PreparedSearchResultDto result)
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        await _visualizer.RevealPreparedSearchResultAsync(result);
+    }
+
+    private void SetRevealPath(string path)
+    {
+        _revealPath = path;
     }
 
     private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)

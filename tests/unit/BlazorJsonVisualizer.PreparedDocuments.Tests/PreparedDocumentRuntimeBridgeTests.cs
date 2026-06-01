@@ -132,6 +132,93 @@ public sealed class PreparedDocumentRuntimeBridgeTests
         }
     }
 
+
+    [Fact]
+    public async Task GetRowsAsync_BoundsRequestedWindow()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-bounded-rows", documentId));
+
+            var rows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-bounded-rows", -10, 500));
+
+            Assert.Equal(0, rows.FirstRow);
+            Assert.Equal(200, rows.RowCount);
+            Assert.True(rows.Rows.Count <= 200);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task SearchAsync_ReturnsContinuationTokenAndDistinctNextPage()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-search-pages", documentId));
+
+            var firstPage = await bridge.SearchAsync(new PreparedSearchRequestDto("session-search-pages", "e", MaxResults: 1));
+            var nextPage = await bridge.SearchAsync(new PreparedSearchRequestDto("session-search-pages", "e", MaxResults: 1, ContinuationToken: firstPage.ContinuationToken));
+
+            var first = Assert.Single(firstPage.Results);
+            var next = Assert.Single(nextPage.Results);
+            Assert.NotNull(firstPage.ContinuationToken);
+            Assert.NotEqual(first.ResultId, next.ResultId);
+            Assert.True(next.StartByteOffset > first.StartByteOffset);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task SearchAsync_InvalidContinuationToken_ReturnsDiagnostic()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-search-invalid-token", documentId));
+
+            var page = await bridge.SearchAsync(new PreparedSearchRequestDto("session-search-invalid-token", "viewing", MaxResults: 5, ContinuationToken: "not-an-offset"));
+
+            Assert.Empty(page.Results);
+            Assert.Equal("prepared.invalidContinuationToken", Assert.Single(page.Diagnostics!).Code);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task RevealAsync_ExpandsFoldedAncestors()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-reveal-expands", documentId));
+            var initialRows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-reveal-expands", 0, 50));
+            var documentRow = Assert.Single(initialRows.Rows, static row => row.Text.Contains("\"document\": {", StringComparison.Ordinal));
+            await bridge.SetFoldStateAsync(new PreparedFoldStateRequestDto("session-reveal-expands", documentRow.NodeId!, true));
+
+            var reveal = await bridge.RevealAsync(new PreparedRevealRequestDto("session-reveal-expands", new PreparedRevealTargetDto("jsonPointer", Path: "/document/nested/items")));
+            var rowsAfterReveal = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-reveal-expands", 0, 50));
+
+            Assert.True(reveal.Success);
+            Assert.Contains(documentRow.NodeId!, reveal.ExpandedNodeIds!);
+            Assert.Contains(rowsAfterReveal.Rows, static row => row.Text.Contains("\"items\": [1, 2, 3]", StringComparison.Ordinal));
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
     [Fact]
     public async Task SearchAsync_ReturnsOffsetsAndPathData()
     {
@@ -144,6 +231,7 @@ public sealed class PreparedDocumentRuntimeBridgeTests
 
             var result = Assert.Single(page.Results);
             Assert.Equal(documentId, page.DocumentId);
+            Assert.Equal(page.Revision, result.Revision);
             Assert.Contains("viewing", result.Preview, StringComparison.OrdinalIgnoreCase);
             Assert.NotNull(result.Path);
         }
