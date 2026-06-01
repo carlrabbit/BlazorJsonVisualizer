@@ -2658,16 +2658,336 @@ function createDomRuntimeController() {
   return new DomRuntimeControllerImpl();
 }
 
+// src/preparedDocumentRuntimeClient.ts
+function createPreparedDocumentRuntimeClient(bridge) {
+  return {
+    openPreparedDocumentSession: (request) => bridge.invokeMethodAsync("OpenPreparedDocumentSessionAsync", request),
+    getPreparedDocumentMetadata: (sessionId) => bridge.invokeMethodAsync("GetPreparedDocumentMetadataAsync", sessionId),
+    getPreparedRows: (request) => bridge.invokeMethodAsync("GetPreparedRowsAsync", request),
+    readPreparedTextRange: (request) => bridge.invokeMethodAsync("ReadPreparedTextRangeAsync", request),
+    setPreparedFoldState: (request) => bridge.invokeMethodAsync("SetPreparedFoldStateAsync", request),
+    searchPreparedDocument: (request) => bridge.invokeMethodAsync("SearchPreparedDocumentAsync", request),
+    revealPreparedLocation: (request) => bridge.invokeMethodAsync("RevealPreparedLocationAsync", request),
+    closePreparedDocumentSession: async (sessionId) => {
+      await bridge.invokeMethodAsync("ClosePreparedDocumentSessionAsync", sessionId);
+    }
+  };
+}
+
+// src/preparedDocumentHost.ts
+var ROW_HEIGHT_PX = 22;
+var DEFAULT_VIEWPORT = { firstRow: 0, rowCount: 50 };
+var PreparedDocumentHost = class {
+  sessions = /* @__PURE__ */ new Map();
+  registerSession(command, callbackTarget) {
+    this.sessions.set(command.sessionId, {
+      hostElementId: command.hostElementId,
+      callbackTarget
+    });
+  }
+  async unregisterSession(sessionId) {
+    const registeredSession = this.sessions.get(sessionId);
+    if (registeredSession?.prepared !== void 0) {
+      await registeredSession.prepared.client.closePreparedDocumentSession(sessionId);
+    }
+    this.sessions.delete(sessionId);
+  }
+  async closePreparedDocumentSession(sessionId) {
+    const registeredSession = this.sessions.get(sessionId);
+    if (registeredSession?.prepared === void 0) {
+      return;
+    }
+    await registeredSession.prepared.client.closePreparedDocumentSession(sessionId);
+    registeredSession.prepared = void 0;
+    const hostElement = this.requireHostElement(registeredSession.hostElementId);
+    hostElement.replaceChildren();
+  }
+  async openPreparedDocumentSession(request) {
+    const registeredSession = this.requireRegisteredSession(request.sessionId);
+    if (registeredSession.callbackTarget === void 0) {
+      throw new Error(`Prepared document session '${request.sessionId}' requires a .NET callback target.`);
+    }
+    const hostElement = this.requireHostElement(registeredSession.hostElementId);
+    const client = createPreparedDocumentRuntimeClient(registeredSession.callbackTarget);
+    const openResult = await client.openPreparedDocumentSession(request);
+    const preparedSession = {
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      hostElement,
+      callbackTarget: registeredSession.callbackTarget,
+      client,
+      viewport: request.initialViewport ?? DEFAULT_VIEWPORT,
+      foldStateRevision: 0,
+      diagnostics: openResult.diagnostics ?? [],
+      rows: void 0,
+      totalKnownRows: 0
+    };
+    registeredSession.prepared = preparedSession;
+    if (openResult.success) {
+      await this.refreshRows(preparedSession);
+      await this.emit(preparedSession, {
+        type: "documentLoaded",
+        sessionId: preparedSession.sessionId,
+        documentId: preparedSession.documentId,
+        nodeCount: preparedSession.rows?.totalKnownRows ?? 0
+      });
+    }
+    await this.emitDiagnostics(preparedSession);
+    this.render(preparedSession);
+  }
+  async searchPreparedDocument(request) {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const result = await preparedSession.client.searchPreparedDocument(request);
+    preparedSession.diagnostics = result.diagnostics ?? [];
+    await this.emitDiagnostics(preparedSession);
+    this.render(preparedSession);
+    return result;
+  }
+  async revealPreparedLocation(request) {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const result = await preparedSession.client.revealPreparedLocation(request);
+    preparedSession.diagnostics = result.diagnostics ?? [];
+    if (result.success && result.viewport !== void 0) {
+      preparedSession.viewport = result.viewport;
+      preparedSession.focusedNodeId = result.nodeId;
+      await this.refreshRows(preparedSession);
+    }
+    await this.emitDiagnostics(preparedSession);
+    this.render(preparedSession);
+    if (result.success && result.rowIndex !== void 0) {
+      const scrollTop = result.rowIndex * ROW_HEIGHT_PX;
+      const container = preparedSession.hostElement.querySelector(".bjv-prepared-scroll");
+      if (container !== null) {
+        container.scrollTop = scrollTop;
+      }
+    }
+    return result;
+  }
+  async refreshRows(session) {
+    const rows = await session.client.getPreparedRows({
+      sessionId: session.sessionId,
+      firstRow: session.viewport.firstRow,
+      rowCount: session.viewport.rowCount,
+      foldStateRevision: session.foldStateRevision
+    });
+    session.rows = rows;
+    session.totalKnownRows = rows.totalKnownRows ?? rows.rows.length;
+    session.diagnostics = rows.diagnostics ?? session.diagnostics;
+  }
+  render(session) {
+    session.hostElement.replaceChildren();
+    session.hostElement.append(this.createStyles());
+    const runtime = document.createElement("section");
+    runtime.className = "bjv-prepared-runtime";
+    if (session.diagnostics.length > 0) {
+      runtime.append(this.createDiagnosticsPanel(session.diagnostics));
+    }
+    const scrollContainer = document.createElement("div");
+    scrollContainer.className = "bjv-prepared-scroll";
+    scrollContainer.addEventListener("scroll", () => {
+      void this.handleScroll(session, scrollContainer);
+    });
+    const topSpacer = document.createElement("div");
+    topSpacer.style.height = `${session.viewport.firstRow * ROW_HEIGHT_PX}px`;
+    scrollContainer.append(topSpacer);
+    for (const row of session.rows?.rows ?? []) {
+      scrollContainer.append(this.createRowElement(session, row));
+    }
+    const trailingRowCount = Math.max(0, session.totalKnownRows - ((session.viewport.firstRow ?? 0) + (session.rows?.rows.length ?? 0)));
+    const bottomSpacer = document.createElement("div");
+    bottomSpacer.style.height = `${trailingRowCount * ROW_HEIGHT_PX}px`;
+    scrollContainer.append(bottomSpacer);
+    runtime.append(scrollContainer);
+    session.hostElement.append(runtime);
+  }
+  createRowElement(session, row) {
+    const rowElement = document.createElement("div");
+    rowElement.className = "bjv-prepared-row";
+    rowElement.style.paddingLeft = `${Math.max(0, row.depth) * 0.75}rem`;
+    if (row.nodeId != null) {
+      rowElement.dataset.nodeId = row.nodeId;
+    }
+    if (row.nodeId != null && row.folded != null) {
+      const foldButton = document.createElement("button");
+      foldButton.className = "bjv-prepared-fold";
+      foldButton.textContent = row.folded ? "+" : "\u2212";
+      foldButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void this.toggleFold(session, row);
+      });
+      rowElement.append(foldButton);
+    } else {
+      const spacer = document.createElement("span");
+      spacer.className = "bjv-prepared-fold-spacer";
+      spacer.textContent = " ";
+      rowElement.append(spacer);
+    }
+    const text = document.createElement("span");
+    text.className = "bjv-prepared-row-text";
+    text.textContent = row.text;
+    rowElement.append(text);
+    return rowElement;
+  }
+  async toggleFold(session, row) {
+    if (row.nodeId == null || row.folded == null) {
+      return;
+    }
+    const result = await session.client.setPreparedFoldState({
+      sessionId: session.sessionId,
+      nodeId: row.nodeId,
+      folded: !row.folded
+    });
+    session.foldStateRevision = result.foldStateRevision;
+    session.diagnostics = result.diagnostics ?? [];
+    await this.refreshRows(session);
+    await this.emitDiagnostics(session);
+    this.render(session);
+  }
+  async handleScroll(session, container) {
+    if (session.totalKnownRows <= session.viewport.rowCount) {
+      return;
+    }
+    const firstRow = Math.max(0, Math.floor(container.scrollTop / ROW_HEIGHT_PX));
+    if (firstRow === session.viewport.firstRow) {
+      return;
+    }
+    session.viewport = { ...session.viewport, firstRow };
+    await this.refreshRows(session);
+    await this.emit(session, {
+      type: "placeholderEvent",
+      sessionId: session.sessionId,
+      message: `Prepared viewport moved to row ${firstRow}.`
+    });
+    await this.emitDiagnostics(session);
+    this.render(session);
+  }
+  createDiagnosticsPanel(diagnostics) {
+    const panel = document.createElement("section");
+    panel.className = "bjv-prepared-diagnostics";
+    const title = document.createElement("h2");
+    title.textContent = "Prepared document diagnostics";
+    panel.append(title);
+    const list = document.createElement("ul");
+    for (const diagnostic of diagnostics) {
+      const item = document.createElement("li");
+      item.textContent = `${diagnostic.message} (${diagnostic.code})`;
+      list.append(item);
+    }
+    panel.append(list);
+    return panel;
+  }
+  createStyles() {
+    const styles = document.createElement("style");
+    styles.textContent = `
+.bjv-prepared-runtime {
+  display: grid;
+  gap: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+.bjv-prepared-scroll {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  max-height: 28rem;
+  overflow: auto;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+.bjv-prepared-row {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-height: ${ROW_HEIGHT_PX}px;
+  white-space: pre;
+}
+.bjv-prepared-row-text {
+  white-space: pre;
+}
+.bjv-prepared-fold,
+.bjv-prepared-fold-spacer {
+  width: 1.25rem;
+  display: inline-flex;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: #93c5fd;
+}
+.bjv-prepared-diagnostics {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #7f1d1d;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: system-ui, sans-serif;
+}
+.bjv-prepared-diagnostics h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+`;
+    return styles;
+  }
+  async emitDiagnostics(session) {
+    await this.emit(session, {
+      type: "diagnosticsChanged",
+      sessionId: session.sessionId,
+      diagnostics: session.diagnostics
+    });
+  }
+  async emit(session, event) {
+    if (session.callbackTarget === void 0) {
+      return;
+    }
+    await session.callbackTarget.invokeMethodAsync("HandleRuntimeEvent", event);
+  }
+  requirePreparedSession(sessionId) {
+    const prepared = this.sessions.get(sessionId)?.prepared;
+    if (prepared === void 0) {
+      throw new Error(`Prepared document session '${sessionId}' is not available.`);
+    }
+    return prepared;
+  }
+  requireRegisteredSession(sessionId) {
+    const session = this.sessions.get(sessionId);
+    if (session === void 0) {
+      throw new Error(`Session '${sessionId}' must be created before opening a prepared document.`);
+    }
+    return session;
+  }
+  requireHostElement(hostElementId) {
+    const hostElement = document.getElementById(hostElementId);
+    if (hostElement === null) {
+      throw new Error(`Unable to find host element '${hostElementId}'.`);
+    }
+    return hostElement;
+  }
+};
+
 // index.ts
 var domRuntimeController = createDomRuntimeController();
+var preparedDocumentHost = new PreparedDocumentHost();
 async function createSession(command, callbackTarget) {
   await domRuntimeController.createSession(command, createCallback(callbackTarget));
+  preparedDocumentHost.registerSession(command, callbackTarget);
 }
 async function disposeSession(command) {
+  await preparedDocumentHost.unregisterSession(command.sessionId);
   await domRuntimeController.disposeSession(command);
 }
 async function loadTextDocument(command) {
   await domRuntimeController.loadTextDocument(command);
+}
+async function openPreparedDocumentSession(request) {
+  await preparedDocumentHost.openPreparedDocumentSession(request);
+}
+async function searchPreparedDocument(request) {
+  return preparedDocumentHost.searchPreparedDocument(request);
+}
+async function revealPreparedLocation(request) {
+  return preparedDocumentHost.revealPreparedLocation(request);
+}
+async function closePreparedDocumentSession(sessionId) {
+  await preparedDocumentHost.closePreparedDocumentSession(sessionId);
 }
 async function createProjection(command) {
   await domRuntimeController.createProjection(command);
@@ -2721,6 +3041,10 @@ var runtimeBlazorModule = {
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
+  openPreparedDocumentSession,
+  searchPreparedDocument,
+  revealPreparedLocation,
+  closePreparedDocumentSession,
   createProjection,
   disposeProjection,
   selectProjectionItem,
@@ -2740,6 +3064,7 @@ if (typeof window !== "undefined") {
 export {
   applyTransaction,
   attachSchema,
+  closePreparedDocumentSession,
   createProjection,
   createSession,
   detachSchema,
@@ -2748,8 +3073,11 @@ export {
   getRuntimeProtocolVersion,
   getSchemaMetadataForPath,
   loadTextDocument,
+  openPreparedDocumentSession,
   redo,
   revealPath,
+  revealPreparedLocation,
+  searchPreparedDocument,
   selectProjectionItem,
   setViewport,
   toggleFold,

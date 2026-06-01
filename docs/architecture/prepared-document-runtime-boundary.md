@@ -48,6 +48,8 @@ The browser runtime owns browser-side interaction and rendering coordination.
 
 It may cache bounded ranges and row windows. It must not become the durable store for prepared documents.
 
+In the first implementation, the browser runtime may call back into the Blazor component host through explicit prepared-document DTO methods, and the host may delegate those calls to an injected prepared-document runtime bridge service. That callback route is part of the host/runtime boundary and does not change store ownership.
+
 ## Data Flow
 
 Opening a prepared document follows this flow:

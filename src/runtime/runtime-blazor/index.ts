@@ -8,6 +8,11 @@ import {
   type DetachSchemaCommand,
   type DisposeSessionCommand,
   type GetSchemaMetadataForPathCommand,
+  type PreparedOpenRequestDto,
+  type PreparedRevealRequestDto,
+  type PreparedRevealResultDto,
+  type PreparedSearchRequestDto,
+  type PreparedSearchResultPageDto,
   type SelectProjectionItemCommand,
   type LoadTextDocumentCommand,
   type RedoCommand,
@@ -19,6 +24,7 @@ import {
   type UndoCommand
 } from "../runtime-core/index.js";
 import { createDomRuntimeController } from "../runtime-dom/index.js";
+import { PreparedDocumentHost } from "./src/preparedDocumentHost.js";
 
 export interface DotNetCallbackTarget {
   invokeMethodAsync(methodName: string, event: RuntimeEventDto): Promise<unknown>;
@@ -29,6 +35,10 @@ export interface RuntimeBlazorModule {
   disposeSession(command: DisposeSessionCommand): Promise<void>;
   getRuntimeProtocolVersion(): string;
   loadTextDocument(command: LoadTextDocumentCommand): Promise<void>;
+  openPreparedDocumentSession(request: PreparedOpenRequestDto): Promise<void>;
+  searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto>;
+  revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto>;
+  closePreparedDocumentSession(sessionId: string): Promise<void>;
   createProjection(command: CreateProjectionCommand): Promise<void>;
   disposeProjection(command: DisposeProjectionCommand): Promise<void>;
   selectProjectionItem(command: SelectProjectionItemCommand): Promise<void>;
@@ -44,20 +54,39 @@ export interface RuntimeBlazorModule {
 }
 
 const domRuntimeController = createDomRuntimeController();
+const preparedDocumentHost = new PreparedDocumentHost();
 
 export async function createSession(
   command: CreateSessionCommand,
   callbackTarget?: DotNetCallbackTarget
 ): Promise<void> {
   await domRuntimeController.createSession(command, createCallback(callbackTarget));
+  preparedDocumentHost.registerSession(command, callbackTarget);
 }
 
 export async function disposeSession(command: DisposeSessionCommand): Promise<void> {
+  await preparedDocumentHost.unregisterSession(command.sessionId);
   await domRuntimeController.disposeSession(command);
 }
 
 export async function loadTextDocument(command: LoadTextDocumentCommand): Promise<void> {
   await domRuntimeController.loadTextDocument(command);
+}
+
+export async function openPreparedDocumentSession(request: PreparedOpenRequestDto): Promise<void> {
+  await preparedDocumentHost.openPreparedDocumentSession(request);
+}
+
+export async function searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto> {
+  return preparedDocumentHost.searchPreparedDocument(request);
+}
+
+export async function revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto> {
+  return preparedDocumentHost.revealPreparedLocation(request);
+}
+
+export async function closePreparedDocumentSession(sessionId: string): Promise<void> {
+  await preparedDocumentHost.closePreparedDocumentSession(sessionId);
 }
 
 export async function createProjection(command: CreateProjectionCommand): Promise<void> {
@@ -127,6 +156,10 @@ const runtimeBlazorModule: RuntimeBlazorModule = {
   disposeSession,
   getRuntimeProtocolVersion,
   loadTextDocument,
+  openPreparedDocumentSession,
+  searchPreparedDocument,
+  revealPreparedLocation,
+  closePreparedDocumentSession,
   createProjection,
   disposeProjection,
   selectProjectionItem,

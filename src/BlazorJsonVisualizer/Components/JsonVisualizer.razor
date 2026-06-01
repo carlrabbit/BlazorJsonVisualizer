@@ -1,7 +1,9 @@
 @using BlazorJsonVisualizer.Interop
+@using BlazorJsonVisualizer.PreparedDocuments
 @using System.Text.Json
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
+@inject IPreparedDocumentRuntimeBridge? PreparedDocumentRuntimeBridge
 
 <div class="json-visualizer-shell">
     <div id="@_hostElementId"></div>
@@ -24,6 +26,9 @@
     public string Text { get; set; } = "{}";
 
     [Parameter]
+    public string? PreparedDocumentId { get; set; }
+
+    [Parameter]
     public RuntimeOptionsDto? Options { get; set; }
 
     [Parameter]
@@ -32,6 +37,8 @@
     private string EffectiveSessionId => string.IsNullOrWhiteSpace(SessionId) ? _generatedSessionId : SessionId;
 
     private string EffectiveDocumentId => string.IsNullOrWhiteSpace(DocumentId) ? $"{EffectiveSessionId}-document" : DocumentId;
+
+    private string EffectivePreparedDocumentId => string.IsNullOrWhiteSpace(PreparedDocumentId) ? EffectiveDocumentId : PreparedDocumentId;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -46,7 +53,11 @@
         await _interop.CreateSessionAsync(new CreateSessionCommand(_hostElementId, EffectiveSessionId, Options), _callbackReference);
         _sessionCreated = true;
 
-        if (!string.IsNullOrWhiteSpace(Text))
+        if (!string.IsNullOrWhiteSpace(PreparedDocumentId))
+        {
+            await _interop.OpenPreparedDocumentSessionAsync(new PreparedOpenRequestDto(EffectiveSessionId, EffectivePreparedDocumentId));
+        }
+        else if (!string.IsNullOrWhiteSpace(Text))
         {
             await _interop.LoadTextDocumentAsync(new LoadTextDocumentCommand(EffectiveSessionId, EffectiveDocumentId, Text));
         }
@@ -57,6 +68,54 @@
     {
         await RuntimeEvent.InvokeAsync(runtimeEvent);
     }
+
+    [JSInvokable]
+    public async Task<PreparedOpenResultDto> OpenPreparedDocumentSessionAsync(PreparedOpenRequestDto request)
+        => PreparedDocumentRuntimeBridge is null
+            ? CreateBridgeUnavailableOpenResult(request)
+            : await PreparedDocumentRuntimeBridge.OpenAsync(request);
+
+    [JSInvokable]
+    public async Task<PreparedDocumentMetadataDto> GetPreparedDocumentMetadataAsync(string sessionId)
+        => PreparedDocumentRuntimeBridge is null
+            ? throw new InvalidOperationException("Prepared document runtime bridge is not registered.")
+            : await PreparedDocumentRuntimeBridge.GetMetadataAsync(sessionId);
+
+    [JSInvokable]
+    public async Task<PreparedRowsResultDto> GetPreparedRowsAsync(PreparedRowsRequestDto request)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedRowsResultDto(request.SessionId, EffectivePreparedDocumentId, 0, request.FirstRow, request.RowCount, 0, [], [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.GetRowsAsync(request);
+
+    [JSInvokable]
+    public async Task<PreparedTextRangeDto> ReadPreparedTextRangeAsync(PreparedTextRangeRequestDto request)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedTextRangeDto(request.SessionId, EffectivePreparedDocumentId, 0, request.StartByteOffset, request.StartByteOffset, request.StartByteOffset, string.Empty, false, [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.ReadTextRangeAsync(request);
+
+    [JSInvokable]
+    public async Task<PreparedFoldStateResultDto> SetPreparedFoldStateAsync(PreparedFoldStateRequestDto request)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedFoldStateResultDto(false, 0, [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.SetFoldStateAsync(request);
+
+    [JSInvokable]
+    public async Task<PreparedSearchResultPageDto> SearchPreparedDocumentAsync(PreparedSearchRequestDto request)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedSearchResultPageDto(request.SessionId, EffectivePreparedDocumentId, 0, [], Diagnostics: [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.SearchAsync(request);
+
+    [JSInvokable]
+    public async Task<PreparedRevealResultDto> RevealPreparedLocationAsync(PreparedRevealRequestDto request)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedRevealResultDto(false, request.SessionId, EffectivePreparedDocumentId, "unsupported", Diagnostics: [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.RevealAsync(request);
+
+    [JSInvokable]
+    public async Task<PreparedCloseResultDto> ClosePreparedDocumentSessionAsync(string sessionId)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedCloseResultDto(false, [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.CloseAsync(sessionId);
 
     public async Task ToggleFoldAsync(string nodeId)
     {
@@ -76,6 +135,43 @@
         }
 
         await _interop.RevealPathAsync(new RevealPathCommand(EffectiveSessionId, path));
+    }
+
+    public async Task<PreparedSearchResultPageDto> SearchPreparedDocumentAsync(string query, int maxResults = 25)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId) || string.IsNullOrWhiteSpace(query))
+        {
+            return new PreparedSearchResultPageDto(EffectiveSessionId, EffectivePreparedDocumentId, 0, []);
+        }
+
+        return await _interop.SearchPreparedDocumentAsync(new PreparedSearchRequestDto(EffectiveSessionId, query, MaxResults: maxResults));
+    }
+
+    public async Task<PreparedRevealResultDto> RevealPreparedJsonPointerAsync(string jsonPointer)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId) || string.IsNullOrWhiteSpace(jsonPointer))
+        {
+            return new PreparedRevealResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, "invalidTarget");
+        }
+
+        return await _interop.RevealPreparedLocationAsync(new PreparedRevealRequestDto(EffectiveSessionId, new PreparedRevealTargetDto("jsonPointer", Path: jsonPointer)));
+    }
+
+    public async Task<PreparedRevealResultDto> RevealPreparedSearchResultAsync(PreparedSearchResultDto result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId))
+        {
+            return new PreparedRevealResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, "sessionNotFound");
+        }
+
+        return await _interop.RevealPreparedLocationAsync(new PreparedRevealRequestDto(
+            EffectiveSessionId,
+            new PreparedRevealTargetDto(
+                "searchResult",
+                StartByteOffset: result.StartByteOffset,
+                EndByteOffset: result.EndByteOffset,
+                ResultId: result.ResultId)));
     }
 
     public async Task ApplyTransactionAsync(RuntimeTransactionDto transaction)
@@ -174,6 +270,11 @@
         {
             if (_interop is not null && _sessionCreated)
             {
+                if (!string.IsNullOrWhiteSpace(PreparedDocumentId))
+                {
+                    await _interop.ClosePreparedDocumentSessionAsync(EffectiveSessionId);
+                }
+
                 await _interop.DisposeSessionAsync(new DisposeSessionCommand(EffectiveSessionId));
             }
         }
@@ -190,4 +291,10 @@
             _callbackReference?.Dispose();
         }
     }
+
+    private PreparedOpenResultDto CreateBridgeUnavailableOpenResult(PreparedOpenRequestDto request)
+        => new(false, request.SessionId, request.DocumentId, Diagnostics: [BridgeUnavailableDiagnostic()]);
+
+    private static RuntimeDiagnosticDto BridgeUnavailableDiagnostic()
+        => new("prepared.bridgeUnavailable", "Prepared document runtime bridge is not registered.");
 }

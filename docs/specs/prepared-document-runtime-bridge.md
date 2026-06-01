@@ -114,6 +114,8 @@ The selected approach must satisfy:
 - missing index states produce diagnostics instead of silent incorrect rows;
 - response DTOs include revision identity.
 
+The first milestone implementation may compute simple line-backed row windows server-side from the prepared source plus ephemeral structural parsing held inside the bridge session. This is acceptable as long as the browser still requests bounded rows and the browser does not receive the whole source as one JavaScript string.
+
 ## Search Contract
 
 The bridge delegates search to prepared-document search behavior.

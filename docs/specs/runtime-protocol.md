@@ -141,54 +141,70 @@ Fields:
 - `projectionId: string`
 - `selection: ProjectionSelectionDto`
 
-## Additional host-to-runtime messages for Milestone 012
+## Additional host-to-runtime messages for Milestone 015
 
-### `openPreparedDocument`
-
-Fields:
-
-- `sessionId: string`
-- `documentId: string`
-
-### `closePreparedDocument`
+### `openPreparedDocumentSession`
 
 Fields:
 
 - `sessionId: string`
 - `documentId: string`
+- `initialViewport?: PreparedViewportRequestDto`
 
-### `getPreparedDocumentInfo`
-
-Fields:
-
-- `sessionId: string`
-- `documentId: string`
-
-### `requestSourceRange`
+### `closePreparedDocumentSession`
 
 Fields:
 
 - `sessionId: string`
-- `documentId: string`
-- `startOffset: number`
-- `length: number`
 
-### `requestSearch`
+### `getPreparedDocumentMetadata`
 
 Fields:
 
 - `sessionId: string`
-- `documentId: string`
+
+### `getPreparedRows`
+
+Fields:
+
+- `sessionId: string`
+- `firstRow: number`
+- `rowCount: number`
+- `foldStateRevision?: number`
+
+### `readPreparedTextRange`
+
+Fields:
+
+- `sessionId: string`
+- `startByteOffset: number`
+- `maxByteLength: number`
+
+### `setPreparedFoldState`
+
+Fields:
+
+- `sessionId: string`
+- `nodeId: string`
+- `folded: boolean`
+
+### `searchPreparedDocument`
+
+Fields:
+
+- `sessionId: string`
 - `query: string`
+- `scope?: "allText" | "propertyNames" | "stringValues"`
+- `ignoreCase?: boolean`
+- `maxResults: number`
+- `continuationToken?: string`
 
-### `revealSearchResult`
+### `revealPreparedLocation`
 
 Fields:
 
 - `sessionId: string`
-- `documentId: string`
-- `startOffset: number`
-- `endOffset: number`
+- `target: PreparedRevealTargetDto`
 
 ## Runtime-to-host events
 

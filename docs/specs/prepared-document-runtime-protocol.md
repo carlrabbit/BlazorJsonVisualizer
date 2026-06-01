@@ -247,6 +247,8 @@ interface PreparedRenderRowDto {
 }
 ```
 
+In the first implementation, `nodeId` and `folded` may be present only for foldable object/array rows. Scalar lines may omit them even when the row is still part of the prepared-document viewport.
+
 ```ts
 interface PreparedSearchResultDto {
   resultId: string;
