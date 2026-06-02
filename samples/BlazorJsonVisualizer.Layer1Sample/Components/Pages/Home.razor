@@ -5,6 +5,8 @@
 @using BlazorJsonVisualizer.PreparedDocuments
 @inject IPreparedJsonDocumentStore PreparedDocumentStore
 @inject IJsonDocumentImporter JsonDocumentImporter
+@inject IJsonDocumentExporter JsonDocumentExporter
+@inject IPreparedDocumentRuntimeBridge PreparedRuntimeBridge
 
 <PageTitle>Layer 1 Prepared Document Viewer Sample</PageTitle>
 
@@ -57,6 +59,18 @@
             <p style="margin-bottom: 0;">@_sampleMessage</p>
         }
     </div>
+
+    <div>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Edited export and degraded state</h2>
+        <p style="margin-top: 0;">Apply a controlled edit to the open session, export the edited revision, or import a document without search/path indexes to make degraded diagnostics visible.</p>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <button @onclick="ReplaceEnabledAndExportAsync">Replace enabled and export</button>
+            <button @onclick="ExportPreparedDocumentAsync" disabled="@string.IsNullOrWhiteSpace(_preparedDocumentId)">Export open document</button>
+            <button @onclick="ImportMissingIndexDocumentAsync">Import missing-index sample</button>
+        </div>
+        <pre style="margin-bottom: 0; white-space: pre-wrap;">@_exportMessage</pre>
+    </div>
+
 </section>
 
 @if (string.IsNullOrWhiteSpace(_preparedDocumentId))
@@ -175,6 +189,7 @@ else
     private string _searchQuery = "viewing";
     private string _importDocumentId = string.Empty;
     private string _sampleMessage = string.Empty;
+    private string _exportMessage = "No export attempted yet.";
     private bool _ignoreCase = true;
     private long _searchRevision;
     private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer1-session", "Waiting for runtime event.");
@@ -260,14 +275,91 @@ else
     }
 
     private async Task<PreparedJsonDocumentInfo> ImportJsonCoreAsync(string json, string documentId)
+        => await ImportJsonCoreAsync(json, documentId, buildSearchIndex: true, buildPathIndex: true);
+
+    private async Task<PreparedJsonDocumentInfo> ImportJsonCoreAsync(string json, string documentId, bool buildSearchIndex, bool buildPathIndex)
     {
         await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
         return await JsonDocumentImporter.ImportAsync(sourceStream, new JsonDocumentImportOptions
         {
             DocumentId = documentId,
-            BuildPathIndex = true,
-            BuildSearchIndex = true
+            BuildPathIndex = buildPathIndex,
+            BuildSearchIndex = buildSearchIndex
         });
+    }
+
+    private async Task ImportMissingIndexDocumentAsync()
+    {
+        var documentId = $"layer1-missing-index-{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}";
+        var imported = await ImportJsonCoreAsync(SampleJson, documentId, buildSearchIndex: false, buildPathIndex: false);
+        await RefreshDocumentListAsync();
+        _selectedDocumentId = imported.DocumentId;
+        _preparedDocumentId = imported.DocumentId;
+        _searchResults = [];
+        _searchDiagnostics = [];
+        _continuationToken = null;
+        _exportMessage = "Opened missing-index sample. Search and JSON Pointer reveal should report explicit missing-index diagnostics.";
+    }
+
+    private async Task ReplaceEnabledAndExportAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_preparedDocumentId))
+        {
+            return;
+        }
+
+        var metadata = await PreparedRuntimeBridge.GetMetadataAsync("layer1-session");
+        var rows = await PreparedRuntimeBridge.GetRowsAsync(new PreparedRowsRequestDto("layer1-session", 0, 100));
+        var enabledRow = rows.Rows.FirstOrDefault(static row => row.Text.Contains("\"enabled\": true", StringComparison.Ordinal));
+        if (enabledRow?.NodeId is null)
+        {
+            _exportMessage = "Could not find an enabled primitive row to edit. Reopen the seeded ready document and try again.";
+            return;
+        }
+
+        using var value = JsonDocument.Parse("false");
+        var edit = _visualizer is null
+            ? await PreparedRuntimeBridge.ApplyEditAsync(new PreparedEditCommandDto(
+                "layer1-session",
+                _preparedDocumentId,
+                metadata.Revision,
+                PreparedEditCommandKinds.ReplaceNodeValue,
+                TargetNodeId: enabledRow.NodeId,
+                Value: value.RootElement,
+                Label: "Sample replace enabled"))
+            : await _visualizer.ReplacePreparedPrimitiveValueAsync(enabledRow.NodeId, metadata.Revision, value.RootElement, "Sample replace enabled");
+
+        if (!edit.Success)
+        {
+            _exportMessage = "Edit failed: " + string.Join("; ", edit.Diagnostics?.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}") ?? []);
+            return;
+        }
+
+        await ExportPreparedDocumentAsync();
+    }
+
+    private async Task ExportPreparedDocumentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_preparedDocumentId))
+        {
+            return;
+        }
+
+        await using var destination = new MemoryStream();
+        try
+        {
+            var result = await JsonDocumentExporter.ExportWithResultAsync(_preparedDocumentId, destination, new JsonDocumentExportOptions());
+            var json = Encoding.UTF8.GetString(destination.ToArray());
+            _exportMessage = $"Exported revision {result.ExportedRevision} with {result.TransactionCount} transaction(s): {json}";
+        }
+        catch (JsonDocumentExportException exception)
+        {
+            _exportMessage = $"Export diagnostic {exception.Diagnostic.Code}: {exception.Diagnostic.Message}";
+        }
+        catch (Exception exception) when (exception is InvalidDataException or InvalidOperationException or IOException)
+        {
+            _exportMessage = $"Export failed: {exception.Message}";
+        }
     }
 
     private async Task RevealPreparedPathAsync()

@@ -41,6 +41,8 @@ For supported controlled edits, export must:
 - apply selected formatting policy to changed regions where implemented;
 - report exported revision.
 
+The file-backed implementation supports `replaceNodeValue`, `renameProperty`, `insertProperty`, `removeProperty`, `insertArrayItem`, and `removeArrayItem` transaction kinds. It validates the transaction revision chain before writing edited output. The current materialization path uses a parsed JSON tree for the edited result, so unchanged regions are preserved byte-for-byte for no-edit export and normalized for edited export according to the selected writer policy.
+
 ## Revision Requirements
 
 Export must use explicit revision identity.

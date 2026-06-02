@@ -22,10 +22,12 @@ Layer 1 diagnostics explain viewer, search, editing, and export states that prev
 | Unsupported operation | The current document/session/provider does not support the requested operation. | Use a supported operation or provider. |
 | Export unsupported transaction | Export cannot materialize an existing transaction. | Remove unsupported edits, implement export support, or reimport. |
 | Storage failure | Storage provider failed to serve data. | Inspect storage logs/configuration. |
+| Decode failure | A source range or edited export could not be decoded as UTF-8/JSON. | Reimport or inspect source encoding. |
+| Concurrency conflict | A transaction append encountered a newer base revision. | Refresh the session and retry the edit. |
 
 ## Public Behavior
 
-Normal diagnostic conditions should be displayed in the viewer or diagnostics panel. They should not cause silent incorrect results.
+Normal diagnostic conditions should be displayed in the viewer or diagnostics panel. They should not cause silent incorrect results. After controlled edits, stale search/path/structure indexes are displayed as degraded states, search returns stale-index diagnostics instead of stale results, and revealing old search results reports revision mismatch when the result revision differs from the current session revision.
 
 ## Related Documentation
 

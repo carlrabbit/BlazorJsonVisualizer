@@ -10,6 +10,7 @@ var preparedStore = new FilePreparedJsonDocumentStore(preparedStoreRoot);
 builder.Services.AddSingleton(preparedStore);
 builder.Services.AddSingleton<IPreparedJsonDocumentStore>(preparedStore);
 builder.Services.AddSingleton<IJsonDocumentImporter>(new FileJsonDocumentImporter(preparedStore));
+builder.Services.AddSingleton<IJsonDocumentExporter>(new FileJsonDocumentExporter(preparedStore));
 builder.Services.AddSingleton<IPreparedDocumentRuntimeBridge>(new PreparedDocumentRuntimeBridge(preparedStore));
 
 builder.Services.AddRazorComponents()

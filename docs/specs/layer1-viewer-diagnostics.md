@@ -66,6 +66,7 @@ Minimum display behavior:
 - document/session blocking diagnostics appear in the viewer surface;
 - operation diagnostics appear near the initiating control or diagnostics panel;
 - stale index/search states are visible before or with search results;
+- stale search-result reveal returns a revision-mismatch diagnostic before using stale offsets as current;
 - reveal failures identify the target and reason;
 - unsupported editing/export states do not imply data loss.
 
@@ -79,6 +80,8 @@ Examples:
 - path reveal unavailable because path index is stale;
 - folding unavailable because structural index failed;
 - edited export unavailable because transaction materialization is unsupported.
+
+After successful controlled edits, the viewer reports stale derived index states for structure, search, and path until rebuilt. Search, rows, folding, and path reveal must return structured missing/stale/failed index diagnostics rather than silently using old derived artifacts as current.
 
 ## Authority
 

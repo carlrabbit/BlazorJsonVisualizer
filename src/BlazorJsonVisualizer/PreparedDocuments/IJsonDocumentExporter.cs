@@ -7,4 +7,10 @@ public interface IJsonDocumentExporter
         Stream destination,
         JsonDocumentExportOptions options,
         CancellationToken cancellationToken = default);
+
+    ValueTask<JsonDocumentExportResult> ExportWithResultAsync(
+        string documentId,
+        Stream destination,
+        JsonDocumentExportOptions options,
+        CancellationToken cancellationToken = default);
 }
