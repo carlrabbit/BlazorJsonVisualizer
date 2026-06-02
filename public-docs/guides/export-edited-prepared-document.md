@@ -12,9 +12,9 @@ For edited prepared documents, export must account for supported Layer 1 editing
 
 ## Export Contract
 
-Export should stream unchanged source regions where possible and materialize changed regions from transactions.
+Export streams unchanged source regions for unedited prepared documents. For edited prepared documents, the file-backed preview implementation materializes supported Layer 1 controlled transaction kinds (`replaceNodeValue`, `renameProperty`, `insertProperty`, `removeProperty`, `insertArrayItem`, and `removeArrayItem`) and writes a complete JSON export after validating the transaction revision chain.
 
-The system must not silently ignore transactions during export.
+The system must not silently ignore transactions during export. Edited exports may normalize JSON formatting for the materialized output; no-edit exports preserve source bytes.
 
 ## Unsupported Edits
 
@@ -24,7 +24,7 @@ Partial export is not part of the initial public contract.
 
 ## Revision Reporting
 
-Export should report which prepared document revision was exported.
+Use the result-returning export API to inspect the prepared document id, exported revision, transaction count, latest transaction id, and formatting policy used.
 
 Search results or viewer state from older revisions may be stale after edits.
 

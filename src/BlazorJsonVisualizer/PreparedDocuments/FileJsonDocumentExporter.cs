@@ -8,7 +8,16 @@ public sealed class FileJsonDocumentExporter(IPreparedJsonDocumentStore store) :
         JsonDocumentExportOptions options,
         CancellationToken cancellationToken = default)
     {
+        await ExportWithResultAsync(documentId, destination, options, cancellationToken);
+    }
+
+    public async ValueTask<JsonDocumentExportResult> ExportWithResultAsync(
+        string documentId,
+        Stream destination,
+        JsonDocumentExportOptions options,
+        CancellationToken cancellationToken = default)
+    {
         await using var handle = await store.OpenAsync(documentId, cancellationToken);
-        await handle.ExportAsync(destination, options, cancellationToken);
+        return await handle.ExportWithResultAsync(destination, options, cancellationToken);
     }
 }

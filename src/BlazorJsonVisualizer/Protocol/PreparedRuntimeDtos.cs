@@ -124,7 +124,8 @@ public sealed record PreparedRevealTargetDto(
     long? EndByteOffset = null,
     string? ResultId = null,
     string? Path = null,
-    string? NodeId = null);
+    string? NodeId = null,
+    long? Revision = null);
 
 public sealed record PreparedRevealResultDto(
     bool Success,

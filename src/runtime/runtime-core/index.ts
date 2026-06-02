@@ -167,7 +167,7 @@ export interface PreparedSearchResultPageDto {
 
 export type PreparedRevealTargetDto =
   | { kind: "byteRange"; startByteOffset: number; endByteOffset?: number | undefined }
-  | { kind: "searchResult"; resultId?: string | undefined; startByteOffset: number; endByteOffset: number }
+  | { kind: "searchResult"; resultId?: string | undefined; startByteOffset: number; endByteOffset: number; revision?: number | undefined }
   | { kind: "jsonPointer"; path: string }
   | { kind: "node"; nodeId: string };
 
@@ -180,6 +180,7 @@ export type PreparedRevealFailureReasonDto =
   | "indexFailed"
   | "sessionNotFound"
   | "documentNotReady"
+  | "revisionMismatch"
   | "unsupported";
 
 export interface PreparedRevealRequestDto {

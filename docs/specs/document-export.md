@@ -18,6 +18,12 @@ public interface IJsonDocumentExporter
         Stream destination,
         JsonDocumentExportOptions options,
         CancellationToken cancellationToken = default);
+
+    ValueTask<JsonDocumentExportResult> ExportWithResultAsync(
+        string documentId,
+        Stream destination,
+        JsonDocumentExportOptions options,
+        CancellationToken cancellationToken = default);
 }
 ```
 
@@ -78,8 +84,23 @@ When this spec changes, review:
 - `public-docs/concepts.md`
 - `public-docs/guides/huge-json-documents.md`
 
+## Export Result Metadata
+
+The result-returning export API reports:
+
+- prepared document id;
+- exported revision;
+- transaction count;
+- latest transaction id when one was exported;
+- formatting policy used;
+- diagnostics when degraded export behavior is represented as metadata.
+
+The legacy `ExportAsync` API remains available for callers that only need the destination stream and may discard the result metadata.
+
 ## Storage Engine Export Behavior
 
-The default export implementation streams unchanged source chunks to the destination stream and reports the handle revision used for export. It does not build the complete output as a string.
+For unedited prepared documents, the default export implementation streams unchanged source chunks to the destination stream and reports the handle revision used for export. It does not build the complete output as a string.
 
-If a prepared document contains transactions and transaction application is not supported, export must fail clearly instead of silently ignoring changes.
+For edited prepared documents, the default implementation supports the Layer 1 controlled transaction kinds defined in `docs/specs/layer1-controlled-editing-transactions.md`. It validates the transaction revision chain, materializes supported transactions, writes complete JSON only after validation succeeds, and reports the exported revision.
+
+If a prepared document contains unsupported transaction kinds, invalid payloads, or inconsistent revision state, export must fail clearly instead of silently ignoring changes.

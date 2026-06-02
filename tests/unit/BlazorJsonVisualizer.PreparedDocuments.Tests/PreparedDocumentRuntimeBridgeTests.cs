@@ -367,6 +367,80 @@ public sealed class PreparedDocumentRuntimeBridgeTests
         }
     }
 
+
+    [Fact]
+    public async Task SearchAsync_AfterEdit_ReturnsStaleIndexDiagnostic()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-edit-search-stale", documentId));
+            var rows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-edit-search-stale", 0, 50));
+            var enabledRow = Assert.Single(rows.Rows, static row => row.Text.Contains("\"enabled\": true", StringComparison.Ordinal));
+
+            using var value = JsonDocument.Parse("false");
+            var edit = await bridge.ApplyEditAsync(new PreparedEditCommandDto(
+                "session-edit-search-stale",
+                documentId,
+                1,
+                PreparedEditCommandKinds.ReplaceNodeValue,
+                TargetNodeId: enabledRow.NodeId,
+                Value: value.RootElement));
+            var search = await bridge.SearchAsync(new PreparedSearchRequestDto("session-edit-search-stale", "viewing", MaxResults: 5));
+            var rowsAfterEdit = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-edit-search-stale", 0, 50));
+
+            Assert.True(edit.Success);
+            Assert.Empty(search.Results);
+            Assert.Equal(2, search.Revision);
+            Assert.Equal("prepared.indexStale", Assert.Single(search.Diagnostics!).Code);
+            Assert.Equal("prepared.indexStale", Assert.Single(rowsAfterEdit.Diagnostics!).Code);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task RevealAsync_StaleSearchResultRevision_ReturnsRevisionMismatch()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-stale-reveal", documentId));
+            var search = await bridge.SearchAsync(new PreparedSearchRequestDto("session-stale-reveal", "viewing", MaxResults: 5));
+            var result = Assert.Single(search.Results);
+            var rows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-stale-reveal", 0, 50));
+            var enabledRow = Assert.Single(rows.Rows, static row => row.Text.Contains("\"enabled\": true", StringComparison.Ordinal));
+
+            using var value = JsonDocument.Parse("false");
+            var edit = await bridge.ApplyEditAsync(new PreparedEditCommandDto(
+                "session-stale-reveal",
+                documentId,
+                1,
+                PreparedEditCommandKinds.ReplaceNodeValue,
+                TargetNodeId: enabledRow.NodeId,
+                Value: value.RootElement));
+            var reveal = await bridge.RevealAsync(new PreparedRevealRequestDto(
+                "session-stale-reveal",
+                new PreparedRevealTargetDto(
+                    "searchResult",
+                    StartByteOffset: result.StartByteOffset,
+                    EndByteOffset: result.EndByteOffset,
+                    ResultId: result.ResultId,
+                    Revision: result.Revision)));
+
+            Assert.True(edit.Success);
+            Assert.False(reveal.Success);
+            Assert.Equal("revisionMismatch", reveal.Reason);
+            Assert.Equal("prepared.revisionMismatch", Assert.Single(reveal.Diagnostics!).Code);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
     [Fact]
     public async Task ApplyEditAsync_StaleRevision_ReturnsDiagnosticAndDoesNotAdvance()
     {
@@ -389,7 +463,7 @@ public sealed class PreparedDocumentRuntimeBridgeTests
 
             Assert.False(result.Success);
             Assert.Equal(1, metadata.Revision);
-            Assert.Equal("prepared.staleRevision", Assert.Single(result.Diagnostics!).Code);
+            Assert.Equal("prepared.revisionMismatch", Assert.Single(result.Diagnostics!).Code);
         }
         finally
         {

@@ -242,12 +242,24 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
             return ValueTask.FromResult(new PreparedRevealResultDto(false, request.SessionId, string.Empty, "sessionNotFound", Diagnostics: [CreateDiagnostic("prepared.sessionNotFound", $"Prepared runtime session '{request.SessionId}' was not found.")]));
         }
 
-        if (!session.IsStructureAvailable)
+        var target = request.Target ?? new PreparedRevealTargetDto(string.Empty);
+        if (string.Equals(target.Kind, "searchResult", StringComparison.Ordinal)
+            && target.Revision is not null
+            && target.Revision != session.Metadata.Revision)
         {
-            return ValueTask.FromResult(new PreparedRevealResultDto(false, request.SessionId, session.Metadata.DocumentId, "notIndexed", Diagnostics: [session.GetIndexDiagnostic("structure")]));
+            return ValueTask.FromResult(new PreparedRevealResultDto(
+                false,
+                request.SessionId,
+                session.Metadata.DocumentId,
+                "revisionMismatch",
+                Diagnostics: [CreateDiagnostic("prepared.revisionMismatch", $"Search result revision {target.Revision} does not match current session revision {session.Metadata.Revision}.")]));
         }
 
-        var target = request.Target ?? new PreparedRevealTargetDto(string.Empty);
+        if (!session.IsStructureAvailable)
+        {
+            return ValueTask.FromResult(new PreparedRevealResultDto(false, request.SessionId, session.Metadata.DocumentId, session.GetIndexFailureReason("structure"), Diagnostics: [session.GetIndexDiagnostic("structure")]));
+        }
+
         var targetNode = ResolveRevealNode(session, target, out var targetLineIndex, out var failureResult);
         if (failureResult is not null)
         {
@@ -306,7 +318,7 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
         }
         catch (InvalidOperationException exception)
         {
-            return new PreparedEditResultDto(false, command.SessionId, session.Metadata.DocumentId, command.BaseRevision, session.Metadata.Revision, session.Dirty, Diagnostics: [CreateDiagnostic("prepared.transactionAppendFailed", exception.Message)]);
+            return new PreparedEditResultDto(false, command.SessionId, session.Metadata.DocumentId, command.BaseRevision, session.Metadata.Revision, session.Dirty, Diagnostics: [CreateDiagnostic("prepared.concurrencyConflict", exception.Message)]);
         }
 
         session.Commit(transaction);
@@ -382,7 +394,7 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
             case "jsonPointer":
                 if (!session.IsPathRevealAvailable)
                 {
-                    failureResult = new PreparedRevealResultDto(false, session.SessionId, session.Metadata.DocumentId, "indexMissing", Diagnostics: [session.GetIndexDiagnostic("path")]);
+                    failureResult = new PreparedRevealResultDto(false, session.SessionId, session.Metadata.DocumentId, session.GetIndexFailureReason("path"), Diagnostics: [session.GetIndexDiagnostic("path")]);
                     return null;
                 }
 
@@ -651,7 +663,7 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
 
             if (command.BaseRevision != Metadata.Revision)
             {
-                diagnostics.Add(CreateDiagnostic("prepared.staleRevision", $"Edit base revision {command.BaseRevision} does not match current revision {Metadata.Revision}."));
+                diagnostics.Add(CreateDiagnostic("prepared.revisionMismatch", $"Edit base revision {command.BaseRevision} does not match current revision {Metadata.Revision}."));
             }
 
             if (!IsStructureAvailable)
@@ -935,11 +947,24 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
             var code = index.State switch
             {
                 "missing" => "prepared.indexMissing",
+                "building" => "prepared.indexBuilding",
                 "stale" => "prepared.indexStale",
                 "failed" => "prepared.indexFailed",
                 _ => "prepared.indexUnavailable"
             };
             return CreateDiagnostic(code, index.Message ?? $"Prepared index '{indexName}' is in state '{index.State}'.");
+        }
+
+        public string GetIndexFailureReason(string indexName)
+        {
+            var state = Metadata.Indexes.TryGetValue(indexName, out var index) ? index.State : "missing";
+            return state switch
+            {
+                "missing" => "indexMissing",
+                "stale" => "indexStale",
+                "failed" => "indexFailed",
+                _ => "notIndexed"
+            };
         }
 
         public bool TrySetFoldState(string nodeId, bool folded)
