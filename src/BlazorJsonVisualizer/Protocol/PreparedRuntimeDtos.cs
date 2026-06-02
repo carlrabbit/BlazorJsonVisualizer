@@ -203,3 +203,98 @@ public static class PreparedEditCommandKinds
     public const string InsertArrayItem = "insertArrayItem";
     public const string RemoveArrayItem = "removeArrayItem";
 }
+
+public sealed record SchemaOverlayAttachRequestDto(
+    string SessionId,
+    string DocumentId,
+    long BaseRevision,
+    string SchemaId,
+    SchemaSourceDto Source,
+    SchemaOverlayOptionsDto? Options = null);
+
+public sealed record SchemaSourceDto(
+    string Kind,
+    JsonElement? Schema = null,
+    string? SchemaId = null,
+    string? SourceDescription = null);
+
+public sealed record SchemaOverlayOptionsDto(
+    int? MaxDiagnostics = null,
+    bool? IncludeUnsupportedKeywordDiagnostics = null);
+
+public sealed record SchemaOverlayAttachResultDto(
+    bool Success,
+    string SessionId,
+    string DocumentId,
+    long Revision,
+    string? OverlayId = null,
+    string? SchemaId = null,
+    IReadOnlyList<SchemaOverlayDiagnosticDto>? Diagnostics = null);
+
+public sealed record SchemaOverlayDetachRequestDto(
+    string SessionId,
+    string DocumentId,
+    string? OverlayId = null);
+
+public sealed record SchemaOverlayDetachResultDto(
+    bool Success,
+    string SessionId,
+    string DocumentId,
+    string? DetachedOverlayId = null,
+    IReadOnlyList<SchemaOverlayDiagnosticDto>? Diagnostics = null);
+
+public sealed record SchemaOverlayTargetDto(
+    string Kind,
+    string? Path = null,
+    string? NodeId = null,
+    int? RowIndex = null);
+
+public sealed record SchemaDetailsRequestDto(
+    string SessionId,
+    string DocumentId,
+    long Revision,
+    SchemaOverlayTargetDto Target);
+
+public sealed record SchemaDetailsResultDto(
+    bool Success,
+    string SessionId,
+    string DocumentId,
+    long Revision,
+    string? OverlayId = null,
+    SchemaOverlayTargetDto? Target = null,
+    SchemaNodeMetadataDto? Metadata = null,
+    IReadOnlyList<SchemaOverlayDiagnosticDto>? Diagnostics = null);
+
+public sealed record SchemaValidationRequestDto(
+    string SessionId,
+    string DocumentId,
+    long Revision,
+    SchemaOverlayTargetDto? Target = null,
+    int MaxDiagnostics = 50,
+    string? ContinuationToken = null);
+
+public sealed record SchemaValidationResultDto(
+    bool Success,
+    string SessionId,
+    string DocumentId,
+    long Revision,
+    string? OverlayId = null,
+    IReadOnlyList<SchemaOverlayDiagnosticDto>? Diagnostics = null,
+    string? ContinuationToken = null,
+    bool Truncated = false);
+
+public sealed record SchemaOverlayDiagnosticDto(
+    string DiagnosticId,
+    string Category,
+    string Severity,
+    string Source,
+    string SessionId,
+    string DocumentId,
+    long? Revision = null,
+    string? OverlayId = null,
+    string? SchemaId = null,
+    string? NodeId = null,
+    string? Path = null,
+    string? SchemaPath = null,
+    string Message = "",
+    string? Recoverability = null);

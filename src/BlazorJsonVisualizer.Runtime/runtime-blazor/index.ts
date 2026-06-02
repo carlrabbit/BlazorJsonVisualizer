@@ -11,6 +11,14 @@ import {
   type PreparedEditCommandDto,
   type PreparedEditResultDto,
   type PreparedOpenRequestDto,
+  type SchemaDetailsRequestDto,
+  type SchemaDetailsResultDto,
+  type SchemaOverlayAttachRequestDto,
+  type SchemaOverlayAttachResultDto,
+  type SchemaOverlayDetachRequestDto,
+  type SchemaOverlayDetachResultDto,
+  type SchemaValidationRequestDto,
+  type SchemaValidationResultDto,
   type PreparedRevealRequestDto,
   type PreparedRevealResultDto,
   type PreparedSearchRequestDto,
@@ -41,6 +49,10 @@ export interface RuntimeBlazorModule {
   searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto>;
   revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto>;
   applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto>;
+  attachPreparedSchemaOverlay(request: SchemaOverlayAttachRequestDto): Promise<SchemaOverlayAttachResultDto>;
+  detachPreparedSchemaOverlay(request: SchemaOverlayDetachRequestDto): Promise<SchemaOverlayDetachResultDto>;
+  getPreparedSchemaDetails(request: SchemaDetailsRequestDto): Promise<SchemaDetailsResultDto>;
+  getPreparedSchemaDiagnostics(request: SchemaValidationRequestDto): Promise<SchemaValidationResultDto>;
   closePreparedDocumentSession(sessionId: string): Promise<void>;
   createProjection(command: CreateProjectionCommand): Promise<void>;
   disposeProjection(command: DisposeProjectionCommand): Promise<void>;
@@ -90,6 +102,28 @@ export async function revealPreparedLocation(request: PreparedRevealRequestDto):
 
 export async function applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto> {
   return preparedDocumentHost.applyPreparedEdit(command);
+}
+
+export async function attachPreparedSchemaOverlay(
+  request: SchemaOverlayAttachRequestDto
+): Promise<SchemaOverlayAttachResultDto> {
+  return preparedDocumentHost.attachPreparedSchemaOverlay(request);
+}
+
+export async function detachPreparedSchemaOverlay(
+  request: SchemaOverlayDetachRequestDto
+): Promise<SchemaOverlayDetachResultDto> {
+  return preparedDocumentHost.detachPreparedSchemaOverlay(request);
+}
+
+export async function getPreparedSchemaDetails(request: SchemaDetailsRequestDto): Promise<SchemaDetailsResultDto> {
+  return preparedDocumentHost.getPreparedSchemaDetails(request);
+}
+
+export async function getPreparedSchemaDiagnostics(
+  request: SchemaValidationRequestDto
+): Promise<SchemaValidationResultDto> {
+  return preparedDocumentHost.getPreparedSchemaDiagnostics(request);
 }
 
 export async function closePreparedDocumentSession(sessionId: string): Promise<void> {

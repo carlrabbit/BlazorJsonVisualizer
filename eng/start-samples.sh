@@ -36,6 +36,11 @@ LAYER3_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/BlazorJ
 LAYER3_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/bin/Debug/net10.0/BlazorJsonVisualizer.ProjectionSample.dll"
 VISUAL_IDENTITY_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/BlazorJsonVisualizer.VisualIdentitySample.csproj"
 VISUAL_IDENTITY_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/bin/Debug/net10.0/BlazorJsonVisualizer.VisualIdentitySample.dll"
+BASIC_SAMPLE_CONTENT_ROOT="$REPO_ROOT/src/BlazorJsonVisualizer.SampleApp"
+LAYER1_CONTENT_ROOT="$REPO_ROOT/samples/BlazorJsonVisualizer.Layer1Sample"
+LAYER2_CONTENT_ROOT="$REPO_ROOT/samples/BlazorJsonVisualizer.SchemaOverlaySample"
+LAYER3_CONTENT_ROOT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample"
+VISUAL_IDENTITY_CONTENT_ROOT="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample"
 RUNTIME_WORKSPACE_DIR="$REPO_ROOT/src/BlazorJsonVisualizer.Runtime"
 RUNTIME_BLAZOR_DIST_FILE="$RUNTIME_WORKSPACE_DIR/runtime-blazor/dist/index.js"
 RUNTIME_BLAZOR_WWWROOT_FILE="$REPO_ROOT/src/BlazorJsonVisualizer/wwwroot/runtime-blazor.js"
@@ -95,10 +100,33 @@ require_command() {
 
 check_port_free() {
   local port="$1"
-  if ss -Htanl "sport eq :$port" | grep -q 'LISTEN'; then
-    echo "Port $port is already in use by another listening process." >&2
-    exit 1
+  if command -v ss >/dev/null 2>&1; then
+    if ss -Htanl "sport eq :$port" | grep -q 'LISTEN'; then
+      echo "Port $port is already in use by another listening process." >&2
+      exit 1
+    fi
+    return
   fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 - "$port" <<'PY'
+import socket
+import sys
+
+port = int(sys.argv[1])
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.settimeout(0.2)
+    sys.exit(0 if sock.connect_ex(("127.0.0.1", port)) == 0 else 1)
+PY
+    then
+      echo "Port $port is already in use by another listening process." >&2
+      exit 1
+    fi
+    return
+  fi
+
+  echo "Unable to check whether port $port is free because neither ss nor python3 is available." >&2
+  exit 1
 }
 
 cleanup() {
@@ -214,31 +242,31 @@ start_index() {
 start_basic_sample() {
   start_process \
     "$BASIC_PID_FILE" \
-    dotnet "$BASIC_SAMPLE_DLL" --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT"
+    dotnet "$BASIC_SAMPLE_DLL" --contentRoot "$BASIC_SAMPLE_CONTENT_ROOT" --urls "http://$BIND_HOST:$BASIC_SAMPLE_PORT"
 }
 
 start_layer1_sample() {
   start_process \
     "$LAYER1_PID_FILE" \
-    dotnet "$LAYER1_DLL" --urls "http://$BIND_HOST:$LAYER1_PORT"
+    dotnet "$LAYER1_DLL" --contentRoot "$LAYER1_CONTENT_ROOT" --urls "http://$BIND_HOST:$LAYER1_PORT"
 }
 
 start_layer2_sample() {
   start_process \
     "$LAYER2_PID_FILE" \
-    dotnet "$LAYER2_DLL" --urls "http://$BIND_HOST:$LAYER2_PORT"
+    dotnet "$LAYER2_DLL" --contentRoot "$LAYER2_CONTENT_ROOT" --urls "http://$BIND_HOST:$LAYER2_PORT"
 }
 
 start_layer3_sample() {
   start_process \
     "$LAYER3_PID_FILE" \
-    dotnet "$LAYER3_DLL" --urls "http://$BIND_HOST:$LAYER3_PORT"
+    dotnet "$LAYER3_DLL" --contentRoot "$LAYER3_CONTENT_ROOT" --urls "http://$BIND_HOST:$LAYER3_PORT"
 }
 
 start_visual_identity_sample() {
   start_process \
     "$VISUAL_IDENTITY_PID_FILE" \
-    dotnet "$VISUAL_IDENTITY_DLL" --urls "http://$BIND_HOST:$VISUAL_IDENTITY_PORT"
+    dotnet "$VISUAL_IDENTITY_DLL" --contentRoot "$VISUAL_IDENTITY_CONTENT_ROOT" --urls "http://$BIND_HOST:$VISUAL_IDENTITY_PORT"
 }
 
 parse_args "$@"
@@ -246,7 +274,6 @@ parse_args "$@"
 if (( ! DRY_RUN )); then
   require_command dotnet
   require_command bun
-  require_command ss
 fi
 
 if [[ ! -d "$INDEX_DIR" ]]; then

@@ -1,20 +1,30 @@
-import type {
+import {
   CreateSessionCommand,
-  PreparedDocumentMetadataDto,
+  type PreparedDocumentMetadataDto,
   type PreparedEditCommandDto,
   type PreparedEditResultDto,
-  PreparedOpenRequestDto,
-  PreparedOpenResultDto,
-  PreparedRenderRowDto,
-  PreparedRevealRequestDto,
-  PreparedRevealResultDto,
-  PreparedRowsResultDto,
-  PreparedSearchRequestDto,
-  PreparedSearchResultPageDto,
-  PreparedViewportRequestDto,
+  type PreparedOpenRequestDto,
+  type PreparedRenderRowDto,
+  type PreparedRevealRequestDto,
+  type PreparedRevealResultDto,
+  type PreparedRowsResultDto,
+  type PreparedSearchRequestDto,
+  type PreparedSearchResultPageDto,
+  type PreparedViewportRequestDto,
   type JsonValueDto,
-  RuntimeDiagnosticDto,
-  RuntimeEventDto
+  type RuntimeDiagnosticDto,
+  type RuntimeEventDto,
+  PreparedSchemaOverlayRegistry,
+  type SchemaDetailsRequestDto,
+  type SchemaDetailsResultDto,
+  type SchemaOverlayAttachRequestDto,
+  type SchemaOverlayAttachResultDto,
+  type SchemaOverlayDetachRequestDto,
+  type SchemaOverlayDetachResultDto,
+  type SchemaOverlayDiagnosticDto,
+  type SchemaRowDecorationDto,
+  type SchemaValidationRequestDto,
+  type SchemaValidationResultDto
 } from "../../runtime-core/index.js";
 import {
   createPreparedDocumentRuntimeClient,
@@ -43,6 +53,9 @@ interface PreparedBrowserSession {
   viewport: PreparedViewportRequestDto;
   foldStateRevision: number;
   diagnostics: RuntimeDiagnosticDto[];
+  schemaDiagnostics: SchemaOverlayDiagnosticDto[];
+  schemaDecorations: SchemaRowDecorationDto[];
+  schemaDetails: SchemaDetailsResultDto | undefined;
   metadata: PreparedDocumentMetadataDto | undefined;
   rows: PreparedRowsResultDto | undefined;
   totalKnownRows: number;
@@ -51,6 +64,7 @@ interface PreparedBrowserSession {
 
 export class PreparedDocumentHost {
   private readonly sessions = new Map<string, RegisteredPreparedHostSession>();
+  private readonly schemaOverlays = new PreparedSchemaOverlayRegistry();
 
   public registerSession(command: CreateSessionCommand, callbackTarget?: DotNetPreparedCallbackTarget): void {
     this.sessions.set(command.sessionId, {
@@ -76,6 +90,9 @@ export class PreparedDocumentHost {
       preparedSession.metadata = await preparedSession.client.getPreparedDocumentMetadata(command.sessionId);
       preparedSession.foldStateRevision += 1;
       await this.refreshRows(preparedSession);
+      preparedSession.schemaDiagnostics = [];
+      preparedSession.schemaDecorations = [];
+      preparedSession.schemaDetails = undefined;
     }
 
     await this.emitDiagnostics(preparedSession);
@@ -113,6 +130,9 @@ export class PreparedDocumentHost {
       viewport: request.initialViewport ?? DEFAULT_VIEWPORT,
       foldStateRevision: 0,
       diagnostics: openResult.diagnostics ?? [],
+      schemaDiagnostics: [],
+      schemaDecorations: [],
+      schemaDetails: undefined,
       metadata: openResult.metadata,
       rows: undefined,
       totalKnownRows: 0
@@ -133,6 +153,67 @@ export class PreparedDocumentHost {
     this.render(preparedSession);
   }
 
+  public async attachPreparedSchemaOverlay(
+    request: SchemaOverlayAttachRequestDto
+  ): Promise<SchemaOverlayAttachResultDto> {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const currentRevision = preparedSession.metadata?.revision ?? request.baseRevision;
+    const bridgeResult = await preparedSession.client.attachPreparedSchemaOverlay(request);
+    const result = this.schemaOverlays.attach(request, currentRevision);
+    preparedSession.schemaDiagnostics = [...bridgeResult.diagnostics, ...result.diagnostics];
+    await this.refreshSchemaOverlay(preparedSession);
+    await this.emit(preparedSession, {
+      type: "schemaDiagnosticsChanged",
+      sessionId: preparedSession.sessionId,
+      documentId: preparedSession.documentId,
+      schemaDiagnostics: preparedSession.schemaDiagnostics
+    });
+    this.render(preparedSession);
+    return { ...result, diagnostics: preparedSession.schemaDiagnostics };
+  }
+
+  public async detachPreparedSchemaOverlay(
+    request: SchemaOverlayDetachRequestDto
+  ): Promise<SchemaOverlayDetachResultDto> {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const bridgeResult = await preparedSession.client.detachPreparedSchemaOverlay(request);
+    const result = this.schemaOverlays.detach(request);
+    preparedSession.schemaDiagnostics = [...bridgeResult.diagnostics, ...result.diagnostics];
+    preparedSession.schemaDecorations = [];
+    preparedSession.schemaDetails = undefined;
+    await this.emit(preparedSession, {
+      type: "schemaDiagnosticsChanged",
+      sessionId: preparedSession.sessionId,
+      documentId: preparedSession.documentId,
+      schemaDiagnostics: preparedSession.schemaDiagnostics
+    });
+    this.render(preparedSession);
+    return { ...result, diagnostics: preparedSession.schemaDiagnostics };
+  }
+
+  public async getPreparedSchemaDetails(request: SchemaDetailsRequestDto): Promise<SchemaDetailsResultDto> {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const result = this.schemaOverlays.getDetails(request, this.createSchemaSnapshot(preparedSession));
+    preparedSession.schemaDetails = result;
+    preparedSession.schemaDiagnostics = result.diagnostics;
+    this.render(preparedSession);
+    return result;
+  }
+
+  public async getPreparedSchemaDiagnostics(request: SchemaValidationRequestDto): Promise<SchemaValidationResultDto> {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const result = this.schemaOverlays.getDiagnostics(request, this.createSchemaSnapshot(preparedSession));
+    preparedSession.schemaDiagnostics = result.diagnostics;
+    await this.emit(preparedSession, {
+      type: "schemaDiagnosticsChanged",
+      sessionId: preparedSession.sessionId,
+      documentId: preparedSession.documentId,
+      schemaDiagnostics: preparedSession.schemaDiagnostics
+    });
+    this.render(preparedSession);
+    return result;
+  }
+
   public async searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto> {
     const preparedSession = this.requirePreparedSession(request.sessionId);
     const result = await preparedSession.client.searchPreparedDocument(request);
@@ -150,6 +231,9 @@ export class PreparedDocumentHost {
       preparedSession.viewport = result.viewport;
       preparedSession.focusedNodeId = result.nodeId;
       await this.refreshRows(preparedSession);
+      preparedSession.schemaDiagnostics = [];
+      preparedSession.schemaDecorations = [];
+      preparedSession.schemaDetails = undefined;
     }
 
     await this.emitDiagnostics(preparedSession);
@@ -175,6 +259,7 @@ export class PreparedDocumentHost {
     session.rows = rows;
     session.totalKnownRows = rows.totalKnownRows ?? rows.rows.length;
     session.diagnostics = rows.diagnostics ?? session.diagnostics;
+    await this.refreshSchemaOverlay(session);
   }
 
   private render(session: PreparedBrowserSession): void {
@@ -190,6 +275,10 @@ export class PreparedDocumentHost {
 
     if (session.diagnostics.length > 0) {
       runtime.append(this.createDiagnosticsPanel(session.diagnostics));
+    }
+
+    if (session.schemaDiagnostics.length > 0 || session.schemaDetails !== undefined) {
+      runtime.append(this.createSchemaPanel(session));
     }
 
     const scrollContainer = document.createElement("div");
@@ -244,6 +333,21 @@ export class PreparedDocumentHost {
       rowElement.append(spacer);
     }
 
+    const decoration = session.schemaDecorations.find((entry) => entry.rowIndex === row.rowIndex);
+    if (decoration !== undefined) {
+      const marker = document.createElement("button");
+      marker.type = "button";
+      marker.className = `bjv-prepared-schema-marker bjv-prepared-schema-marker-${decoration.severity ?? "info"}`;
+      marker.textContent = decoration.hasDiagnostics ? "⚠" : "ⓘ";
+      marker.title = decoration.markerKinds.join(", ");
+      marker.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void this.showSchemaDetails(session, row);
+      });
+      rowElement.append(marker);
+    }
+
     const text = document.createElement("span");
     text.className = "bjv-prepared-row-text";
     text.textContent = row.text;
@@ -283,6 +387,23 @@ export class PreparedDocumentHost {
     }
 
     return rowElement;
+  }
+
+  private async showSchemaDetails(session: PreparedBrowserSession, row: PreparedRenderRowDto): Promise<void> {
+    if (session.metadata === undefined) {
+      return;
+    }
+    await this.getPreparedSchemaDetails({
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      revision: session.metadata.revision,
+      target: {
+        kind: "row",
+        rowIndex: row.rowIndex,
+        ...(row.nodeId !== undefined ? { nodeId: row.nodeId } : {}),
+        ...(row.path !== undefined ? { path: row.path } : {})
+      }
+    });
   }
 
   private canOfferControlledEdit(session: PreparedBrowserSession, row: PreparedRenderRowDto): boolean {
@@ -426,6 +547,83 @@ export class PreparedDocumentHost {
     return panel;
   }
 
+  private async refreshSchemaOverlay(session: PreparedBrowserSession): Promise<void> {
+    if (session.metadata === undefined || this.schemaOverlays.getActiveOverlay(session.sessionId) === undefined) {
+      session.schemaDecorations = [];
+      return;
+    }
+    const snapshot = this.createSchemaSnapshot(session);
+    const decorationResult = this.schemaOverlays.getRowDecorations(
+      {
+        sessionId: session.sessionId,
+        documentId: session.documentId,
+        revision: session.metadata.revision,
+        rows: session.rows?.rows ?? [],
+        maxDecorations: session.viewport.rowCount
+      },
+      snapshot
+    );
+    session.schemaDecorations = decorationResult.decorations;
+    if (decorationResult.diagnostics.length > 0) {
+      session.schemaDiagnostics = decorationResult.diagnostics;
+    }
+  }
+
+  private createSchemaSnapshot(session: PreparedBrowserSession) {
+    return {
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      revision: session.metadata?.revision ?? 0,
+      rows: session.rows?.rows ?? [],
+      nodePathsById: Object.fromEntries(
+        (session.rows?.rows ?? [])
+          .filter((row) => row.nodeId !== undefined && row.path !== undefined)
+          .map((row) => [row.nodeId ?? "", row.path ?? ""])
+      )
+    };
+  }
+
+  private createSchemaPanel(session: PreparedBrowserSession): HTMLElement {
+    const panel = document.createElement("section");
+    panel.className = "bjv-prepared-schema-panel";
+    const title = document.createElement("h2");
+    title.textContent = "Schema overlay";
+    panel.append(title);
+
+    if (session.schemaDetails?.metadata !== undefined) {
+      const metadata = session.schemaDetails.metadata;
+      const details = document.createElement("dl");
+      details.className = "bjv-prepared-schema-details";
+      this.appendMetadataItem(details, "Path", metadata.path ?? session.schemaDetails.target.kind);
+      this.appendMetadataItem(details, "Schema", metadata.schemaPath);
+      if (metadata.title !== undefined) this.appendMetadataItem(details, "Title", metadata.title);
+      if (metadata.description !== undefined) this.appendMetadataItem(details, "Description", metadata.description);
+      if (metadata.expectedType !== undefined)
+        this.appendMetadataItem(
+          details,
+          "Expected",
+          Array.isArray(metadata.expectedType) ? metadata.expectedType.join(" | ") : metadata.expectedType
+        );
+      if (metadata.enumValues !== undefined)
+        this.appendMetadataItem(details, "Enum", metadata.enumValues.map((value) => JSON.stringify(value)).join(", "));
+      if (metadata.required === true) this.appendMetadataItem(details, "Required", "yes");
+      if (metadata.defaultValue !== undefined)
+        this.appendMetadataItem(details, "Default", JSON.stringify(metadata.defaultValue));
+      panel.append(details);
+    }
+
+    if (session.schemaDiagnostics.length > 0) {
+      const list = document.createElement("ul");
+      for (const diagnostic of session.schemaDiagnostics.slice(0, 8)) {
+        const item = document.createElement("li");
+        item.textContent = `${diagnostic.severity}: ${diagnostic.message}${diagnostic.path !== undefined ? ` (${diagnostic.path})` : ""}`;
+        list.append(item);
+      }
+      panel.append(list);
+    }
+    return panel;
+  }
+
   private appendMetadataItem(list: HTMLDListElement, termText: string, valueText: string): void {
     const term = document.createElement("dt");
     term.textContent = termText;
@@ -556,6 +754,42 @@ export class PreparedDocumentHost {
 .bjv-prepared-diagnostics h2 {
   font-size: 1rem;
   margin: 0 0 0.5rem 0;
+}
+.bjv-prepared-schema-marker {
+  border: 1px solid #38bdf8;
+  border-radius: 999px;
+  background: #082f49;
+  color: #e0f2fe;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+}
+.bjv-prepared-schema-marker-warning {
+  border-color: #f59e0b;
+  background: #451a03;
+}
+.bjv-prepared-schema-marker-error {
+  border-color: #f87171;
+  background: #450a0a;
+}
+.bjv-prepared-schema-panel {
+  border: 1px solid #bae6fd;
+  background: #f0f9ff;
+  color: #0c4a6e;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: system-ui, sans-serif;
+}
+.bjv-prepared-schema-panel h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+.bjv-prepared-schema-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+}
+.bjv-prepared-schema-details dd {
+  margin: 0;
 }
 `;
     return styles;

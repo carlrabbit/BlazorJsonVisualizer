@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned / implementation-ready.
+Implemented / documentation synchronization deferred.
 
 ## Task Mode
 
@@ -335,13 +335,19 @@ Release/public-package agent:
 
 - handle package smoke tests, public API baselines, versioned release notes, and release checks only when a release task is explicitly opened.
 
-## Completion Update Instructions
+## Completion Note
 
-When implementation finishes, replace this section with a short completion note and set status appropriately.
+Milestone 0021 implementation is complete for the in-scope focus areas. The browser runtime now includes explicit prepared-document schema overlay DTOs, session-scoped attach/detach state, JSON Pointer/node/visible-row metadata resolution, local same-document `$ref` resolution, bounded visible-row validation diagnostics, row decorations, hover/details payloads, and prepared-document host operations for Layer 2 overlay UI. The Blazor host exposes explicit prepared-schema overlay interop methods, and the Layer 2 sample now demonstrates schema overlay behavior over an imported prepared document rather than over the small-document Layer 1 prototype path.
 
-The completion note must state:
+Validation commands run for this completion:
 
-- which focus areas were implemented;
-- which validation commands were run;
-- whether public documentation synchronization is complete or deferred;
-- any unsupported schema features that remain explicit non-goals.
+- `./eng/restore.sh`
+- `./eng/frontend-format.sh`
+- `./eng/frontend-check.sh`
+- `./eng/samples.sh`
+- `./eng/test.sh`
+- `./eng/check.sh`
+
+Public documentation synchronization is intentionally deferred. The deferred pass listed above remains incomplete by design.
+
+Unsupported schema features that remain explicit non-goals include schema-aware editing, automatic schema inference, Layer 3 projection/plugin integration, arbitrary remote or cross-document `$ref` fetching, complete JSON Schema Draft 2020-12 conformance, schema-driven form rendering, invalid JSON best-effort validation, durable schema persistence, and release/package/public-API validation.

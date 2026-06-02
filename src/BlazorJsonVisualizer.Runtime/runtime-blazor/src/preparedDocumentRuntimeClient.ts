@@ -13,7 +13,11 @@ import type {
   PreparedSearchRequestDto,
   PreparedSearchResultPageDto,
   PreparedTextRangeDto,
-  PreparedTextRangeRequestDto
+  PreparedTextRangeRequestDto,
+  SchemaOverlayAttachRequestDto,
+  SchemaOverlayAttachResultDto,
+  SchemaOverlayDetachRequestDto,
+  SchemaOverlayDetachResultDto
 } from "../../runtime-core/index.js";
 
 export interface PreparedDocumentDotNetBridge {
@@ -29,6 +33,8 @@ export interface PreparedDocumentRuntimeClient {
   searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto>;
   revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto>;
   applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto>;
+  attachPreparedSchemaOverlay(request: SchemaOverlayAttachRequestDto): Promise<SchemaOverlayAttachResultDto>;
+  detachPreparedSchemaOverlay(request: SchemaOverlayDetachRequestDto): Promise<SchemaOverlayDetachResultDto>;
   closePreparedDocumentSession(sessionId: string): Promise<void>;
 }
 
@@ -50,6 +56,10 @@ export function createPreparedDocumentRuntimeClient(
     revealPreparedLocation: (request) =>
       bridge.invokeMethodAsync<PreparedRevealResultDto>("RevealPreparedLocationAsync", request),
     applyPreparedEdit: (command) => bridge.invokeMethodAsync<PreparedEditResultDto>("ApplyPreparedEditAsync", command),
+    attachPreparedSchemaOverlay: (request) =>
+      bridge.invokeMethodAsync<SchemaOverlayAttachResultDto>("AttachPreparedSchemaOverlayAsync", request),
+    detachPreparedSchemaOverlay: (request) =>
+      bridge.invokeMethodAsync<SchemaOverlayDetachResultDto>("DetachPreparedSchemaOverlayAsync", request),
     closePreparedDocumentSession: async (sessionId) => {
       await bridge.invokeMethodAsync("ClosePreparedDocumentSessionAsync", sessionId);
     }

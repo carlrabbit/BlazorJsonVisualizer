@@ -311,11 +311,7 @@ var JsonStructuralParser = class {
   readStringToken(expectedMessage) {
     const startOffset = this.position;
     if (!this.consumeIf('"')) {
-      throw new JsonParseError(
-        expectedMessage,
-        this.position,
-        Math.min(this.text.length, this.position + 1)
-      );
+      throw new JsonParseError(expectedMessage, this.position, Math.min(this.text.length, this.position + 1));
     }
     let value = "";
     while (this.position < this.text.length) {
@@ -555,7 +551,11 @@ var SessionRegistry = class {
   applyTransaction(command) {
     const session = this.sessions.get(command.sessionId);
     if (session === void 0) {
-      return rejectTransaction(command.sessionId, command.transaction.transactionId, `Session '${command.sessionId}' is not available.`);
+      return rejectTransaction(
+        command.sessionId,
+        command.transaction.transactionId,
+        `Session '${command.sessionId}' is not available.`
+      );
     }
     if (command.transaction.sessionId !== command.sessionId) {
       return rejectTransaction(
@@ -587,7 +587,11 @@ var SessionRegistry = class {
   undo(command) {
     const session = this.sessions.get(command.sessionId);
     if (session === void 0) {
-      return rejectTransaction(command.sessionId, createSyntheticTransactionId("undo", 0), `Session '${command.sessionId}' is not available.`);
+      return rejectTransaction(
+        command.sessionId,
+        createSyntheticTransactionId("undo", 0),
+        `Session '${command.sessionId}' is not available.`
+      );
     }
     const transactionId = createSyntheticTransactionId("undo", session.revision + 1);
     const historyEntry = session.undoStack[session.undoStack.length - 1];
@@ -630,7 +634,11 @@ var SessionRegistry = class {
   redo(command) {
     const session = this.sessions.get(command.sessionId);
     if (session === void 0) {
-      return rejectTransaction(command.sessionId, createSyntheticTransactionId("redo", 0), `Session '${command.sessionId}' is not available.`);
+      return rejectTransaction(
+        command.sessionId,
+        createSyntheticTransactionId("redo", 0),
+        `Session '${command.sessionId}' is not available.`
+      );
     }
     const transactionId = createSyntheticTransactionId("redo", session.revision + 1);
     const historyEntry = session.redoStack[session.redoStack.length - 1];
@@ -789,15 +797,27 @@ var SessionRegistry = class {
     const session = this.requireSession(command.sessionId);
     const tableProjection = session.tableProjectionsById[command.projectionId];
     if (tableProjection === void 0) {
-      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Projection '${command.projectionId}' is not available.`);
+      return rejectTransaction(
+        command.sessionId,
+        `projection-edit-${session.revision + 1}`,
+        `Projection '${command.projectionId}' is not available.`
+      );
     }
     const row = tableProjection.rows.find((entry) => entry.rowId === command.rowId);
     if (row === void 0) {
-      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Row '${command.rowId}' is not available.`);
+      return rejectTransaction(
+        command.sessionId,
+        `projection-edit-${session.revision + 1}`,
+        `Row '${command.rowId}' is not available.`
+      );
     }
     const cell = row.cells.find((entry) => entry.columnId === command.columnId);
     if (cell === void 0) {
-      return rejectTransaction(command.sessionId, `projection-edit-${session.revision + 1}`, `Column '${command.columnId}' is not available for row '${command.rowId}'.`);
+      return rejectTransaction(
+        command.sessionId,
+        `projection-edit-${session.revision + 1}`,
+        `Column '${command.columnId}' is not available for row '${command.rowId}'.`
+      );
     }
     return this.applyTransaction({
       sessionId: command.sessionId,
@@ -837,7 +857,11 @@ var SessionRegistry = class {
   }
   executeTransaction(session, transaction) {
     if (session.document === void 0 || session.documentId === void 0 || session.text === void 0) {
-      return rejectTransaction(session.sessionId, transaction.transactionId, "Session does not have a loaded document.");
+      return rejectTransaction(
+        session.sessionId,
+        transaction.transactionId,
+        "Session does not have a loaded document."
+      );
     }
     if (transaction.baseRevision !== session.revision) {
       return rejectTransaction(
@@ -848,7 +872,11 @@ var SessionRegistry = class {
     }
     const currentRootValue = parseJsonText(session.text);
     if (currentRootValue === void 0) {
-      return rejectTransaction(session.sessionId, transaction.transactionId, "Current document text is not valid JSON.");
+      return rejectTransaction(
+        session.sessionId,
+        transaction.transactionId,
+        "Current document text is not valid JSON."
+      );
     }
     const mutationResult = applyTransactionMutation(session.document, currentRootValue, transaction);
     if (!("nextRootValue" in mutationResult)) {
@@ -856,11 +884,19 @@ var SessionRegistry = class {
     }
     const nextText = serializeJsonValue(mutationResult.nextRootValue);
     if (nextText === void 0) {
-      return rejectTransaction(session.sessionId, transaction.transactionId, "Updated document is not representable as valid JSON.");
+      return rejectTransaction(
+        session.sessionId,
+        transaction.transactionId,
+        "Updated document is not representable as valid JSON."
+      );
     }
     const parseResult = parseJsonDocument(nextText);
     if (parseResult.document === void 0) {
-      return rejectTransaction(session.sessionId, transaction.transactionId, "Updated document could not be re-indexed.");
+      return rejectTransaction(
+        session.sessionId,
+        transaction.transactionId,
+        "Updated document could not be re-indexed."
+      );
     }
     const updatedSession = {
       ...session,
@@ -1111,11 +1147,19 @@ function applyReplaceValueTransaction(document2, rootValue, transaction) {
     return rejectTransaction(transaction.sessionId, transaction.transactionId, "replaceValue payload is invalid.");
   }
   if (!isJsonScalarValue(transaction.payload.value)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, "replaceValue requires a primitive JSON value.");
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      "replaceValue requires a primitive JSON value."
+    );
   }
   const node = document2.nodesById[transaction.payload.nodeId];
   if (node === void 0) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target node '${transaction.payload.nodeId}' was not found.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${transaction.payload.nodeId}' was not found.`
+    );
   }
   if (!isPrimitiveNodeKind(node.kind)) {
     return rejectTransaction(
@@ -1126,7 +1170,11 @@ function applyReplaceValueTransaction(document2, rootValue, transaction) {
   }
   const previousValue = getJsonValueAtPath(rootValue, node.path);
   if (!isJsonScalarValue(previousValue)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${node.path}' did not resolve to a primitive value.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target path '${node.path}' did not resolve to a primitive value.`
+    );
   }
   const nextRootValue = setJsonValueAtPath(rootValue, node.path, cloneJsonValue(transaction.payload.value));
   return {
@@ -1159,7 +1207,11 @@ function applySetPropertyValueTransaction(document2, rootValue, transaction) {
     return rejectTransaction(transaction.sessionId, transaction.transactionId, "setPropertyValue payload is invalid.");
   }
   if (!isJsonValueDto(transaction.payload.value)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, "setPropertyValue requires a valid JSON value.");
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      "setPropertyValue requires a valid JSON value."
+    );
   }
   const objectNode = document2.nodesById[transaction.payload.objectNodeId];
   if (objectNode === void 0) {
@@ -1178,7 +1230,11 @@ function applySetPropertyValueTransaction(document2, rootValue, transaction) {
   }
   const objectValue = getJsonValueAtPath(rootValue, objectNode.path);
   if (!isJsonObjectDto(objectValue)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${objectNode.path}' did not resolve to an object.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target path '${objectNode.path}' did not resolve to an object.`
+    );
   }
   objectValue[transaction.payload.propertyName] = cloneJsonValue(transaction.payload.value);
   return {
@@ -1222,7 +1278,11 @@ function applyRemovePropertyTransaction(document2, rootValue, transaction) {
   }
   const objectValue = getJsonValueAtPath(rootValue, objectNode.path);
   if (!isJsonObjectDto(objectValue)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${objectNode.path}' did not resolve to an object.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target path '${objectNode.path}' did not resolve to an object.`
+    );
   }
   if (!(transaction.payload.propertyName in objectValue)) {
     return rejectTransaction(
@@ -1255,11 +1315,19 @@ function applyInsertArrayItemTransaction(document2, rootValue, transaction) {
     return rejectTransaction(transaction.sessionId, transaction.transactionId, "insertArrayItem payload is invalid.");
   }
   if (!isJsonValueDto(transaction.payload.value)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, "insertArrayItem requires a valid JSON value.");
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      "insertArrayItem requires a valid JSON value."
+    );
   }
   const arrayNode = document2.nodesById[transaction.payload.arrayNodeId];
   if (arrayNode === void 0) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target node '${transaction.payload.arrayNodeId}' was not found.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${transaction.payload.arrayNodeId}' was not found.`
+    );
   }
   if (arrayNode.kind !== "array") {
     return rejectTransaction(
@@ -1270,7 +1338,11 @@ function applyInsertArrayItemTransaction(document2, rootValue, transaction) {
   }
   const arrayValue = getJsonValueAtPath(rootValue, arrayNode.path);
   if (!isJsonArrayDto(arrayValue)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${arrayNode.path}' did not resolve to an array.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target path '${arrayNode.path}' did not resolve to an array.`
+    );
   }
   if (!Number.isInteger(transaction.payload.index) || transaction.payload.index < 0 || transaction.payload.index > arrayValue.length) {
     return rejectTransaction(
@@ -1306,7 +1378,11 @@ function applyRemoveArrayItemTransaction(document2, rootValue, transaction) {
   }
   const arrayNode = document2.nodesById[transaction.payload.arrayNodeId];
   if (arrayNode === void 0) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target node '${transaction.payload.arrayNodeId}' was not found.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target node '${transaction.payload.arrayNodeId}' was not found.`
+    );
   }
   if (arrayNode.kind !== "array") {
     return rejectTransaction(
@@ -1317,7 +1393,11 @@ function applyRemoveArrayItemTransaction(document2, rootValue, transaction) {
   }
   const arrayValue = getJsonValueAtPath(rootValue, arrayNode.path);
   if (!isJsonArrayDto(arrayValue)) {
-    return rejectTransaction(transaction.sessionId, transaction.transactionId, `Target path '${arrayNode.path}' did not resolve to an array.`);
+    return rejectTransaction(
+      transaction.sessionId,
+      transaction.transactionId,
+      `Target path '${arrayNode.path}' did not resolve to an array.`
+    );
   }
   if (!Number.isInteger(transaction.payload.index) || transaction.payload.index < 0 || transaction.payload.index >= arrayValue.length) {
     return rejectTransaction(
@@ -1561,7 +1641,12 @@ function resolveSchemaOverlay(document2, text, schema) {
     if (nodeValue === void 0) {
       continue;
     }
-    const metadata = createSchemaNodeMetadata(nodeId, resolution.schemaPath, resolution.resolvedSchema, resolution.required);
+    const metadata = createSchemaNodeMetadata(
+      nodeId,
+      resolution.schemaPath,
+      resolution.resolvedSchema,
+      resolution.required
+    );
     metadataByNodeId[nodeId] = metadata;
     collectSchemaDiagnostics(diagnostics, node, nodeValue, metadata, resolution.resolvedSchema);
   }
@@ -1827,6 +1912,897 @@ function isDigit(character) {
 function isDigitOneToNine(character) {
   return character !== void 0 && character >= "1" && character <= "9";
 }
+var SUPPORTED_SCHEMA_DRAFT = "https://json-schema.org/draft/2020-12/schema";
+var DEFAULT_SCHEMA_OVERLAY_OPTIONS = {
+  maxDiagnostics: 50,
+  includeUnsupportedKeywordDiagnostics: true
+};
+var SUPPORTED_SCHEMA_KEYWORDS = /* @__PURE__ */ new Set([
+  "$schema",
+  "$id",
+  "$ref",
+  "$defs",
+  "type",
+  "properties",
+  "items",
+  "required",
+  "enum",
+  "const",
+  "title",
+  "description",
+  "default",
+  "minimum",
+  "maximum",
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems"
+]);
+var UNSUPPORTED_VALIDATION_KEYWORDS = /* @__PURE__ */ new Set([
+  "allOf",
+  "anyOf",
+  "oneOf",
+  "not",
+  "if",
+  "then",
+  "else",
+  "pattern",
+  "format",
+  "additionalProperties",
+  "patternProperties",
+  "dependentRequired",
+  "dependentSchemas",
+  "contains",
+  "uniqueItems",
+  "multipleOf",
+  "exclusiveMinimum",
+  "exclusiveMaximum"
+]);
+var IGNORED_ANNOTATION_KEYWORDS = /* @__PURE__ */ new Set(["examples", "readOnly", "writeOnly", "deprecated", "$comment"]);
+var PreparedSchemaOverlayRegistry = class {
+  overlaysBySessionId = /* @__PURE__ */ new Map();
+  attach(request, currentRevision = request.baseRevision) {
+    const diagnostics = [];
+    if (request.baseRevision !== currentRevision) {
+      diagnostics.push(
+        createSchemaOverlayDiagnostic(request, {
+          category: "revisionMismatch",
+          severity: "error",
+          revision: currentRevision,
+          message: `Schema overlay attach base revision ${request.baseRevision} does not match current revision ${currentRevision}.`,
+          recoverability: "retry"
+        })
+      );
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: currentRevision,
+        diagnostics
+      };
+    }
+    const schema = getAttachSchema(request, diagnostics, currentRevision);
+    if (schema === void 0) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: currentRevision,
+        diagnostics
+      };
+    }
+    const options = { ...DEFAULT_SCHEMA_OVERLAY_OPTIONS, ...request.options ?? {} };
+    const unsupportedKeywords = collectUnsupportedSchemaKeywords(schema, "#");
+    if (typeof schema.$schema === "string" && schema.$schema !== SUPPORTED_SCHEMA_DRAFT) {
+      unsupportedKeywords.push({
+        keyword: "$schema",
+        schemaPath: "#/$schema",
+        classification: "unsupportedDraft",
+        message: `Schema draft '${schema.$schema}' is not fully supported; only Draft 2020-12 subset behavior is implemented.`
+      });
+    }
+    if (options.includeUnsupportedKeywordDiagnostics) {
+      for (const keyword of unsupportedKeywords.slice(0, options.maxDiagnostics)) {
+        diagnostics.push(
+          createSchemaOverlayDiagnostic(request, {
+            category: keyword.classification === "unsupportedReference" ? "unsupportedReference" : keyword.classification === "unsupportedDraft" ? "unsupportedDraft" : "unsupportedKeyword",
+            severity: keyword.classification === "ignoredAnnotation" ? "info" : "warning",
+            revision: currentRevision,
+            schemaId: request.schemaId,
+            schemaPath: keyword.schemaPath,
+            message: keyword.message,
+            recoverability: keyword.classification === "ignoredAnnotation" ? "none" : "unsupported"
+          })
+        );
+      }
+    }
+    const overlayId = `${request.sessionId}:${request.schemaId}:${currentRevision}`;
+    this.overlaysBySessionId.set(request.sessionId, {
+      overlayId,
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      revision: currentRevision,
+      schemaId: request.schemaId,
+      schema,
+      options,
+      unsupportedKeywords,
+      attachDiagnostics: diagnostics
+    });
+    return {
+      success: true,
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      revision: currentRevision,
+      overlayId,
+      schemaId: request.schemaId,
+      diagnostics
+    };
+  }
+  detach(request) {
+    const overlay = this.overlaysBySessionId.get(request.sessionId);
+    if (overlay === void 0) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        diagnostics: [
+          createSchemaOverlayDiagnostic(request, {
+            category: "schemaNotAttached",
+            severity: "warning",
+            message: "No schema overlay is attached.",
+            recoverability: "none"
+          })
+        ]
+      };
+    }
+    if (request.overlayId !== void 0 && request.overlayId !== overlay.overlayId) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        diagnostics: [
+          createSchemaOverlayDiagnostic(request, {
+            category: "targetNotFound",
+            severity: "error",
+            overlayId: overlay.overlayId,
+            schemaId: overlay.schemaId,
+            message: `Schema overlay '${request.overlayId}' is not active for this session.`,
+            recoverability: "retry"
+          })
+        ]
+      };
+    }
+    this.overlaysBySessionId.delete(request.sessionId);
+    return {
+      success: true,
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      detachedOverlayId: overlay.overlayId,
+      diagnostics: []
+    };
+  }
+  getMetadata(request, snapshot) {
+    const overlay = this.requireCurrentOverlay(request, snapshot);
+    if (overlay.diagnostics.length > 0 || overlay.record === void 0) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: request.revision,
+        target: request.target,
+        diagnostics: overlay.diagnostics
+      };
+    }
+    const record = overlay.record;
+    const pathResult = resolvePreparedOverlayTargetPath(request.target, snapshot);
+    if (pathResult.diagnostics.length > 0 || pathResult.path === void 0) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: request.revision,
+        overlayId: record.overlayId,
+        target: request.target,
+        diagnostics: pathResult.diagnostics.map((diagnostic) => completeDiagnostic(diagnostic, record))
+      };
+    }
+    const resolution = resolvePreparedSchemaForPath(record, pathResult.path);
+    const diagnostics = resolution.diagnostics;
+    if (resolution.schema === void 0) {
+      diagnostics.push(
+        createOverlayRecordDiagnostic(record, {
+          category: "targetNotFound",
+          severity: "warning",
+          path: pathResult.path,
+          message: `No schema metadata was found for '${pathResult.path}'.`,
+          recoverability: "none"
+        })
+      );
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: request.revision,
+        overlayId: record.overlayId,
+        target: request.target,
+        diagnostics
+      };
+    }
+    return {
+      success: true,
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      revision: request.revision,
+      overlayId: record.overlayId,
+      target: request.target,
+      metadata: createPreparedSchemaNodeMetadata(
+        overlay.record,
+        resolution.schemaPath,
+        resolution.schema,
+        resolution.required,
+        pathResult.path,
+        pathResult.nodeId
+      ),
+      diagnostics
+    };
+  }
+  getDetails(request, snapshot) {
+    const result = this.getMetadata(request, snapshot);
+    return { ...result };
+  }
+  getDiagnostics(request, snapshot) {
+    const overlay = this.requireCurrentOverlay(request, snapshot);
+    if (overlay.diagnostics.length > 0 || overlay.record === void 0) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: request.revision,
+        diagnostics: overlay.diagnostics,
+        truncated: false
+      };
+    }
+    const maxDiagnostics = Math.max(1, Math.min(500, request.maxDiagnostics));
+    const diagnostics = [];
+    const target = request.target;
+    const candidateRows = target === void 0 ? snapshot.rows ?? [] : (snapshot.rows ?? []).filter((row) => targetMatchesRow(target, row));
+    if ((snapshot.rows === void 0 || candidateRows.length === 0) && request.target !== void 0) {
+      const metadata = this.getMetadata(
+        {
+          sessionId: request.sessionId,
+          documentId: request.documentId,
+          revision: request.revision,
+          target: request.target
+        },
+        snapshot
+      );
+      diagnostics.push(...metadata.diagnostics);
+    }
+    for (const row of candidateRows) {
+      if (diagnostics.length >= maxDiagnostics) {
+        break;
+      }
+      const path = row.path;
+      if (path === void 0) {
+        diagnostics.push(
+          createOverlayRecordDiagnostic(overlay.record, {
+            category: "pathMetadataMissing",
+            severity: "warning",
+            nodeId: row.nodeId,
+            message: `Row ${row.rowIndex} does not include path metadata.`,
+            recoverability: "rebuildIndex"
+          })
+        );
+        continue;
+      }
+      const resolution = resolvePreparedSchemaForPath(overlay.record, path);
+      diagnostics.push(...resolution.diagnostics.slice(0, maxDiagnostics - diagnostics.length));
+      if (resolution.schema === void 0 || diagnostics.length >= maxDiagnostics) {
+        continue;
+      }
+      const value = snapshot.valuesByPath?.[path] ?? parseJsonValueFromPreparedRow(row.text);
+      if (value === void 0) {
+        continue;
+      }
+      const metadata = createPreparedSchemaNodeMetadata(
+        overlay.record,
+        resolution.schemaPath,
+        resolution.schema,
+        resolution.required,
+        path,
+        row.nodeId
+      );
+      collectPreparedValidationDiagnostics(
+        diagnostics,
+        overlay.record,
+        row,
+        value,
+        metadata,
+        resolution.schema,
+        maxDiagnostics
+      );
+    }
+    const truncated = diagnostics.length >= maxDiagnostics && candidateRows.length > diagnostics.length;
+    if (truncated) {
+      diagnostics[diagnostics.length - 1] = createOverlayRecordDiagnostic(overlay.record, {
+        category: "validationPartial",
+        severity: "warning",
+        message: `Schema diagnostics were truncated at ${maxDiagnostics} entries.`,
+        recoverability: "retry"
+      });
+    }
+    return {
+      success: diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      revision: request.revision,
+      overlayId: overlay.record.overlayId,
+      diagnostics,
+      truncated,
+      ...truncated ? { continuationToken: `rows:${candidateRows.length}` } : {}
+    };
+  }
+  getRowDecorations(request, snapshot) {
+    const overlay = this.requireCurrentOverlay(request, snapshot);
+    if (overlay.diagnostics.length > 0 || overlay.record === void 0) {
+      return {
+        success: false,
+        sessionId: request.sessionId,
+        documentId: request.documentId,
+        revision: request.revision,
+        decorations: [],
+        diagnostics: overlay.diagnostics,
+        truncated: false
+      };
+    }
+    const maxDecorations = Math.max(1, Math.min(500, request.maxDecorations));
+    const decorations = [];
+    const diagnostics = [];
+    for (const row of request.rows) {
+      if (decorations.length >= maxDecorations) {
+        break;
+      }
+      const path = row.path;
+      if (path === void 0) {
+        diagnostics.push(
+          createOverlayRecordDiagnostic(overlay.record, {
+            category: "pathMetadataMissing",
+            severity: "warning",
+            nodeId: row.nodeId,
+            message: `Row ${row.rowIndex} does not include path metadata.`,
+            recoverability: "rebuildIndex"
+          })
+        );
+        continue;
+      }
+      const resolution = resolvePreparedSchemaForPath(overlay.record, path);
+      if (resolution.schema === void 0) {
+        continue;
+      }
+      const metadata = createPreparedSchemaNodeMetadata(
+        overlay.record,
+        resolution.schemaPath,
+        resolution.schema,
+        resolution.required,
+        path,
+        row.nodeId
+      );
+      const rowDiagnostics = [];
+      const value = snapshot.valuesByPath?.[path] ?? parseJsonValueFromPreparedRow(row.text);
+      if (value !== void 0) {
+        collectPreparedValidationDiagnostics(
+          rowDiagnostics,
+          overlay.record,
+          row,
+          value,
+          metadata,
+          resolution.schema,
+          maxDecorations
+        );
+      }
+      decorations.push({
+        rowIndex: row.rowIndex,
+        ...row.nodeId !== void 0 ? { nodeId: row.nodeId } : {},
+        path,
+        overlayId: overlay.record.overlayId,
+        hasMetadata: true,
+        hasDiagnostics: rowDiagnostics.length > 0,
+        ...rowDiagnostics.length > 0 ? { severity: highestSchemaSeverity(rowDiagnostics) } : {},
+        markerKinds: createRowMarkerKinds(metadata, rowDiagnostics)
+      });
+    }
+    const truncated = decorations.length >= maxDecorations && request.rows.length > decorations.length;
+    return {
+      success: true,
+      sessionId: request.sessionId,
+      documentId: request.documentId,
+      revision: request.revision,
+      overlayId: overlay.record.overlayId,
+      decorations,
+      diagnostics,
+      truncated
+    };
+  }
+  getActiveOverlay(sessionId) {
+    const overlay = this.overlaysBySessionId.get(sessionId);
+    return overlay === void 0 ? void 0 : { overlayId: overlay.overlayId, schemaId: overlay.schemaId, revision: overlay.revision };
+  }
+  requireCurrentOverlay(request, snapshot) {
+    const overlay = this.overlaysBySessionId.get(request.sessionId);
+    if (overlay === void 0) {
+      return {
+        diagnostics: [
+          createSchemaOverlayDiagnostic(request, {
+            category: "schemaNotAttached",
+            severity: "warning",
+            revision: request.revision,
+            message: "No schema overlay is attached.",
+            recoverability: "none"
+          })
+        ]
+      };
+    }
+    if (overlay.documentId !== request.documentId || snapshot.documentId !== request.documentId) {
+      return {
+        diagnostics: [
+          createOverlayRecordDiagnostic(overlay, {
+            category: "targetNotFound",
+            severity: "error",
+            revision: request.revision,
+            message: `Schema overlay is attached to document '${overlay.documentId}', not '${request.documentId}'.`,
+            recoverability: "retry"
+          })
+        ]
+      };
+    }
+    if (request.revision !== snapshot.revision || request.revision !== overlay.revision) {
+      return {
+        diagnostics: [
+          createOverlayRecordDiagnostic(overlay, {
+            category: "revisionMismatch",
+            severity: "error",
+            revision: snapshot.revision,
+            message: `Schema overlay revision ${overlay.revision} cannot satisfy requested revision ${request.revision}; current revision is ${snapshot.revision}.`,
+            recoverability: "retry"
+          })
+        ]
+      };
+    }
+    return { record: overlay, diagnostics: [] };
+  }
+};
+function getAttachSchema(request, diagnostics, revision) {
+  if (request.source.kind === "unsupported") {
+    diagnostics.push(
+      createSchemaOverlayDiagnostic(request, {
+        category: "unsupportedOperation",
+        severity: "error",
+        revision,
+        message: `Schema source '${request.source.sourceDescription ?? "unsupported"}' is not supported.`,
+        recoverability: "unsupported"
+      })
+    );
+    return void 0;
+  }
+  const schema = request.source.schema;
+  if (!isJsonObjectDto(schema)) {
+    diagnostics.push(
+      createSchemaOverlayDiagnostic(request, {
+        category: "invalidSchema",
+        severity: "error",
+        revision,
+        message: "Schema source must be a JSON object.",
+        recoverability: "changeSchema"
+      })
+    );
+    return void 0;
+  }
+  return schema;
+}
+function collectUnsupportedSchemaKeywords(schema, schemaPath) {
+  const result = [];
+  for (const [keyword, value] of Object.entries(schema)) {
+    const childSchemaPath = `${schemaPath}/${escapeJsonPointerSegment(keyword)}`;
+    if (keyword === "$ref" && typeof value === "string" && !value.startsWith("#")) {
+      result.push({
+        keyword,
+        schemaPath: childSchemaPath,
+        classification: "unsupportedReference",
+        message: `Reference '${value}' is unsupported; only local same-document references are supported.`
+      });
+    } else if (UNSUPPORTED_VALIDATION_KEYWORDS.has(keyword)) {
+      result.push({
+        keyword,
+        schemaPath: childSchemaPath,
+        classification: "unsupportedValidationKeyword",
+        message: `Validation keyword '${keyword}' is not supported by the Layer 2 overlay subset.`
+      });
+    } else if (IGNORED_ANNOTATION_KEYWORDS.has(keyword)) {
+      result.push({
+        keyword,
+        schemaPath: childSchemaPath,
+        classification: "ignoredAnnotation",
+        message: `Annotation keyword '${keyword}' is ignored by the Layer 2 overlay.`
+      });
+    } else if (!SUPPORTED_SCHEMA_KEYWORDS.has(keyword) && !keyword.startsWith("x-")) {
+      result.push({
+        keyword,
+        schemaPath: childSchemaPath,
+        classification: "unsupportedValidationKeyword",
+        message: `Schema keyword '${keyword}' is not supported by the Layer 2 overlay subset.`
+      });
+    }
+    if (isJsonObjectDto(value)) {
+      result.push(...collectUnsupportedSchemaKeywords(value, childSchemaPath));
+    } else if (Array.isArray(value)) {
+      value.forEach((entry, index) => {
+        if (isJsonObjectDto(entry)) {
+          result.push(...collectUnsupportedSchemaKeywords(entry, `${childSchemaPath}/${index}`));
+        }
+      });
+    }
+  }
+  return result;
+}
+function resolvePreparedOverlayTargetPath(target, snapshot) {
+  if (target.kind === "jsonPointer") {
+    return {
+      path: target.path.startsWith("$") ? target.path : jsonPointerToStructuralPath(target.path),
+      diagnostics: []
+    };
+  }
+  if (target.kind === "node") {
+    const path2 = snapshot.nodePathsById?.[target.nodeId] ?? snapshot.rows?.find((row2) => row2.nodeId === target.nodeId)?.path;
+    if (path2 === void 0) {
+      return {
+        diagnostics: [
+          createSchemaOverlayDiagnostic(snapshot, {
+            category: "structuralMetadataMissing",
+            severity: "error",
+            nodeId: target.nodeId,
+            revision: snapshot.revision,
+            message: `Node '${target.nodeId}' cannot be mapped to a JSON path.`,
+            recoverability: "rebuildIndex"
+          })
+        ]
+      };
+    }
+    return { path: path2, nodeId: target.nodeId, diagnostics: [] };
+  }
+  const row = snapshot.rows?.find((entry) => entry.rowIndex === target.rowIndex);
+  const path = target.path ?? row?.path;
+  const nodeId = target.nodeId ?? row?.nodeId;
+  if (path === void 0) {
+    return {
+      nodeId,
+      diagnostics: [
+        createSchemaOverlayDiagnostic(snapshot, {
+          category: "pathMetadataMissing",
+          severity: "error",
+          nodeId,
+          revision: snapshot.revision,
+          message: `Row ${target.rowIndex} does not include JSON path metadata.`,
+          recoverability: "rebuildIndex"
+        })
+      ]
+    };
+  }
+  return { path: path.startsWith("$") ? path : jsonPointerToStructuralPath(path), nodeId, diagnostics: [] };
+}
+function resolvePreparedSchemaForPath(overlay, path) {
+  let schema = overlay.schema;
+  let schemaPath = "#";
+  let required = false;
+  const diagnostics = [];
+  const dereferencedRoot = dereferenceLocalSchema(overlay, schema, schemaPath, diagnostics);
+  schema = dereferencedRoot.schema;
+  schemaPath = dereferencedRoot.schemaPath;
+  for (const segment of parseStructuralPath(path)) {
+    if (schema === void 0) {
+      break;
+    }
+    const dereferenced = dereferenceLocalSchema(overlay, schema, schemaPath, diagnostics);
+    schema = dereferenced.schema;
+    schemaPath = dereferenced.schemaPath;
+    if (schema === void 0) {
+      break;
+    }
+    if (typeof segment === "number") {
+      const items = schema.items;
+      if (!isJsonObjectDto(items)) {
+        schema = void 0;
+        break;
+      }
+      schema = items;
+      schemaPath += "/items";
+      required = false;
+    } else {
+      const properties = schema.properties;
+      const propertySchema = isJsonObjectDto(properties) ? properties[segment] : void 0;
+      if (!isJsonObjectDto(propertySchema)) {
+        schema = void 0;
+        break;
+      }
+      required = parseRequiredProperties(schema.required).includes(segment);
+      schema = propertySchema;
+      schemaPath += `/properties/${escapeJsonPointerSegment(segment)}`;
+    }
+  }
+  const finalDereferenced = schema === void 0 ? { schema: void 0, schemaPath } : dereferenceLocalSchema(overlay, schema, schemaPath, diagnostics);
+  return { schema: finalDereferenced.schema, schemaPath: finalDereferenced.schemaPath, required, diagnostics };
+}
+function dereferenceLocalSchema(overlay, schema, schemaPath, diagnostics) {
+  if (schema === void 0 || typeof schema.$ref !== "string") {
+    return { schema, schemaPath };
+  }
+  const ref = schema.$ref;
+  if (!ref.startsWith("#")) {
+    diagnostics.push(
+      createOverlayRecordDiagnostic(overlay, {
+        category: "unsupportedReference",
+        severity: "warning",
+        schemaPath,
+        message: `Reference '${ref}' is unsupported; only local same-document references are supported.`,
+        recoverability: "unsupported"
+      })
+    );
+    return { schema: void 0, schemaPath };
+  }
+  const target = readJsonPointer(overlay.schema, ref.slice(1));
+  if (!isJsonObjectDto(target)) {
+    diagnostics.push(
+      createOverlayRecordDiagnostic(overlay, {
+        category: "referenceResolutionFailed",
+        severity: "error",
+        schemaPath,
+        message: `Reference '${ref}' could not be resolved to a schema object.`,
+        recoverability: "changeSchema"
+      })
+    );
+    return { schema: void 0, schemaPath };
+  }
+  return { schema: target, schemaPath: ref };
+}
+function createPreparedSchemaNodeMetadata(overlay, schemaPath, schema, required, path, nodeId) {
+  const unsupportedKeywords = overlay.unsupportedKeywords.filter(
+    (keyword) => keyword.schemaPath.startsWith(schemaPath)
+  );
+  const metadata = {
+    schemaPath,
+    schemaId: overlay.schemaId,
+    ...nodeId !== void 0 ? { nodeId } : {},
+    ...path !== void 0 ? { path } : {}
+  };
+  if (typeof schema.title === "string") metadata.title = schema.title;
+  if (typeof schema.description === "string") metadata.description = schema.description;
+  const expectedType = parseSchemaType(schema.type);
+  if (expectedType !== void 0) metadata.expectedType = expectedType;
+  if (Array.isArray(schema.enum) && schema.enum.every((value) => isJsonValueDto(value)))
+    metadata.enumValues = schema.enum.map((value) => cloneJsonValue(value));
+  if (schema.const !== void 0 && isJsonValueDto(schema.const)) metadata.constValue = cloneJsonValue(schema.const);
+  if (required) metadata.required = true;
+  if (schema.default !== void 0 && isJsonValueDto(schema.default))
+    metadata.defaultValue = cloneJsonValue(schema.default);
+  const numericConstraints = {};
+  if (typeof schema.minimum === "number") numericConstraints.minimum = schema.minimum;
+  if (typeof schema.maximum === "number") numericConstraints.maximum = schema.maximum;
+  if (Object.keys(numericConstraints).length > 0) metadata.numericConstraints = numericConstraints;
+  const stringConstraints = {};
+  if (typeof schema.minLength === "number") stringConstraints.minLength = schema.minLength;
+  if (typeof schema.maxLength === "number") stringConstraints.maxLength = schema.maxLength;
+  if (Object.keys(stringConstraints).length > 0) metadata.stringConstraints = stringConstraints;
+  const arrayConstraints = {};
+  if (typeof schema.minItems === "number") arrayConstraints.minItems = schema.minItems;
+  if (typeof schema.maxItems === "number") arrayConstraints.maxItems = schema.maxItems;
+  if (Object.keys(arrayConstraints).length > 0) metadata.arrayConstraints = arrayConstraints;
+  if (unsupportedKeywords.length > 0) metadata.unsupportedKeywords = unsupportedKeywords;
+  return metadata;
+}
+function collectPreparedValidationDiagnostics(diagnostics, overlay, row, value, metadata, schema, maxDiagnostics) {
+  const push = (diagnostic) => {
+    if (diagnostics.length < maxDiagnostics) diagnostics.push(diagnostic);
+  };
+  const actualType = getSchemaTypeForValue(value);
+  const typeExpectation = getPrimitiveTypeExpectation(metadata.expectedType);
+  if (typeExpectation !== void 0 && !typeExpectation.allowedTypes.some(
+    (expected) => matchesPrimitiveSchemaType(expected, actualType)
+  )) {
+    push(
+      createOverlayRecordDiagnostic(overlay, {
+        category: "validationFailed",
+        severity: "error",
+        nodeId: row.nodeId,
+        path: row.path,
+        schemaPath: metadata.schemaPath,
+        message: `Expected type ${formatExpectedType(typeExpectation.expectedType)} but found '${actualType}'.`,
+        recoverability: "changeSchema"
+      })
+    );
+  }
+  if (Array.isArray(metadata.enumValues) && !metadata.enumValues.some((entry) => areJsonValuesEqual(entry, value))) {
+    push(
+      createOverlayRecordDiagnostic(overlay, {
+        category: "validationFailed",
+        severity: "error",
+        nodeId: row.nodeId,
+        path: row.path,
+        schemaPath: metadata.schemaPath,
+        message: "Value is not in the allowed enum set.",
+        recoverability: "changeSchema"
+      })
+    );
+  }
+  if (metadata.constValue !== void 0 && !areJsonValuesEqual(metadata.constValue, value)) {
+    push(
+      createOverlayRecordDiagnostic(overlay, {
+        category: "validationFailed",
+        severity: "error",
+        nodeId: row.nodeId,
+        path: row.path,
+        schemaPath: metadata.schemaPath,
+        message: "Value does not match the schema const value.",
+        recoverability: "changeSchema"
+      })
+    );
+  }
+  if (typeof value === "number") {
+    if (typeof schema.minimum === "number" && value < schema.minimum)
+      push(
+        createOverlayRecordDiagnostic(overlay, {
+          category: "validationFailed",
+          severity: "error",
+          nodeId: row.nodeId,
+          path: row.path,
+          schemaPath: metadata.schemaPath,
+          message: `Number is less than minimum ${schema.minimum}.`,
+          recoverability: "changeSchema"
+        })
+      );
+    if (typeof schema.maximum === "number" && value > schema.maximum)
+      push(
+        createOverlayRecordDiagnostic(overlay, {
+          category: "validationFailed",
+          severity: "error",
+          nodeId: row.nodeId,
+          path: row.path,
+          schemaPath: metadata.schemaPath,
+          message: `Number is greater than maximum ${schema.maximum}.`,
+          recoverability: "changeSchema"
+        })
+      );
+  }
+  if (typeof value === "string") {
+    if (typeof schema.minLength === "number" && value.length < schema.minLength)
+      push(
+        createOverlayRecordDiagnostic(overlay, {
+          category: "validationFailed",
+          severity: "error",
+          nodeId: row.nodeId,
+          path: row.path,
+          schemaPath: metadata.schemaPath,
+          message: `String is shorter than minLength ${schema.minLength}.`,
+          recoverability: "changeSchema"
+        })
+      );
+    if (typeof schema.maxLength === "number" && value.length > schema.maxLength)
+      push(
+        createOverlayRecordDiagnostic(overlay, {
+          category: "validationFailed",
+          severity: "error",
+          nodeId: row.nodeId,
+          path: row.path,
+          schemaPath: metadata.schemaPath,
+          message: `String is longer than maxLength ${schema.maxLength}.`,
+          recoverability: "changeSchema"
+        })
+      );
+  }
+  if (Array.isArray(value)) {
+    if (typeof schema.minItems === "number" && value.length < schema.minItems)
+      push(
+        createOverlayRecordDiagnostic(overlay, {
+          category: "validationFailed",
+          severity: "error",
+          nodeId: row.nodeId,
+          path: row.path,
+          schemaPath: metadata.schemaPath,
+          message: `Array has fewer than minItems ${schema.minItems}.`,
+          recoverability: "changeSchema"
+        })
+      );
+    if (typeof schema.maxItems === "number" && value.length > schema.maxItems)
+      push(
+        createOverlayRecordDiagnostic(overlay, {
+          category: "validationFailed",
+          severity: "error",
+          nodeId: row.nodeId,
+          path: row.path,
+          schemaPath: metadata.schemaPath,
+          message: `Array has more than maxItems ${schema.maxItems}.`,
+          recoverability: "changeSchema"
+        })
+      );
+  }
+}
+function createRowMarkerKinds(metadata, diagnostics) {
+  const kinds = /* @__PURE__ */ new Set(["schemaMetadata"]);
+  if (metadata.description !== void 0) kinds.add("description");
+  if (metadata.required === true) kinds.add("required");
+  if (metadata.enumValues !== void 0 || metadata.constValue !== void 0) kinds.add("enum");
+  if (metadata.defaultValue !== void 0) kinds.add("default");
+  if (metadata.unsupportedKeywords !== void 0) kinds.add("unsupportedKeyword");
+  if (diagnostics.length > 0) kinds.add("validationDiagnostic");
+  return [...kinds];
+}
+function targetMatchesRow(target, row) {
+  if (target.kind === "row") return row.rowIndex === target.rowIndex;
+  if (target.kind === "node") return row.nodeId === target.nodeId;
+  const path = target.path.startsWith("$") ? target.path : jsonPointerToStructuralPath(target.path);
+  return row.path === path;
+}
+function parseJsonValueFromPreparedRow(text) {
+  const trimmed = text.trim().replace(/,$/u, "");
+  const colon = trimmed.indexOf(":");
+  const candidate = colon >= 0 ? trimmed.slice(colon + 1).trim() : trimmed;
+  try {
+    const value = JSON.parse(candidate);
+    return isJsonValueDto(value) ? value : void 0;
+  } catch {
+    return void 0;
+  }
+}
+function jsonPointerToStructuralPath(pointer) {
+  if (pointer === "" || pointer === "/") return "$";
+  const segments = pointer.replace(/^#/u, "").split("/").slice(1).map((segment) => segment.replace(/~1/gu, "/").replace(/~0/gu, "~"));
+  let path = "$";
+  for (const segment of segments) {
+    path = /^\d+$/u.test(segment) ? `${path}[${segment}]` : appendObjectPath(path, segment);
+  }
+  return path;
+}
+function readJsonPointer(root, pointer) {
+  if (pointer === "" || pointer === "/") return root;
+  let current = root;
+  for (const segment of pointer.split("/").slice(1).map((entry) => entry.replace(/~1/gu, "/").replace(/~0/gu, "~"))) {
+    if (Array.isArray(current)) {
+      current = current[Number(segment)];
+    } else if (isJsonObjectDto(current)) {
+      current = current[segment];
+    } else {
+      return void 0;
+    }
+  }
+  return current;
+}
+function createSchemaOverlayDiagnostic(request, values) {
+  return {
+    diagnosticId: `schema-overlay:${values.category}:${values.path ?? values.nodeId ?? values.schemaPath ?? "session"}`,
+    source: "schemaOverlay",
+    sessionId: request.sessionId,
+    documentId: request.documentId,
+    ...values
+  };
+}
+function createOverlayRecordDiagnostic(overlay, values) {
+  return createSchemaOverlayDiagnostic(overlay, {
+    revision: overlay.revision,
+    overlayId: overlay.overlayId,
+    schemaId: overlay.schemaId,
+    ...values
+  });
+}
+function completeDiagnostic(diagnostic, overlay) {
+  return {
+    ...diagnostic,
+    overlayId: diagnostic.overlayId ?? overlay.overlayId,
+    schemaId: diagnostic.schemaId ?? overlay.schemaId
+  };
+}
+function highestSchemaSeverity(diagnostics) {
+  if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) return "error";
+  if (diagnostics.some((diagnostic) => diagnostic.severity === "warning")) return "warning";
+  return "info";
+}
 
 // ../runtime-dom/index.ts
 var DomRuntimeControllerImpl = class {
@@ -1994,12 +2970,18 @@ var DomRuntimeControllerImpl = class {
     if (session === void 0 || hostElement === void 0) {
       return;
     }
-    hostElement.replaceChildren(createRuntimeView(session, (nodeId) => {
-      void this.toggleFold({ nodeId, sessionId });
-    }, {
-      selectProjectionItem: (projectionId, selection) => this.selectProjectionItem({ sessionId, projectionId, selection }),
-      editProjectionCell: (command) => this.editProjectionCell({ ...command, sessionId })
-    }));
+    hostElement.replaceChildren(
+      createRuntimeView(
+        session,
+        (nodeId) => {
+          void this.toggleFold({ nodeId, sessionId });
+        },
+        {
+          selectProjectionItem: (projectionId, selection) => this.selectProjectionItem({ sessionId, projectionId, selection }),
+          editProjectionCell: (command) => this.editProjectionCell({ ...command, sessionId })
+        }
+      )
+    );
   }
   scrollToNode(sessionId, nodeId) {
     const hostElement = this.hostElements.get(sessionId);
@@ -2073,14 +3055,33 @@ function createRuntimeView(session, toggleFold2, projectionHandlers) {
       container.append(emptyState);
       return container;
     }
-    container.append(createDiagnosticsPanel("Parse diagnostics", session.diagnostics.map((diagnostic) => `${diagnostic.message} (${diagnostic.startOffset}-${diagnostic.endOffset})`)));
+    container.append(
+      createDiagnosticsPanel(
+        "Parse diagnostics",
+        session.diagnostics.map(
+          (diagnostic) => `${diagnostic.message} (${diagnostic.startOffset}-${diagnostic.endOffset})`
+        )
+      )
+    );
     return container;
   }
   if (session.diagnostics.length > 0) {
-    container.append(createDiagnosticsPanel("Parse diagnostics", session.diagnostics.map((diagnostic) => `${diagnostic.message} (${diagnostic.startOffset}-${diagnostic.endOffset})`)));
+    container.append(
+      createDiagnosticsPanel(
+        "Parse diagnostics",
+        session.diagnostics.map(
+          (diagnostic) => `${diagnostic.message} (${diagnostic.startOffset}-${diagnostic.endOffset})`
+        )
+      )
+    );
   }
   if (session.schemaDiagnostics.length > 0) {
-    container.append(createDiagnosticsPanel("Schema diagnostics", session.schemaDiagnostics.map((diagnostic) => `${diagnostic.message} (${diagnostic.path})`)));
+    container.append(
+      createDiagnosticsPanel(
+        "Schema diagnostics",
+        session.schemaDiagnostics.map((diagnostic) => `${diagnostic.message} (${diagnostic.path})`)
+      )
+    );
   }
   for (const tableProjection of Object.values(session.tableProjectionsById)) {
     const selection = session.projectionSelectionsById[tableProjection.projectionId];
@@ -2221,7 +3222,9 @@ function appendFoldableLines(container, document2, node, indentLevel, trailingCo
       const propertyNode = document2.nodesById[propertyNodeId];
       const valueNodeId = propertyNode.firstChildId;
       if (valueNodeId === void 0) {
-        console.warn(`Property node ${propertyNode.nodeId} (${propertyNode.propertyName ?? "unknown"}) is missing its value node.`);
+        console.warn(
+          `Property node ${propertyNode.nodeId} (${propertyNode.propertyName ?? "unknown"}) is missing its value node.`
+        );
         return;
       }
       appendValueLines(
@@ -2329,7 +3332,9 @@ function applySchemaMetadata(line, metadata, propertyName) {
   if (metadata === void 0) {
     return;
   }
-  const hoverParts = [metadata.title, metadata.description].filter((part) => typeof part === "string" && part.length > 0);
+  const hoverParts = [metadata.title, metadata.description].filter(
+    (part) => typeof part === "string" && part.length > 0
+  );
   if (hoverParts.length > 0) {
     line.title = hoverParts.join(" \u2014 ");
   }
@@ -2668,6 +3673,9 @@ function createPreparedDocumentRuntimeClient(bridge) {
     setPreparedFoldState: (request) => bridge.invokeMethodAsync("SetPreparedFoldStateAsync", request),
     searchPreparedDocument: (request) => bridge.invokeMethodAsync("SearchPreparedDocumentAsync", request),
     revealPreparedLocation: (request) => bridge.invokeMethodAsync("RevealPreparedLocationAsync", request),
+    applyPreparedEdit: (command) => bridge.invokeMethodAsync("ApplyPreparedEditAsync", command),
+    attachPreparedSchemaOverlay: (request) => bridge.invokeMethodAsync("AttachPreparedSchemaOverlayAsync", request),
+    detachPreparedSchemaOverlay: (request) => bridge.invokeMethodAsync("DetachPreparedSchemaOverlayAsync", request),
     closePreparedDocumentSession: async (sessionId) => {
       await bridge.invokeMethodAsync("ClosePreparedDocumentSessionAsync", sessionId);
     }
@@ -2679,6 +3687,7 @@ var ROW_HEIGHT_PX = 22;
 var DEFAULT_VIEWPORT = { firstRow: 0, rowCount: 50 };
 var PreparedDocumentHost = class {
   sessions = /* @__PURE__ */ new Map();
+  schemaOverlays = new PreparedSchemaOverlayRegistry();
   registerSession(command, callbackTarget) {
     this.sessions.set(command.sessionId, {
       hostElementId: command.hostElementId,
@@ -2691,6 +3700,22 @@ var PreparedDocumentHost = class {
       await registeredSession.prepared.client.closePreparedDocumentSession(sessionId);
     }
     this.sessions.delete(sessionId);
+  }
+  async applyPreparedEdit(command) {
+    const preparedSession = this.requirePreparedSession(command.sessionId);
+    const result = await preparedSession.client.applyPreparedEdit(command);
+    preparedSession.diagnostics = result.diagnostics ?? [];
+    if (result.success) {
+      preparedSession.metadata = await preparedSession.client.getPreparedDocumentMetadata(command.sessionId);
+      preparedSession.foldStateRevision += 1;
+      await this.refreshRows(preparedSession);
+      preparedSession.schemaDiagnostics = [];
+      preparedSession.schemaDecorations = [];
+      preparedSession.schemaDetails = void 0;
+    }
+    await this.emitDiagnostics(preparedSession);
+    this.render(preparedSession);
+    return result;
   }
   async closePreparedDocumentSession(sessionId) {
     const registeredSession = this.sessions.get(sessionId);
@@ -2719,6 +3744,9 @@ var PreparedDocumentHost = class {
       viewport: request.initialViewport ?? DEFAULT_VIEWPORT,
       foldStateRevision: 0,
       diagnostics: openResult.diagnostics ?? [],
+      schemaDiagnostics: [],
+      schemaDecorations: [],
+      schemaDetails: void 0,
       metadata: openResult.metadata,
       rows: void 0,
       totalKnownRows: 0
@@ -2736,6 +3764,59 @@ var PreparedDocumentHost = class {
     await this.emitDiagnostics(preparedSession);
     this.render(preparedSession);
   }
+  async attachPreparedSchemaOverlay(request) {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const currentRevision = preparedSession.metadata?.revision ?? request.baseRevision;
+    const bridgeResult = await preparedSession.client.attachPreparedSchemaOverlay(request);
+    const result = this.schemaOverlays.attach(request, currentRevision);
+    preparedSession.schemaDiagnostics = [...bridgeResult.diagnostics, ...result.diagnostics];
+    await this.refreshSchemaOverlay(preparedSession);
+    await this.emit(preparedSession, {
+      type: "schemaDiagnosticsChanged",
+      sessionId: preparedSession.sessionId,
+      documentId: preparedSession.documentId,
+      schemaDiagnostics: preparedSession.schemaDiagnostics
+    });
+    this.render(preparedSession);
+    return { ...result, diagnostics: preparedSession.schemaDiagnostics };
+  }
+  async detachPreparedSchemaOverlay(request) {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const bridgeResult = await preparedSession.client.detachPreparedSchemaOverlay(request);
+    const result = this.schemaOverlays.detach(request);
+    preparedSession.schemaDiagnostics = [...bridgeResult.diagnostics, ...result.diagnostics];
+    preparedSession.schemaDecorations = [];
+    preparedSession.schemaDetails = void 0;
+    await this.emit(preparedSession, {
+      type: "schemaDiagnosticsChanged",
+      sessionId: preparedSession.sessionId,
+      documentId: preparedSession.documentId,
+      schemaDiagnostics: preparedSession.schemaDiagnostics
+    });
+    this.render(preparedSession);
+    return { ...result, diagnostics: preparedSession.schemaDiagnostics };
+  }
+  async getPreparedSchemaDetails(request) {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const result = this.schemaOverlays.getDetails(request, this.createSchemaSnapshot(preparedSession));
+    preparedSession.schemaDetails = result;
+    preparedSession.schemaDiagnostics = result.diagnostics;
+    this.render(preparedSession);
+    return result;
+  }
+  async getPreparedSchemaDiagnostics(request) {
+    const preparedSession = this.requirePreparedSession(request.sessionId);
+    const result = this.schemaOverlays.getDiagnostics(request, this.createSchemaSnapshot(preparedSession));
+    preparedSession.schemaDiagnostics = result.diagnostics;
+    await this.emit(preparedSession, {
+      type: "schemaDiagnosticsChanged",
+      sessionId: preparedSession.sessionId,
+      documentId: preparedSession.documentId,
+      schemaDiagnostics: preparedSession.schemaDiagnostics
+    });
+    this.render(preparedSession);
+    return result;
+  }
   async searchPreparedDocument(request) {
     const preparedSession = this.requirePreparedSession(request.sessionId);
     const result = await preparedSession.client.searchPreparedDocument(request);
@@ -2752,6 +3833,9 @@ var PreparedDocumentHost = class {
       preparedSession.viewport = result.viewport;
       preparedSession.focusedNodeId = result.nodeId;
       await this.refreshRows(preparedSession);
+      preparedSession.schemaDiagnostics = [];
+      preparedSession.schemaDecorations = [];
+      preparedSession.schemaDetails = void 0;
     }
     await this.emitDiagnostics(preparedSession);
     this.render(preparedSession);
@@ -2774,6 +3858,7 @@ var PreparedDocumentHost = class {
     session.rows = rows;
     session.totalKnownRows = rows.totalKnownRows ?? rows.rows.length;
     session.diagnostics = rows.diagnostics ?? session.diagnostics;
+    await this.refreshSchemaOverlay(session);
   }
   render(session) {
     session.hostElement.replaceChildren();
@@ -2786,6 +3871,9 @@ var PreparedDocumentHost = class {
     if (session.diagnostics.length > 0) {
       runtime.append(this.createDiagnosticsPanel(session.diagnostics));
     }
+    if (session.schemaDiagnostics.length > 0 || session.schemaDetails !== void 0) {
+      runtime.append(this.createSchemaPanel(session));
+    }
     const scrollContainer = document.createElement("div");
     scrollContainer.className = "bjv-prepared-scroll";
     scrollContainer.addEventListener("scroll", () => {
@@ -2797,7 +3885,10 @@ var PreparedDocumentHost = class {
     for (const row of session.rows?.rows ?? []) {
       scrollContainer.append(this.createRowElement(session, row));
     }
-    const trailingRowCount = Math.max(0, session.totalKnownRows - ((session.viewport.firstRow ?? 0) + (session.rows?.rows.length ?? 0)));
+    const trailingRowCount = Math.max(
+      0,
+      session.totalKnownRows - ((session.viewport.firstRow ?? 0) + (session.rows?.rows.length ?? 0))
+    );
     const bottomSpacer = document.createElement("div");
     bottomSpacer.style.height = `${trailingRowCount * ROW_HEIGHT_PX}px`;
     scrollContainer.append(bottomSpacer);
@@ -2827,11 +3918,128 @@ var PreparedDocumentHost = class {
       spacer.textContent = " ";
       rowElement.append(spacer);
     }
+    const decoration = session.schemaDecorations.find((entry) => entry.rowIndex === row.rowIndex);
+    if (decoration !== void 0) {
+      const marker = document.createElement("button");
+      marker.type = "button";
+      marker.className = `bjv-prepared-schema-marker bjv-prepared-schema-marker-${decoration.severity ?? "info"}`;
+      marker.textContent = decoration.hasDiagnostics ? "\u26A0" : "\u24D8";
+      marker.title = decoration.markerKinds.join(", ");
+      marker.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void this.showSchemaDetails(session, row);
+      });
+      rowElement.append(marker);
+    }
     const text = document.createElement("span");
     text.className = "bjv-prepared-row-text";
     text.textContent = row.text;
     rowElement.append(text);
+    if (this.canOfferControlledEdit(session, row)) {
+      const actions = document.createElement("span");
+      actions.className = "bjv-prepared-edit-actions";
+      if (this.looksLikePrimitiveRow(row)) {
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.textContent = "Edit value";
+        editButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void this.promptReplaceValue(session, row);
+        });
+        actions.append(editButton);
+      }
+      if (row.path !== void 0 && row.path !== "") {
+        const renameButton = document.createElement("button");
+        renameButton.type = "button";
+        renameButton.textContent = "Rename property";
+        renameButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void this.promptRenameProperty(session, row);
+        });
+        actions.append(renameButton);
+      }
+      if (actions.childElementCount > 0) {
+        rowElement.append(actions);
+      }
+    }
     return rowElement;
+  }
+  async showSchemaDetails(session, row) {
+    if (session.metadata === void 0) {
+      return;
+    }
+    await this.getPreparedSchemaDetails({
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      revision: session.metadata.revision,
+      target: {
+        kind: "row",
+        rowIndex: row.rowIndex,
+        ...row.nodeId !== void 0 ? { nodeId: row.nodeId } : {},
+        ...row.path !== void 0 ? { path: row.path } : {}
+      }
+    });
+  }
+  canOfferControlledEdit(session, row) {
+    return row.nodeId !== void 0 && session.metadata?.capabilities.includes("controlledEdit") === true;
+  }
+  looksLikePrimitiveRow(row) {
+    const trimmed = row.text.trim();
+    return /:\s*(".*"|-?\d|true\b|false\b|null\b)/u.test(trimmed) || /^(".*"|-?\d|true\b|false\b|null\b)/u.test(trimmed);
+  }
+  async promptReplaceValue(session, row) {
+    if (row.nodeId === void 0 || session.metadata === void 0) {
+      return;
+    }
+    const rawValue = window.prompt(
+      "Enter a JSON value for this primitive node. Objects, arrays, and freeform text edits are not supported here."
+    );
+    if (rawValue === null) {
+      return;
+    }
+    let value;
+    try {
+      value = JSON.parse(rawValue);
+    } catch {
+      session.diagnostics = [
+        { code: "prepared.invalidPayload", message: "Edit value must be valid JSON.", severity: "error" }
+      ];
+      await this.emitDiagnostics(session);
+      this.render(session);
+      return;
+    }
+    await this.applyPreparedEdit({
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      baseRevision: session.metadata.revision,
+      kind: "replaceNodeValue",
+      targetNodeId: row.nodeId,
+      value,
+      label: "Edit primitive value"
+    });
+  }
+  async promptRenameProperty(session, row) {
+    if (row.nodeId === void 0 || session.metadata === void 0) {
+      return;
+    }
+    const propertyName = window.prompt(
+      "Enter the new JSON property name. This controlled action does not edit arbitrary text."
+    );
+    if (propertyName === null) {
+      return;
+    }
+    await this.applyPreparedEdit({
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      baseRevision: session.metadata.revision,
+      kind: "renameProperty",
+      targetNodeId: row.nodeId,
+      newPropertyName: propertyName,
+      label: "Rename property"
+    });
   }
   async toggleFold(session, row) {
     if (row.nodeId == null || row.folded == null) {
@@ -2879,7 +4087,11 @@ var PreparedDocumentHost = class {
     this.appendMetadataItem(summary, "Bytes", metadata.sourceByteLength.toString());
     this.appendMetadataItem(summary, "State", metadata.documentState);
     this.appendMetadataItem(summary, "Encoding", metadata.sourceEncoding);
-    this.appendMetadataItem(summary, "Operations", metadata.capabilities.length === 0 ? "none" : metadata.capabilities.join(", "));
+    this.appendMetadataItem(
+      summary,
+      "Operations",
+      metadata.capabilities.length === 0 ? "none" : metadata.capabilities.join(", ")
+    );
     panel.append(summary);
     const indexes = document.createElement("ul");
     indexes.className = "bjv-prepared-indexes";
@@ -2889,6 +4101,76 @@ var PreparedDocumentHost = class {
       indexes.append(item);
     }
     panel.append(indexes);
+    return panel;
+  }
+  async refreshSchemaOverlay(session) {
+    if (session.metadata === void 0 || this.schemaOverlays.getActiveOverlay(session.sessionId) === void 0) {
+      session.schemaDecorations = [];
+      return;
+    }
+    const snapshot = this.createSchemaSnapshot(session);
+    const decorationResult = this.schemaOverlays.getRowDecorations(
+      {
+        sessionId: session.sessionId,
+        documentId: session.documentId,
+        revision: session.metadata.revision,
+        rows: session.rows?.rows ?? [],
+        maxDecorations: session.viewport.rowCount
+      },
+      snapshot
+    );
+    session.schemaDecorations = decorationResult.decorations;
+    if (decorationResult.diagnostics.length > 0) {
+      session.schemaDiagnostics = decorationResult.diagnostics;
+    }
+  }
+  createSchemaSnapshot(session) {
+    return {
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      revision: session.metadata?.revision ?? 0,
+      rows: session.rows?.rows ?? [],
+      nodePathsById: Object.fromEntries(
+        (session.rows?.rows ?? []).filter((row) => row.nodeId !== void 0 && row.path !== void 0).map((row) => [row.nodeId ?? "", row.path ?? ""])
+      )
+    };
+  }
+  createSchemaPanel(session) {
+    const panel = document.createElement("section");
+    panel.className = "bjv-prepared-schema-panel";
+    const title = document.createElement("h2");
+    title.textContent = "Schema overlay";
+    panel.append(title);
+    if (session.schemaDetails?.metadata !== void 0) {
+      const metadata = session.schemaDetails.metadata;
+      const details = document.createElement("dl");
+      details.className = "bjv-prepared-schema-details";
+      this.appendMetadataItem(details, "Path", metadata.path ?? session.schemaDetails.target.kind);
+      this.appendMetadataItem(details, "Schema", metadata.schemaPath);
+      if (metadata.title !== void 0) this.appendMetadataItem(details, "Title", metadata.title);
+      if (metadata.description !== void 0) this.appendMetadataItem(details, "Description", metadata.description);
+      if (metadata.expectedType !== void 0)
+        this.appendMetadataItem(
+          details,
+          "Expected",
+          Array.isArray(metadata.expectedType) ? metadata.expectedType.join(" | ") : metadata.expectedType
+        );
+      if (metadata.enumValues !== void 0)
+        this.appendMetadataItem(details, "Enum", metadata.enumValues.map((value) => JSON.stringify(value)).join(", "));
+      if (metadata.required === true) this.appendMetadataItem(details, "Required", "yes");
+      if (metadata.defaultValue !== void 0)
+        this.appendMetadataItem(details, "Default", JSON.stringify(metadata.defaultValue));
+      panel.append(details);
+    }
+    if (session.schemaDiagnostics.length > 0) {
+      const list = document.createElement("ul");
+      for (const diagnostic of session.schemaDiagnostics.slice(0, 8)) {
+        const item = document.createElement("li");
+        item.textContent = `${diagnostic.severity}: ${diagnostic.message}${diagnostic.path !== void 0 ? ` (${diagnostic.path})` : ""}`;
+        list.append(item);
+      }
+      panel.append(list);
+    }
     return panel;
   }
   appendMetadataItem(list, termText, valueText) {
@@ -2977,6 +4259,21 @@ var PreparedDocumentHost = class {
 .bjv-prepared-row-text {
   white-space: pre;
 }
+
+.bjv-prepared-edit-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.75rem;
+}
+
+.bjv-prepared-edit-actions button {
+  border: 1px solid #334155;
+  border-radius: 0.25rem;
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
+}
 .bjv-prepared-row-focused {
   outline: 2px solid #facc15;
   outline-offset: -2px;
@@ -3002,6 +4299,42 @@ var PreparedDocumentHost = class {
 .bjv-prepared-diagnostics h2 {
   font-size: 1rem;
   margin: 0 0 0.5rem 0;
+}
+.bjv-prepared-schema-marker {
+  border: 1px solid #38bdf8;
+  border-radius: 999px;
+  background: #082f49;
+  color: #e0f2fe;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+}
+.bjv-prepared-schema-marker-warning {
+  border-color: #f59e0b;
+  background: #451a03;
+}
+.bjv-prepared-schema-marker-error {
+  border-color: #f87171;
+  background: #450a0a;
+}
+.bjv-prepared-schema-panel {
+  border: 1px solid #bae6fd;
+  background: #f0f9ff;
+  color: #0c4a6e;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-family: system-ui, sans-serif;
+}
+.bjv-prepared-schema-panel h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+}
+.bjv-prepared-schema-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+}
+.bjv-prepared-schema-details dd {
+  margin: 0;
 }
 `;
     return styles;
@@ -3064,6 +4397,21 @@ async function searchPreparedDocument(request) {
 }
 async function revealPreparedLocation(request) {
   return preparedDocumentHost.revealPreparedLocation(request);
+}
+async function applyPreparedEdit(command) {
+  return preparedDocumentHost.applyPreparedEdit(command);
+}
+async function attachPreparedSchemaOverlay(request) {
+  return preparedDocumentHost.attachPreparedSchemaOverlay(request);
+}
+async function detachPreparedSchemaOverlay(request) {
+  return preparedDocumentHost.detachPreparedSchemaOverlay(request);
+}
+async function getPreparedSchemaDetails(request) {
+  return preparedDocumentHost.getPreparedSchemaDetails(request);
+}
+async function getPreparedSchemaDiagnostics(request) {
+  return preparedDocumentHost.getPreparedSchemaDiagnostics(request);
 }
 async function closePreparedDocumentSession(sessionId) {
   await preparedDocumentHost.closePreparedDocumentSession(sessionId);
@@ -3141,14 +4489,19 @@ if (typeof window !== "undefined") {
   window.BlazorJsonVisualizerRuntime = runtimeBlazorModule;
 }
 export {
+  applyPreparedEdit,
   applyTransaction,
+  attachPreparedSchemaOverlay,
   attachSchema,
   closePreparedDocumentSession,
   createProjection,
   createSession,
+  detachPreparedSchemaOverlay,
   detachSchema,
   disposeProjection,
   disposeSession,
+  getPreparedSchemaDetails,
+  getPreparedSchemaDiagnostics,
   getRuntimeProtocolVersion,
   getSchemaMetadataForPath,
   loadTextDocument,

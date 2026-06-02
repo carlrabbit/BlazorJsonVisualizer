@@ -20,7 +20,7 @@
     "format:check": "biome check . ../../tests/BlazorJsonVisualizer.Runtime.Tests",
     "test": "bun run test:runtime-core && bun run test:layer1",
     "test:runtime-core": "cd runtime-core && bun run test",
-    "test:layer1": "bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/json/tokenizer.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/structuralIndex.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/documentSession.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/preparedDocumentRuntimeClient.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/viewport/viewportModel.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/navigation/pathReveal.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/rendering/jsonViewRenderer.test.ts"
+    "test:layer1": "bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/json/tokenizer.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/structuralIndex.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/documentSession.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/preparedDocumentRuntimeClient.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/preparedSchemaOverlay.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/viewport/viewportModel.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/navigation/pathReveal.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/rendering/jsonViewRenderer.test.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
