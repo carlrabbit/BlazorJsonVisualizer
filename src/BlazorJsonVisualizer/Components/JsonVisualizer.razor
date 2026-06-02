@@ -112,6 +112,12 @@
             : await PreparedDocumentRuntimeBridge.RevealAsync(request);
 
     [JSInvokable]
+    public async Task<PreparedEditResultDto> ApplyPreparedEditAsync(PreparedEditCommandDto command)
+        => PreparedDocumentRuntimeBridge is null
+            ? new PreparedEditResultDto(false, command.SessionId, EffectivePreparedDocumentId, command.BaseRevision, 0, false, Diagnostics: [BridgeUnavailableDiagnostic()])
+            : await PreparedDocumentRuntimeBridge.ApplyEditAsync(command);
+
+    [JSInvokable]
     public async Task<PreparedCloseResultDto> ClosePreparedDocumentSessionAsync(string sessionId)
         => PreparedDocumentRuntimeBridge is null
             ? new PreparedCloseResultDto(false, [BridgeUnavailableDiagnostic()])
@@ -181,6 +187,41 @@
                 StartByteOffset: result.StartByteOffset,
                 EndByteOffset: result.EndByteOffset,
                 ResultId: result.ResultId)));
+    }
+
+
+    public async Task<PreparedEditResultDto> ReplacePreparedPrimitiveValueAsync(string targetNodeId, long baseRevision, JsonElement value, string? label = null)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId) || string.IsNullOrWhiteSpace(targetNodeId))
+        {
+            return new PreparedEditResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, baseRevision, 0, false);
+        }
+
+        return await _interop.ApplyPreparedEditAsync(new PreparedEditCommandDto(
+            EffectiveSessionId,
+            EffectivePreparedDocumentId,
+            baseRevision,
+            PreparedEditCommandKinds.ReplaceNodeValue,
+            TargetNodeId: targetNodeId,
+            Value: value,
+            Label: label));
+    }
+
+    public async Task<PreparedEditResultDto> RenamePreparedPropertyAsync(string targetNodeId, long baseRevision, string newPropertyName, string? label = null)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId) || string.IsNullOrWhiteSpace(targetNodeId))
+        {
+            return new PreparedEditResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, baseRevision, 0, false);
+        }
+
+        return await _interop.ApplyPreparedEditAsync(new PreparedEditCommandDto(
+            EffectiveSessionId,
+            EffectivePreparedDocumentId,
+            baseRevision,
+            PreparedEditCommandKinds.RenameProperty,
+            TargetNodeId: targetNodeId,
+            NewPropertyName: newPropertyName,
+            Label: label));
     }
 
     public async Task ApplyTransactionAsync(RuntimeTransactionDto transaction)

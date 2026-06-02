@@ -32,6 +32,10 @@ public interface IPreparedDocumentRuntimeBridge
         PreparedRevealRequestDto request,
         CancellationToken cancellationToken = default);
 
+    ValueTask<PreparedEditResultDto> ApplyEditAsync(
+        PreparedEditCommandDto command,
+        CancellationToken cancellationToken = default);
+
     ValueTask<PreparedCloseResultDto> CloseAsync(
         string sessionId,
         CancellationToken cancellationToken = default);

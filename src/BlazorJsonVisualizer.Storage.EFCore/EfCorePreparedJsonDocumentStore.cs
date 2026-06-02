@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 using BlazorJsonVisualizer.PreparedDocuments;
+using BlazorJsonVisualizer.Protocol;
 using BlazorJsonVisualizer.Storage;
 using BlazorJsonVisualizer.Storage.EFCore.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +85,45 @@ public sealed class EfCorePreparedJsonDocumentStore<TContext> : IPreparedJsonDoc
         var container = new EfCorePreparedDocumentContainer<TContext>(documentId, CreateContext, ReleaseReadLease);
         var lease = await container.AcquireReadLeaseAsync(cancellationToken);
         return new PreparedJsonDocumentHandle(container, lease, manifest);
+    }
+
+
+    public async ValueTask AppendTransactionAsync(string documentId, PreparedDocumentTransactionDto transaction, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(documentId);
+        ArgumentNullException.ThrowIfNull(transaction);
+
+        await using var context = CreateContext();
+        var entity = await context.PreparedJsonDocuments
+            .SingleOrDefaultAsync(e => e.DocumentId == documentId, cancellationToken)
+            ?? throw new InvalidOperationException($"Prepared document '{documentId}' does not exist. Diagnostic: {EfCoreStorageDiagnostics.DocumentNotFound}");
+
+        if (entity.LatestRevision != transaction.BaseRevision || transaction.Revision != transaction.BaseRevision + 1)
+        {
+            throw new InvalidOperationException($"Prepared document '{documentId}' expected transaction base revision {entity.LatestRevision} but received {transaction.BaseRevision}.");
+        }
+
+        var transactionIndex = entity.TransactionCount + 1;
+        context.PreparedJsonDocumentTransactions.Add(new PreparedJsonDocumentTransactionEntity
+        {
+            DocumentId = documentId,
+            TransactionIndex = transactionIndex,
+            Revision = (int)transaction.Revision,
+            OperationType = transaction.Kind,
+            Payload = JsonSerializer.SerializeToUtf8Bytes(transaction),
+            CreatedAt = transaction.CreatedAt
+        });
+
+        var now = DateTimeOffset.UtcNow;
+        entity.LatestRevision = (int)transaction.Revision;
+        entity.TransactionLatestRevision = (int)transaction.Revision;
+        entity.TransactionCount = transactionIndex;
+        entity.TransactionState = nameof(PreparedDocumentIndexState.Ready);
+        entity.StructureIndexState = nameof(PreparedDocumentIndexState.Stale);
+        entity.SearchIndexState = nameof(PreparedDocumentIndexState.Stale);
+        entity.PathIndexState = nameof(PreparedDocumentIndexState.Stale);
+        entity.UpdatedAt = now;
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     public async ValueTask DeleteAsync(string documentId, CancellationToken cancellationToken = default)

@@ -1,3 +1,5 @@
+using BlazorJsonVisualizer.Protocol;
+
 namespace BlazorJsonVisualizer.PreparedDocuments;
 
 public interface IPreparedJsonDocumentStore
@@ -11,6 +13,11 @@ public interface IPreparedJsonDocumentStore
 
     ValueTask<PreparedJsonDocumentHandle> OpenAsync(
         string documentId,
+        CancellationToken cancellationToken = default);
+
+    ValueTask AppendTransactionAsync(
+        string documentId,
+        PreparedDocumentTransactionDto transaction,
         CancellationToken cancellationToken = default);
 
     ValueTask DeleteAsync(

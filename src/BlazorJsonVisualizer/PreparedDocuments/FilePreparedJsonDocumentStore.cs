@@ -1,4 +1,5 @@
 using System.Text.Json;
+using BlazorJsonVisualizer.Protocol;
 using BlazorJsonVisualizer.Storage;
 
 namespace BlazorJsonVisualizer.PreparedDocuments;
@@ -88,6 +89,44 @@ public sealed class FilePreparedJsonDocumentStore : IPreparedJsonDocumentStore
         return new PreparedJsonDocumentHandle(container, lease, manifest);
     }
 
+
+    public async ValueTask AppendTransactionAsync(string documentId, PreparedDocumentTransactionDto transaction, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(documentId);
+        ArgumentNullException.ThrowIfNull(transaction);
+
+        var container = await provider.TryOpenContainerAsync(documentId, cancellationToken)
+            ?? throw new FileNotFoundException($"Prepared document '{documentId}' does not exist.");
+        var manifest = await ReadManifestAsync(container, cancellationToken);
+        if (manifest.LatestRevision != transaction.BaseRevision || transaction.Revision != transaction.BaseRevision + 1)
+        {
+            throw new InvalidOperationException($"Prepared document '{documentId}' expected transaction base revision {manifest.LatestRevision} but received {transaction.BaseRevision}.");
+        }
+
+        var existing = await ReadTransactionLogAsync(container, cancellationToken);
+        existing.Add(transaction);
+        await WriteJsonObjectAsync(container, new PreparedDocumentObjectName(PreparedDocumentFileNames.TransactionsFileName), new PreparedTransactionLogDto(1, existing), cancellationToken);
+
+        var updatedManifest = manifest with
+        {
+            UpdatedAt = DateTimeOffset.UtcNow,
+            LatestRevision = (int)transaction.Revision,
+            Indexes = manifest.Indexes with
+            {
+                Structure = manifest.Indexes.Structure with { State = PreparedDocumentIndexState.Stale },
+                Search = manifest.Indexes.Search with { State = PreparedDocumentIndexState.Stale },
+                Path = manifest.Indexes.Path with { State = PreparedDocumentIndexState.Stale }
+            },
+            Transactions = manifest.Transactions with
+            {
+                Count = existing.Count,
+                LatestRevision = (int)transaction.Revision,
+                State = PreparedDocumentIndexState.Ready
+            }
+        };
+        await WriteJsonObjectAsync(container, new PreparedDocumentObjectName(PreparedDocumentFileNames.ManifestFileName), updatedManifest, cancellationToken);
+    }
+
     public ValueTask DeleteAsync(string documentId, CancellationToken cancellationToken = default)
         => provider.DeleteContainerAsync(documentId, cancellationToken);
 
@@ -135,6 +174,21 @@ public sealed class FilePreparedJsonDocumentStore : IPreparedJsonDocumentStore
 
         return manifest;
     }
+
+
+    private static async ValueTask<List<PreparedDocumentTransactionDto>> ReadTransactionLogAsync(PreparedDocumentContainer container, CancellationToken cancellationToken)
+    {
+        if (!await container.ObjectExistsAsync(new PreparedDocumentObjectName(PreparedDocumentFileNames.TransactionsFileName), cancellationToken))
+        {
+            return [];
+        }
+
+        await using var stream = await container.OpenReadAsync(new PreparedDocumentObjectName(PreparedDocumentFileNames.TransactionsFileName), cancellationToken);
+        var log = await JsonSerializer.DeserializeAsync<PreparedTransactionLogDto>(stream, JsonOptions, cancellationToken);
+        return log?.Transactions?.ToList() ?? [];
+    }
+
+    private sealed record PreparedTransactionLogDto(int FormatVersion, IReadOnlyList<PreparedDocumentTransactionDto> Transactions);
 
     private static PreparedJsonDocumentInfo ToInfo(PreparedDocumentManifest manifest)
         => new(
