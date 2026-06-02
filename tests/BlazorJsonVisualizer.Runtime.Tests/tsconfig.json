@@ -1,0 +1,13 @@
+{
+  "extends": "../../src/BlazorJsonVisualizer.Runtime/tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "../../",
+    "outDir": "./dist",
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": [
+    "../../src/BlazorJsonVisualizer.Runtime/runtime-core/src/**/*.ts",
+    "../../src/BlazorJsonVisualizer.Runtime/runtime-dom/src/**/*.ts",
+    "./**/*.test.ts"
+  ]
+}

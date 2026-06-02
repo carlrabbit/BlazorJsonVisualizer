@@ -33,7 +33,7 @@ Blazor is the primary UI integration surface. JavaScript interop code is small, 
 
 **Status:** Active
 
-The TypeScript browser runtime is a first-class subsystem under `src/runtime/`.
+The TypeScript browser runtime is a first-class subsystem under `src/BlazorJsonVisualizer.Runtime/`.
 
 ### BB15 — Samples
 

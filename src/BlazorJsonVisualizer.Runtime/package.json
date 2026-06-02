@@ -1,0 +1,30 @@
+{
+  "name": "@blazor-json-visualizer/runtime",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "runtime-core",
+    "runtime-dom",
+    "runtime-worker",
+    "runtime-blazor"
+  ],
+  "scripts": {
+    "build": "bun run build:runtime-core && bun run build:runtime-dom && bun run build:runtime-worker && bun run build:runtime-blazor",
+    "build:runtime-core": "cd runtime-core && bun run build",
+    "build:runtime-dom": "cd runtime-dom && bun run build",
+    "build:runtime-worker": "cd runtime-worker && bun run build",
+    "build:runtime-blazor": "cd runtime-blazor && bun run build",
+    "check": "bun run format:check && bun run build && bun run test",
+    "format": "biome format --write . ../../tests/BlazorJsonVisualizer.Runtime.Tests",
+    "format:check": "biome check . ../../tests/BlazorJsonVisualizer.Runtime.Tests",
+    "test": "bun run test:runtime-core && bun run test:layer1",
+    "test:runtime-core": "cd runtime-core && bun run test",
+    "test:layer1": "bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/json/tokenizer.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/structuralIndex.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/documentSession.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/document/preparedDocumentRuntimeClient.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/viewport/viewportModel.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/navigation/pathReveal.test.ts && bun ../../tests/BlazorJsonVisualizer.Runtime.Tests/rendering/jsonViewRenderer.test.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
+  }
+}

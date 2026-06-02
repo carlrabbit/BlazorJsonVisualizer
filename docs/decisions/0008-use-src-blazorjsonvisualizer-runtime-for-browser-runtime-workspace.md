@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Milestone 0020.
+Accepted and implemented for Milestone 0020.
 
 ## Context
 

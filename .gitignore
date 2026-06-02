@@ -1,6 +1,6 @@
 bin/
 obj/
 node_modules/
-src/runtime/*/dist/
-src/runtime/*/*.d.ts
-tests/runtime/dist/
+src/BlazorJsonVisualizer.Runtime/*/dist/
+src/BlazorJsonVisualizer.Runtime/*/*.d.ts
+tests/BlazorJsonVisualizer.Runtime.Tests/dist/
