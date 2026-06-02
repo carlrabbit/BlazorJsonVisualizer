@@ -272,6 +272,58 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
             Diagnostics: []));
     }
 
+
+    public async ValueTask<PreparedEditResultDto> ApplyEditAsync(PreparedEditCommandDto command, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!TryGetSession(command.SessionId, out var session))
+        {
+            return CreateEditFailure(command, string.Empty, 0, false, "prepared.sessionNotFound", $"Prepared runtime session '{command.SessionId}' was not found.");
+        }
+
+        var validation = session.ValidateEdit(command);
+        if (validation.Diagnostics.Count > 0 || validation.Payload is null)
+        {
+            return new PreparedEditResultDto(false, command.SessionId, session.Metadata.DocumentId, command.BaseRevision, session.Metadata.Revision, session.Dirty, Diagnostics: validation.Diagnostics);
+        }
+
+        var transaction = new PreparedDocumentTransactionDto(
+            Guid.NewGuid().ToString("N"),
+            command.SessionId,
+            session.Metadata.DocumentId,
+            command.BaseRevision,
+            command.BaseRevision + 1,
+            command.Kind,
+            validation.Payload,
+            DateTimeOffset.UtcNow,
+            command.Label);
+
+        try
+        {
+            await store.AppendTransactionAsync(session.Metadata.DocumentId, transaction, cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return new PreparedEditResultDto(false, command.SessionId, session.Metadata.DocumentId, command.BaseRevision, session.Metadata.Revision, session.Dirty, Diagnostics: [CreateDiagnostic("prepared.transactionAppendFailed", exception.Message)]);
+        }
+
+        session.Commit(transaction);
+        return new PreparedEditResultDto(
+            true,
+            command.SessionId,
+            session.Metadata.DocumentId,
+            command.BaseRevision,
+            session.Metadata.Revision,
+            session.Dirty,
+            transaction,
+            validation.ChangedRanges,
+            validation.ChangedNodeIds,
+            session.GetInvalidatedIndexStates(),
+            []);
+    }
+
     public async ValueTask<PreparedCloseResultDto> CloseAsync(string sessionId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -292,6 +344,10 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
         await session.DisposeAsync();
         return new PreparedCloseResultDto(true, []);
     }
+
+
+    private static PreparedEditResultDto CreateEditFailure(PreparedEditCommandDto command, string documentId, long revision, bool dirty, string code, string message)
+        => new(false, command.SessionId, documentId, command.BaseRevision, revision, dirty, Diagnostics: [CreateDiagnostic(code, message)]);
 
     private static int FindVisibleRowIndex(IReadOnlyList<PreparedRenderRowDto> rows, int targetLineIndex, string? targetNodeId)
     {
@@ -438,6 +494,12 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
 
     private sealed record PreparedRevealNode(string NodeId, string Path);
 
+    private sealed record PreparedEditValidationResult(
+        PreparedEditTransactionPayloadDto? Payload,
+        IReadOnlyList<PreparedChangedRangeDto> ChangedRanges,
+        IReadOnlyList<string> ChangedNodeIds,
+        IReadOnlyList<RuntimeDiagnosticDto> Diagnostics);
+
     private sealed class PreparedRuntimeSession : IAsyncDisposable
     {
         private readonly Dictionary<string, PreparedNodeRecord> nodesById;
@@ -473,7 +535,9 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
 
         public PreparedJsonDocumentHandle Handle { get; }
 
-        public PreparedDocumentMetadataDto Metadata { get; }
+        public PreparedDocumentMetadataDto Metadata { get; private set; }
+
+        public bool Dirty { get; private set; }
 
         public IReadOnlyList<RuntimeDiagnosticDto> Diagnostics { get; }
 
@@ -555,7 +619,7 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
                     "node",
                     lineNode?.Depth ?? lineDepths[lineIndex],
                     text,
-                    lineNode?.Foldable == true ? lineNode.NodeId : null,
+                    lineNode?.NodeId,
                     lineNode?.Foldable == true ? foldedNodeIds.Contains(lineNode.NodeId) : null,
                     LineStartOffsets[lineIndex],
                     GetLineEndOffset(lineIndex),
@@ -565,6 +629,303 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
 
             return visibleRows;
         }
+
+
+        public PreparedEditValidationResult ValidateEdit(PreparedEditCommandDto command)
+        {
+            var diagnostics = new List<RuntimeDiagnosticDto>();
+            if (!string.Equals(command.DocumentId, Metadata.DocumentId, StringComparison.Ordinal))
+            {
+                diagnostics.Add(CreateDiagnostic("prepared.documentMismatch", $"Edit targets document '{command.DocumentId}' but session is open for '{Metadata.DocumentId}'."));
+            }
+
+            if (!string.Equals(Metadata.DocumentState, "ready", StringComparison.Ordinal))
+            {
+                diagnostics.Add(CreateDiagnostic("prepared.documentNotReady", $"Prepared document '{Metadata.DocumentId}' is in state '{Metadata.DocumentState}'."));
+            }
+
+            if (!Metadata.Capabilities.Contains("controlledEdit", StringComparer.Ordinal))
+            {
+                diagnostics.Add(CreateDiagnostic("prepared.readOnlySession", "Prepared runtime session is read-only for controlled edits."));
+            }
+
+            if (command.BaseRevision != Metadata.Revision)
+            {
+                diagnostics.Add(CreateDiagnostic("prepared.staleRevision", $"Edit base revision {command.BaseRevision} does not match current revision {Metadata.Revision}."));
+            }
+
+            if (!IsStructureAvailable)
+            {
+                diagnostics.Add(GetIndexDiagnostic("structure"));
+            }
+
+            if (string.IsNullOrWhiteSpace(command.Kind))
+            {
+                diagnostics.Add(CreateDiagnostic("prepared.unsupportedEdit", "Edit command kind is required."));
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (diagnostics.Count > 0)
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            return command.Kind switch
+            {
+                PreparedEditCommandKinds.ReplaceNodeValue => ValidateReplaceNodeValue(command),
+                PreparedEditCommandKinds.RenameProperty => ValidateRenameProperty(command),
+                PreparedEditCommandKinds.InsertProperty => ValidateInsertProperty(command),
+                PreparedEditCommandKinds.RemoveProperty => ValidateRemoveProperty(command),
+                PreparedEditCommandKinds.InsertArrayItem => ValidateInsertArrayItem(command),
+                PreparedEditCommandKinds.RemoveArrayItem => ValidateRemoveArrayItem(command),
+                _ => new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.unsupportedEdit", $"Prepared edit command '{command.Kind}' is not supported.")])
+            };
+        }
+
+        public IReadOnlyList<PreparedIndexStateDto> GetInvalidatedIndexStates()
+            => [Metadata.Indexes["structure"], Metadata.Indexes["search"], Metadata.Indexes["path"]];
+
+        public void Commit(PreparedDocumentTransactionDto transaction)
+        {
+            Dirty = true;
+            searchResultsById.Clear();
+            foldedNodeIds.Clear();
+            FoldStateRevision++;
+            Metadata = Metadata with
+            {
+                Revision = transaction.Revision,
+                Indexes = new Dictionary<string, PreparedIndexStateDto>(Metadata.Indexes, StringComparer.Ordinal)
+                {
+                    ["structure"] = Metadata.Indexes["structure"] with { State = "stale", Message = "Prepared index 'structure' is stale after controlled edit." },
+                    ["search"] = Metadata.Indexes["search"] with { State = "stale", Message = "Prepared index 'search' is stale after controlled edit." },
+                    ["path"] = Metadata.Indexes["path"] with { State = "stale", Message = "Prepared index 'path' is stale after controlled edit." }
+                },
+                Capabilities = Metadata.Capabilities.Where(static capability => capability is not ("fold" or "search" or "revealByJsonPointer")).ToArray()
+            };
+        }
+
+        private PreparedEditValidationResult ValidateReplaceNodeValue(PreparedEditCommandDto command)
+        {
+            if (!TryResolveTarget(command, out var node, out var diagnostics))
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (node.Kind is "object" or "array")
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.incompatibleTarget", "replaceNodeValue requires a primitive target node.")]);
+            }
+
+            if (!TryValidateJsonValue(command.Value, out var valueDiagnostic))
+            {
+                return new PreparedEditValidationResult(null, [], [], [valueDiagnostic]);
+            }
+
+            var payload = new PreparedEditTransactionPayloadDto(node.NodeId, node.Path, node.ParentId, GetParentPath(node), Value: command.Value);
+            return new PreparedEditValidationResult(payload, [ToChangedRange(node)], [node.NodeId], []);
+        }
+
+        private PreparedEditValidationResult ValidateRenameProperty(PreparedEditCommandDto command)
+        {
+            if (!TryResolveTarget(command, out var node, out var diagnostics))
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (node.ParentId is null || !nodesById.TryGetValue(node.ParentId, out var parent) || parent.Kind != "object")
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.incompatibleTarget", "renameProperty requires a value node owned by an object property.")]);
+            }
+
+            var currentName = GetLastJsonPointerSegment(node.Path);
+            if (string.IsNullOrWhiteSpace(command.NewPropertyName))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.invalidPayload", "renameProperty requires NewPropertyName.")]);
+            }
+
+            if (nodesByPath.ContainsKey(AppendJsonPointer(parent.Path, command.NewPropertyName)))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.duplicateProperty", $"Object already contains property '{command.NewPropertyName}'.")]);
+            }
+
+            var payload = new PreparedEditTransactionPayloadDto(node.NodeId, node.Path, parent.NodeId, parent.Path, currentName, command.NewPropertyName);
+            return new PreparedEditValidationResult(payload, [ToChangedRange(node)], [node.NodeId, parent.NodeId], []);
+        }
+
+        private PreparedEditValidationResult ValidateInsertProperty(PreparedEditCommandDto command)
+        {
+            if (!TryResolveTarget(command, out var node, out var diagnostics))
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (node.Kind != "object")
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.incompatibleTarget", "insertProperty requires an object target node.")]);
+            }
+
+            if (string.IsNullOrWhiteSpace(command.PropertyName))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.invalidPayload", "insertProperty requires PropertyName.")]);
+            }
+
+            if (!TryValidateJsonValue(command.Value, out var valueDiagnostic))
+            {
+                return new PreparedEditValidationResult(null, [], [], [valueDiagnostic]);
+            }
+
+            if (nodesByPath.ContainsKey(AppendJsonPointer(node.Path, command.PropertyName)))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.duplicateProperty", $"Object already contains property '{command.PropertyName}'.")]);
+            }
+
+            var payload = new PreparedEditTransactionPayloadDto(ParentNodeId: node.NodeId, ParentPath: node.Path, PropertyName: command.PropertyName, Value: command.Value);
+            return new PreparedEditValidationResult(payload, [ToChangedRange(node)], [node.NodeId], []);
+        }
+
+        private PreparedEditValidationResult ValidateRemoveProperty(PreparedEditCommandDto command)
+        {
+            if (!TryResolveTarget(command, out var node, out var diagnostics))
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (node.Kind != "object")
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.incompatibleTarget", "removeProperty requires an object target node.")]);
+            }
+
+            if (string.IsNullOrWhiteSpace(command.PropertyName))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.invalidPayload", "removeProperty requires PropertyName.")]);
+            }
+
+            var childPath = AppendJsonPointer(node.Path, command.PropertyName);
+            if (!nodesByPath.TryGetValue(childPath, out var child) || !string.Equals(child.ParentId, node.NodeId, StringComparison.Ordinal))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.targetNotFound", $"Object property '{command.PropertyName}' was not found.")]);
+            }
+
+            var payload = new PreparedEditTransactionPayloadDto(child.NodeId, child.Path, node.NodeId, node.Path, command.PropertyName);
+            return new PreparedEditValidationResult(payload, [ToChangedRange(child)], [child.NodeId, node.NodeId], []);
+        }
+
+        private PreparedEditValidationResult ValidateInsertArrayItem(PreparedEditCommandDto command)
+        {
+            if (!TryResolveTarget(command, out var node, out var diagnostics))
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (node.Kind != "array")
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.incompatibleTarget", "insertArrayItem requires an array target node.")]);
+            }
+
+            if (!TryValidateJsonValue(command.Value, out var valueDiagnostic))
+            {
+                return new PreparedEditValidationResult(null, [], [], [valueDiagnostic]);
+            }
+
+            var itemCount = GetChildCount(node.NodeId);
+            if (command.Index is null || command.Index < 0 || command.Index > itemCount)
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.invalidPayload", $"insertArrayItem index must be between 0 and {itemCount}.")]);
+            }
+
+            var payload = new PreparedEditTransactionPayloadDto(ParentNodeId: node.NodeId, ParentPath: node.Path, Index: command.Index, Value: command.Value);
+            return new PreparedEditValidationResult(payload, [ToChangedRange(node)], [node.NodeId], []);
+        }
+
+        private PreparedEditValidationResult ValidateRemoveArrayItem(PreparedEditCommandDto command)
+        {
+            if (!TryResolveTarget(command, out var node, out var diagnostics))
+            {
+                return new PreparedEditValidationResult(null, [], [], diagnostics);
+            }
+
+            if (node.Kind != "array")
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.incompatibleTarget", "removeArrayItem requires an array target node.")]);
+            }
+
+            if (command.Index is null || command.Index < 0)
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.invalidPayload", "removeArrayItem requires a non-negative Index.")]);
+            }
+
+            var childPath = AppendJsonPointer(node.Path, command.Index.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (!nodesByPath.TryGetValue(childPath, out var child) || !string.Equals(child.ParentId, node.NodeId, StringComparison.Ordinal))
+            {
+                return new PreparedEditValidationResult(null, [], [], [CreateDiagnostic("prepared.targetNotFound", $"Array item at index {command.Index} was not found.")]);
+            }
+
+            var payload = new PreparedEditTransactionPayloadDto(child.NodeId, child.Path, node.NodeId, node.Path, Index: command.Index);
+            return new PreparedEditValidationResult(payload, [ToChangedRange(child)], [child.NodeId, node.NodeId], []);
+        }
+
+        private bool TryResolveTarget(PreparedEditCommandDto command, out PreparedNodeRecord node, out IReadOnlyList<RuntimeDiagnosticDto> diagnostics)
+        {
+            if (!string.IsNullOrWhiteSpace(command.TargetNodeId) && nodesById.TryGetValue(command.TargetNodeId, out node!))
+            {
+                diagnostics = [];
+                return true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(command.TargetPath) && nodesByPath.TryGetValue(command.TargetPath, out node!))
+            {
+                diagnostics = [];
+                return true;
+            }
+
+            node = null!;
+            diagnostics = [CreateDiagnostic("prepared.targetNotFound", "Prepared edit target node/path was not found.")];
+            return false;
+        }
+
+        private static bool TryValidateJsonValue(JsonElement? value, out RuntimeDiagnosticDto diagnostic)
+        {
+            if (value is null || value.Value.ValueKind == JsonValueKind.Undefined)
+            {
+                diagnostic = CreateDiagnostic("prepared.invalidPayload", "Edit command requires a valid JSON value payload.");
+                return false;
+            }
+
+            try
+            {
+                _ = value.Value.GetRawText();
+                diagnostic = null!;
+                return true;
+            }
+            catch (InvalidOperationException exception)
+            {
+                diagnostic = CreateDiagnostic("prepared.invalidPayload", exception.Message);
+                return false;
+            }
+        }
+
+        private int GetChildCount(string parentId)
+            => nodesById.Values.Count(node => string.Equals(node.ParentId, parentId, StringComparison.Ordinal));
+
+        private string? GetParentPath(PreparedNodeRecord node)
+            => node.ParentId is not null && nodesById.TryGetValue(node.ParentId, out var parent) ? parent.Path : null;
+
+        private static string GetLastJsonPointerSegment(string path)
+        {
+            var slashIndex = path.LastIndexOf('/');
+            if (slashIndex < 0 || slashIndex == path.Length - 1)
+            {
+                return string.Empty;
+            }
+
+            return path[(slashIndex + 1)..].Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal);
+        }
+
+        private static string AppendJsonPointer(string path, string segment)
+            => $"{path}/{segment.Replace("~", "~0", StringComparison.Ordinal).Replace("/", "~1", StringComparison.Ordinal)}";
+
+        private static PreparedChangedRangeDto ToChangedRange(PreparedNodeRecord node)
+            => new(node.StartOffset, node.EndOffset, node.NodeId, node.Path);
 
         public RuntimeDiagnosticDto GetIndexDiagnostic(string indexName)
         {
@@ -703,6 +1064,7 @@ public sealed class PreparedDocumentRuntimeBridge(IPreparedJsonDocumentStore sto
             if (IsReady(handle.Manifest.Indexes.Structure))
             {
                 capabilities.Add("fold");
+                capabilities.Add("controlledEdit");
             }
 
             if (IsReady(handle.Manifest.Indexes.Search))

@@ -8,6 +8,8 @@ import {
   type DetachSchemaCommand,
   type DisposeSessionCommand,
   type GetSchemaMetadataForPathCommand,
+  type PreparedEditCommandDto,
+  type PreparedEditResultDto,
   type PreparedOpenRequestDto,
   type PreparedRevealRequestDto,
   type PreparedRevealResultDto,
@@ -38,6 +40,7 @@ export interface RuntimeBlazorModule {
   openPreparedDocumentSession(request: PreparedOpenRequestDto): Promise<void>;
   searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto>;
   revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto>;
+  applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto>;
   closePreparedDocumentSession(sessionId: string): Promise<void>;
   createProjection(command: CreateProjectionCommand): Promise<void>;
   disposeProjection(command: DisposeProjectionCommand): Promise<void>;
@@ -83,6 +86,10 @@ export async function searchPreparedDocument(request: PreparedSearchRequestDto):
 
 export async function revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto> {
   return preparedDocumentHost.revealPreparedLocation(request);
+}
+
+export async function applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto> {
+  return preparedDocumentHost.applyPreparedEdit(command);
 }
 
 export async function closePreparedDocumentSession(sessionId: string): Promise<void> {

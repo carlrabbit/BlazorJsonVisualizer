@@ -199,6 +199,73 @@ export interface PreparedRevealResultDto {
   diagnostics?: RuntimeDiagnosticDto[] | undefined;
 }
 
+
+export type PreparedEditCommandKind =
+  | "replaceNodeValue"
+  | "renameProperty"
+  | "insertProperty"
+  | "removeProperty"
+  | "insertArrayItem"
+  | "removeArrayItem";
+
+export interface PreparedEditCommandDto {
+  sessionId: string;
+  documentId: string;
+  baseRevision: number;
+  kind: PreparedEditCommandKind;
+  targetNodeId?: string | undefined;
+  targetPath?: string | undefined;
+  propertyName?: string | undefined;
+  newPropertyName?: string | undefined;
+  index?: number | undefined;
+  value?: JsonValueDto | undefined;
+  label?: string | undefined;
+}
+
+export interface PreparedEditTransactionPayloadDto {
+  targetNodeId?: string | undefined;
+  targetPath?: string | undefined;
+  parentNodeId?: string | undefined;
+  parentPath?: string | undefined;
+  propertyName?: string | undefined;
+  newPropertyName?: string | undefined;
+  index?: number | undefined;
+  value?: JsonValueDto | undefined;
+}
+
+export interface PreparedDocumentTransactionDto {
+  transactionId: string;
+  sessionId: string;
+  documentId: string;
+  baseRevision: number;
+  revision: number;
+  kind: PreparedEditCommandKind;
+  payload: PreparedEditTransactionPayloadDto;
+  createdAt: string;
+  label?: string | undefined;
+}
+
+export interface PreparedChangedRangeDto {
+  startByteOffset: number;
+  endByteOffset: number;
+  nodeId?: string | undefined;
+  path?: string | undefined;
+}
+
+export interface PreparedEditResultDto {
+  success: boolean;
+  sessionId: string;
+  documentId: string;
+  baseRevision: number;
+  revision: number;
+  dirty: boolean;
+  transaction?: PreparedDocumentTransactionDto | undefined;
+  changedRanges?: PreparedChangedRangeDto[] | undefined;
+  changedNodeIds?: string[] | undefined;
+  invalidatedIndexes?: PreparedIndexStateDto[] | undefined;
+  diagnostics?: RuntimeDiagnosticDto[] | undefined;
+}
+
 export interface SetViewportCommand {
   sessionId: string;
   width: number;

@@ -1,6 +1,8 @@
 import type {
   CreateSessionCommand,
   PreparedDocumentMetadataDto,
+  type PreparedEditCommandDto,
+  type PreparedEditResultDto,
   PreparedOpenRequestDto,
   PreparedOpenResultDto,
   PreparedRenderRowDto,
@@ -10,6 +12,7 @@ import type {
   PreparedSearchRequestDto,
   PreparedSearchResultPageDto,
   PreparedViewportRequestDto,
+  type JsonValueDto,
   RuntimeDiagnosticDto,
   RuntimeEventDto
 } from "../../runtime-core/index.js";
@@ -60,6 +63,22 @@ export class PreparedDocumentHost {
     }
 
     this.sessions.delete(sessionId);
+  }
+
+
+  public async applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto> {
+    const preparedSession = this.requirePreparedSession(command.sessionId);
+    const result = await preparedSession.client.applyPreparedEdit(command);
+    preparedSession.diagnostics = result.diagnostics ?? [];
+    if (result.success) {
+      preparedSession.metadata = await preparedSession.client.getPreparedDocumentMetadata(command.sessionId);
+      preparedSession.foldStateRevision += 1;
+      await this.refreshRows(preparedSession);
+    }
+
+    await this.emitDiagnostics(preparedSession);
+    this.render(preparedSession);
+    return result;
   }
 
   public async closePreparedDocumentSession(sessionId: string): Promise<void> {
@@ -223,7 +242,102 @@ export class PreparedDocumentHost {
     text.className = "bjv-prepared-row-text";
     text.textContent = row.text;
     rowElement.append(text);
+
+    if (this.canOfferControlledEdit(session, row)) {
+      const actions = document.createElement("span");
+      actions.className = "bjv-prepared-edit-actions";
+
+      if (this.looksLikePrimitiveRow(row)) {
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.textContent = "Edit value";
+        editButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void this.promptReplaceValue(session, row);
+        });
+        actions.append(editButton);
+      }
+
+      if (row.path !== undefined && row.path !== "") {
+        const renameButton = document.createElement("button");
+        renameButton.type = "button";
+        renameButton.textContent = "Rename property";
+        renameButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void this.promptRenameProperty(session, row);
+        });
+        actions.append(renameButton);
+      }
+
+      if (actions.childElementCount > 0) {
+        rowElement.append(actions);
+      }
+    }
+
     return rowElement;
+  }
+
+  private canOfferControlledEdit(session: PreparedBrowserSession, row: PreparedRenderRowDto): boolean {
+    return row.nodeId !== undefined && session.metadata?.capabilities.includes("controlledEdit") === true;
+  }
+
+  private looksLikePrimitiveRow(row: PreparedRenderRowDto): boolean {
+    const trimmed = row.text.trim();
+    return /:\s*(".*"|-?\d|true\b|false\b|null\b)/u.test(trimmed) || /^(".*"|-?\d|true\b|false\b|null\b)/u.test(trimmed);
+  }
+
+  private async promptReplaceValue(session: PreparedBrowserSession, row: PreparedRenderRowDto): Promise<void> {
+    if (row.nodeId === undefined || session.metadata === undefined) {
+      return;
+    }
+
+    const rawValue = window.prompt("Enter a JSON value for this primitive node. Objects, arrays, and freeform text edits are not supported here.");
+    if (rawValue === null) {
+      return;
+    }
+
+    let value: unknown;
+    try {
+      value = JSON.parse(rawValue);
+    } catch {
+      session.diagnostics = [{ code: "prepared.invalidPayload", message: "Edit value must be valid JSON.", severity: "error" }];
+      await this.emitDiagnostics(session);
+      this.render(session);
+      return;
+    }
+
+    await this.applyPreparedEdit({
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      baseRevision: session.metadata.revision,
+      kind: "replaceNodeValue",
+      targetNodeId: row.nodeId,
+      value: value as JsonValueDto,
+      label: "Edit primitive value"
+    });
+  }
+
+  private async promptRenameProperty(session: PreparedBrowserSession, row: PreparedRenderRowDto): Promise<void> {
+    if (row.nodeId === undefined || session.metadata === undefined) {
+      return;
+    }
+
+    const propertyName = window.prompt("Enter the new JSON property name. This controlled action does not edit arbitrary text.");
+    if (propertyName === null) {
+      return;
+    }
+
+    await this.applyPreparedEdit({
+      sessionId: session.sessionId,
+      documentId: session.documentId,
+      baseRevision: session.metadata.revision,
+      kind: "renameProperty",
+      targetNodeId: row.nodeId,
+      newPropertyName: propertyName,
+      label: "Rename property"
+    });
   }
 
   private async toggleFold(session: PreparedBrowserSession, row: PreparedRenderRowDto): Promise<void> {
@@ -383,6 +497,21 @@ export class PreparedDocumentHost {
 }
 .bjv-prepared-row-text {
   white-space: pre;
+}
+
+.bjv-prepared-edit-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-left: 0.75rem;
+}
+
+.bjv-prepared-edit-actions button {
+  border: 1px solid #334155;
+  border-radius: 0.25rem;
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.35rem;
 }
 .bjv-prepared-row-focused {
   outline: 2px solid #facc15;

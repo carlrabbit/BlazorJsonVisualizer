@@ -3,6 +3,8 @@ import type {
   PreparedFoldStateRequestDto,
   PreparedFoldStateResultDto,
   PreparedOpenRequestDto,
+  PreparedEditCommandDto,
+  PreparedEditResultDto,
   PreparedOpenResultDto,
   PreparedRevealRequestDto,
   PreparedRevealResultDto,
@@ -26,6 +28,7 @@ export interface PreparedDocumentRuntimeClient {
   setPreparedFoldState(request: PreparedFoldStateRequestDto): Promise<PreparedFoldStateResultDto>;
   searchPreparedDocument(request: PreparedSearchRequestDto): Promise<PreparedSearchResultPageDto>;
   revealPreparedLocation(request: PreparedRevealRequestDto): Promise<PreparedRevealResultDto>;
+  applyPreparedEdit(command: PreparedEditCommandDto): Promise<PreparedEditResultDto>;
   closePreparedDocumentSession(sessionId: string): Promise<void>;
 }
 
@@ -38,6 +41,7 @@ export function createPreparedDocumentRuntimeClient(bridge: PreparedDocumentDotN
     setPreparedFoldState: (request) => bridge.invokeMethodAsync<PreparedFoldStateResultDto>("SetPreparedFoldStateAsync", request),
     searchPreparedDocument: (request) => bridge.invokeMethodAsync<PreparedSearchResultPageDto>("SearchPreparedDocumentAsync", request),
     revealPreparedLocation: (request) => bridge.invokeMethodAsync<PreparedRevealResultDto>("RevealPreparedLocationAsync", request),
+    applyPreparedEdit: (command) => bridge.invokeMethodAsync<PreparedEditResultDto>("ApplyPreparedEditAsync", command),
     closePreparedDocumentSession: async (sessionId) => {
       await bridge.invokeMethodAsync("ClosePreparedDocumentSessionAsync", sessionId);
     }

@@ -46,6 +46,12 @@ public sealed class JsonVisualizerJsInterop(IJSRuntime jsRuntime) : IAsyncDispos
         return await module.InvokeAsync<PreparedRevealResultDto>("revealPreparedLocation", request);
     }
 
+    public async ValueTask<PreparedEditResultDto> ApplyPreparedEditAsync(PreparedEditCommandDto command)
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<PreparedEditResultDto>("applyPreparedEdit", command);
+    }
+
     public async ValueTask ClosePreparedDocumentSessionAsync(string sessionId)
     {
         var module = await moduleTask.Value;

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace BlazorJsonVisualizer.Protocol;
 
 public sealed record PreparedViewportRequestDto(
@@ -138,3 +140,65 @@ public sealed record PreparedRevealResultDto(
 public sealed record PreparedCloseResultDto(
     bool Success,
     IReadOnlyList<RuntimeDiagnosticDto>? Diagnostics = null);
+public sealed record PreparedEditCommandDto(
+    string SessionId,
+    string DocumentId,
+    long BaseRevision,
+    string Kind,
+    string? TargetNodeId = null,
+    string? TargetPath = null,
+    string? PropertyName = null,
+    string? NewPropertyName = null,
+    int? Index = null,
+    JsonElement? Value = null,
+    string? Label = null);
+
+public sealed record PreparedEditResultDto(
+    bool Success,
+    string SessionId,
+    string DocumentId,
+    long BaseRevision,
+    long Revision,
+    bool Dirty,
+    PreparedDocumentTransactionDto? Transaction = null,
+    IReadOnlyList<PreparedChangedRangeDto>? ChangedRanges = null,
+    IReadOnlyList<string>? ChangedNodeIds = null,
+    IReadOnlyList<PreparedIndexStateDto>? InvalidatedIndexes = null,
+    IReadOnlyList<RuntimeDiagnosticDto>? Diagnostics = null);
+
+public sealed record PreparedDocumentTransactionDto(
+    string TransactionId,
+    string SessionId,
+    string DocumentId,
+    long BaseRevision,
+    long Revision,
+    string Kind,
+    PreparedEditTransactionPayloadDto Payload,
+    DateTimeOffset CreatedAt,
+    string? Label = null);
+
+public sealed record PreparedEditTransactionPayloadDto(
+    string? TargetNodeId = null,
+    string? TargetPath = null,
+    string? ParentNodeId = null,
+    string? ParentPath = null,
+    string? PropertyName = null,
+    string? NewPropertyName = null,
+    int? Index = null,
+    JsonElement? Value = null);
+
+public sealed record PreparedChangedRangeDto(
+    long StartByteOffset,
+    long EndByteOffset,
+    string? NodeId = null,
+    string? Path = null);
+
+public static class PreparedEditCommandKinds
+{
+    public const string ReplaceNodeValue = "replaceNodeValue";
+    public const string RenameProperty = "renameProperty";
+    public const string InsertProperty = "insertProperty";
+    public const string RemoveProperty = "removeProperty";
+    public const string InsertArrayItem = "insertArrayItem";
+    public const string RemoveArrayItem = "removeArrayItem";
+}

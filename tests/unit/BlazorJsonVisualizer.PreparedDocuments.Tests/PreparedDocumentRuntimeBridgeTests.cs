@@ -327,6 +327,104 @@ public sealed class PreparedDocumentRuntimeBridgeTests
         }
     }
 
+
+    [Fact]
+    public async Task ApplyEditAsync_ReplacePrimitive_AppendsTransactionAndInvalidatesIndexes()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-edit", documentId));
+            var rows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-edit", 0, 50));
+            var enabledRow = Assert.Single(rows.Rows, static row => row.Text.Contains("\"enabled\": true", StringComparison.Ordinal));
+
+            using var value = JsonDocument.Parse("false");
+            var result = await bridge.ApplyEditAsync(new PreparedEditCommandDto(
+                "session-edit",
+                documentId,
+                1,
+                PreparedEditCommandKinds.ReplaceNodeValue,
+                TargetNodeId: enabledRow.NodeId,
+                Value: value.RootElement));
+            var metadata = await bridge.GetMetadataAsync("session-edit");
+
+            Assert.True(result.Success, string.Join("; ", result.Diagnostics?.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}") ?? []));
+            Assert.True(result.Dirty);
+            Assert.Equal(2, result.Revision);
+            Assert.Equal(2, metadata.Revision);
+            Assert.Equal("stale", metadata.Indexes["structure"].State);
+            Assert.Equal("stale", metadata.Indexes["search"].State);
+            Assert.Equal("stale", metadata.Indexes["path"].State);
+            Assert.Equal(PreparedEditCommandKinds.ReplaceNodeValue, result.Transaction!.Kind);
+            Assert.NotEmpty(result.ChangedRanges!);
+            var transactionLogPath = Path.Combine(rootPath, documentId, "transactions", "log.jsonl");
+            Assert.Contains(result.Transaction.TransactionId, await File.ReadAllTextAsync(transactionLogPath));
+
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyEditAsync_StaleRevision_ReturnsDiagnosticAndDoesNotAdvance()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-stale-edit", documentId));
+            var rows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-stale-edit", 0, 50));
+            var enabledRow = Assert.Single(rows.Rows, static row => row.Text.Contains("\"enabled\": true", StringComparison.Ordinal));
+
+            using var value = JsonDocument.Parse("false");
+            var result = await bridge.ApplyEditAsync(new PreparedEditCommandDto(
+                "session-stale-edit",
+                documentId,
+                0,
+                PreparedEditCommandKinds.ReplaceNodeValue,
+                TargetNodeId: enabledRow.NodeId,
+                Value: value.RootElement));
+            var metadata = await bridge.GetMetadataAsync("session-stale-edit");
+
+            Assert.False(result.Success);
+            Assert.Equal(1, metadata.Revision);
+            Assert.Equal("prepared.staleRevision", Assert.Single(result.Diagnostics!).Code);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
+    [Fact]
+    public async Task ApplyEditAsync_UnsupportedTarget_ReturnsStructuredDiagnostic()
+    {
+        var (bridge, documentId, rootPath) = await CreateBridgeAsync();
+        try
+        {
+            await bridge.OpenAsync(new PreparedOpenRequestDto("session-edit-target", documentId));
+            var rows = await bridge.GetRowsAsync(new PreparedRowsRequestDto("session-edit-target", 0, 50));
+            var documentRow = Assert.Single(rows.Rows, static row => row.Text.Contains("\"document\": {", StringComparison.Ordinal));
+
+            using var value = JsonDocument.Parse("false");
+            var result = await bridge.ApplyEditAsync(new PreparedEditCommandDto(
+                "session-edit-target",
+                documentId,
+                1,
+                PreparedEditCommandKinds.ReplaceNodeValue,
+                TargetNodeId: documentRow.NodeId,
+                Value: value.RootElement));
+
+            Assert.False(result.Success);
+            Assert.Equal("prepared.incompatibleTarget", Assert.Single(result.Diagnostics!).Code);
+        }
+        finally
+        {
+            TryDeleteDirectory(rootPath);
+        }
+    }
+
     private static async Task<(PreparedDocumentRuntimeBridge Bridge, string DocumentId, string RootPath)> CreateBridgeAsync(
         bool buildSearchIndex = true,
         bool buildPathIndex = true)
