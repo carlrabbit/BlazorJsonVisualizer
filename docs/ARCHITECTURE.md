@@ -24,7 +24,7 @@ Architecture documentation is intentionally lightweight while the repository is 
 | Document | Purpose |
 |---|---|
 | `docs/architecture/runtime-boundaries.md` | Summarizes ownership boundaries between the browser runtime, runtime core, and Blazor host. |
-| `docs/architecture/browser-runtime.md` | Describes the TypeScript runtime package split and framework-free core rule. |
+| `docs/architecture/browser-runtime.md` | Describes the TypeScript runtime package split, workspace root, and framework-free core rule. |
 | `docs/architecture/blazor-integration.md` | Describes Blazor host responsibilities and non-responsibilities. |
 | `docs/architecture/document-model.md` | Describes the structure-first document model and overlay boundaries. |
 | `docs/architecture/plugin-model.md` | Describes planned Layer 3 plugin/projection boundaries. |

@@ -6,20 +6,32 @@ This document describes the TypeScript tooling setup for BlazorJsonVisualizer.
 
 ## Toolchain
 
-- **Runtime:** Bun (not npm or Node)
-- **Linting/Formatting:** Biome (not ESLint or Prettier)
-- **Lockfile:** `bun.lock` (committed)
+- **Runtime/package manager:** Bun, not npm or Node.
+- **Linting/formatting:** Biome, not ESLint or Prettier.
+- **Lockfile:** `bun.lock`, committed under the runtime workspace root.
+
+## Runtime Workspace Root
+
+The canonical TypeScript browser runtime workspace root is:
+
+```text
+src/BlazorJsonVisualizer.Runtime/
+```
+
+Do not use repository-root package discovery for runtime validation. Do not use the former `src/runtime/` path.
 
 ## Configuration Files
 
 | File | Purpose |
 |---|---|
-| `package.json` | Root workspace configuration and script definitions. |
-| `bun.lock` | Committed Bun lockfile. |
-| `biome.json` | Biome linting and formatting configuration. |
-| `tsconfig.base.json` | Base TypeScript compiler options. |
+| `src/BlazorJsonVisualizer.Runtime/package.json` | Runtime workspace configuration and script definitions. |
+| `src/BlazorJsonVisualizer.Runtime/bun.lock` | Committed Bun lockfile. |
+| `src/BlazorJsonVisualizer.Runtime/biome.json` | Biome linting and formatting configuration. |
+| `src/BlazorJsonVisualizer.Runtime/tsconfig.base.json` | Base TypeScript compiler options. |
 
 ## TypeScript Compiler Options
+
+The runtime TypeScript configuration should keep strict, explicit options such as:
 
 ```json
 {
@@ -33,39 +45,53 @@ This document describes the TypeScript tooling setup for BlazorJsonVisualizer.
 ## Runtime Structure
 
 ```text
-src/runtime/
+src/BlazorJsonVisualizer.Runtime/
   runtime-core/      — framework-free TypeScript: document sessions, structural indexes, transactions, protocol types
-  runtime-dom/       — DOM renderer, folding controller
-  runtime-blazor/    — Layer 1 Blazor host
-  runtime-worker/    — worker utilities
+  runtime-dom/       — DOM renderer, folding controller, viewport DOM, user interaction capture
+  runtime-blazor/    — Blazor JS interop facade and host bridge
+  runtime-worker/    — worker entry points and later background processing
 ```
 
 ## Commands
 
 ```sh
-# Check TypeScript/Biome
+# Check TypeScript/Biome/runtime tests
 ./eng/frontend-check.sh
 
 # Format TypeScript/Biome
 ./eng/frontend-format.sh
 ```
 
-## Migration Note
+The frontend scripts must execute from `src/BlazorJsonVisualizer.Runtime/` and must use Bun only.
 
-The TypeScript tooling is transitioning from npm to Bun. During the transition:
-- Existing `package.json` scripts remain functional.
-- New commands use Bun.
-- `./eng/frontend-check.sh` uses Bun when `bun.lock` is present, otherwise falls back to npm.
+## Forbidden Active Tooling
+
+Active runtime and engineering surfaces must not use:
+
+- `npm`;
+- `npx`;
+- `package-lock.json`;
+- npm workspace commands;
+- npm install commands;
+- direct `node` execution for normal runtime package scripts.
+
+Historical references may remain only in non-authoritative research or migration history when they are clearly not operational guidance.
 
 ## Authority
 
 This document is authoritative for:
-- TypeScript toolchain selection (Bun, Biome)
-- TypeScript configuration requirements
+
+- TypeScript toolchain selection;
+- TypeScript workspace root;
+- TypeScript configuration requirements;
+- Bun/Biome runtime command expectations.
 
 ## Document Contract
 
 When this document changes, review:
+
 - `docs/ENGINEERING.md`
+- `docs/engineering/browser-runtime-workspace.md`
+- `docs/engineering/command-contract.md`
 - `AGENTS.md`
-- `AGENTS.md`
+- `.github/copilot-instructions.md`

@@ -12,6 +12,7 @@ The repository is currently in **Exploration / Active Design** mode. Engineering
 - validation-tier routing and test classification
 - .NET build and test setup
 - TypeScript tooling setup (Bun, Biome)
+- browser runtime workspace layout and command routing
 - implementation scope, documentation, and public API constraints
 - building block descriptions
 - optional module descriptions
@@ -41,10 +42,11 @@ The repository is currently in **Exploration / Active Design** mode. Engineering
 |---|---|
 | `docs/engineering/command-contract.md` | Canonical `eng/` command names, purposes, validation tiers, and agent usage rules. |
 | `docs/engineering/dotnet.md` | .NET build, test, format, project conventions, and .NET-specific constraints. |
+| `docs/engineering/browser-runtime-workspace.md` | Browser runtime workspace root, package split, Bun-only rules, and engineering-script routing expectations. |
+| `docs/engineering/typescript-tools.md` | TypeScript tooling: Bun, Biome, tsconfig conventions, and TypeScript architecture constraints. |
 | `docs/engineering/building-blocks.md` | Building block catalog for this repository. |
 | `docs/engineering/optional-modules.md` | Optional module catalog and activation status. |
 | `docs/engineering/samples.md` | Sample project conventions and launch instructions. |
-| `docs/engineering/typescript-tools.md` | TypeScript tooling: Bun, Biome, tsconfig conventions, and TypeScript architecture constraints. |
 | `docs/engineering/packaging.md` | Planned NuGet packaging and package smoke-test readiness expectations. |
 | `docs/engineering/public-documentation.md` | Public documentation preview status, validation model, and command usage. |
 | `docs/engineering/release-readiness.md` | Future release-oriented validation flow and explicit-only gate policy. |
@@ -53,13 +55,13 @@ The repository is currently in **Exploration / Active Design** mode. Engineering
 
 | Command | Purpose | Tier |
 |---|---|---|
-| `./eng/restore.sh` | Restore all dependencies. | Focused |
+| `./eng/restore.sh` | Restore all dependencies: dotnet restore and Bun install for the browser runtime workspace. | Focused |
 | `./eng/build.sh` | Build default projects. | Focused |
 | `./eng/test.sh` | Run short-running tests only. | Tier 1 |
-| `./eng/format.sh` | Apply formatting. | Focused |
-| `./eng/check.sh` | Restore, build, test, and verify formatting/tooling. Default completion gate. | Tier 2 |
-| `./eng/frontend-check.sh` | Run TypeScript/Biome checks. | Focused |
-| `./eng/frontend-format.sh` | Apply TypeScript/Biome formatting. | Focused |
+| `./eng/format.sh` | Apply formatting: dotnet format and frontend formatting through canonical frontend script. | Focused |
+| `./eng/check.sh` | Restore, build, test, verify formatting/tooling, and validate browser runtime/frontend surface. Default completion gate. | Tier 2 |
+| `./eng/frontend-check.sh` | Run Bun/Biome/TypeScript checks for the browser runtime workspace. | Focused |
+| `./eng/frontend-format.sh` | Apply Bun/Biome formatting for the browser runtime workspace. | Focused |
 | `./eng/samples.sh` | Build and validate samples. | Focused |
 | `./eng/public-docs.sh` | Validate required public documentation surfaces. | Focused |
 | `./eng/long-running-tests.sh [--fast]` | Run explicit long-running tests; `--fast` uses reduced data sizes for validation. | Explicit only |
@@ -82,6 +84,8 @@ See `docs/engineering/command-contract.md` for full details.
 - Public API changes must be covered by or update the relevant spec.
 - Public APIs must document intent, contract, constraints, and failure behavior.
 - Prepared-document storage work must preserve the storage-provider abstraction and must not expose the default file-backed layout as a consumer contract.
+- Browser runtime tooling must use Bun and Biome from `src/BlazorJsonVisualizer.Runtime/`.
+- Active runtime/engineering tooling must not use npm, npx, package-lock files, or Node-based fallback execution.
 - Run the smallest relevant validation set before broader gates.
 - Do not run long-running tests unless explicitly requested.
 
@@ -89,16 +93,16 @@ See `docs/engineering/command-contract.md` for full details.
 
 This document is authoritative for:
 
-- the index of engineering documents under `docs/engineering/`
-- canonical command names
-- validation-tier routing
-- implementation and tooling constraints previously split into separate guardrail documents
+- the index of engineering documents under `docs/engineering/`;
+- canonical command names;
+- validation-tier routing;
+- implementation and tooling constraints previously split into separate guardrail documents.
 
 This document is not authoritative for:
 
-- product behavior (use specs)
-- durable architecture (use architecture docs when needed)
-- project history or non-authoritative research notes
+- product behavior (use specs);
+- durable architecture (use architecture docs when needed);
+- project history or non-authoritative research notes.
 
 ## Document Contract
 

@@ -2,6 +2,14 @@
 
 ## Package split
 
+The browser runtime workspace root is:
+
+```text
+src/BlazorJsonVisualizer.Runtime/
+```
+
+It contains these TypeScript workspace packages:
+
 - `runtime-core`: framework-free session/protocol logic.
 - `runtime-dom`: DOM mounting and rendering shell.
 - `runtime-worker`: worker entry points and later background processing.
@@ -10,6 +18,12 @@
 ## Rule
 
 `runtime-core` must not import DOM, Blazor, or framework-specific modules.
+
+The browser runtime workspace is TypeScript/Bun-based. It is not a .NET project even though it lives under `src/` with a project-style folder name.
+
+## Blazor asset boundary
+
+`runtime-blazor` produces the browser asset consumed by the Blazor package. Build/copy orchestration belongs to canonical `eng/` scripts and sample launchers, not to ad hoc package-root assumptions.
 
 ## Schema work
 

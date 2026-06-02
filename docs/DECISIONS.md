@@ -25,13 +25,15 @@ Decision records document why a particular approach was chosen over alternatives
 |---|---|
 | `decisions/0005-token-based-visual-identity.md` | Accepts semantic JSON design tokens as the public visual identity contract and defines the first dark-only visual identity playground direction. |
 | `decisions/0006-user-owned-ef-core-dbcontext-for-prepared-document-storage.md` | Accepts user-owned DbContext integration through a DbSet contract and model-builder extension for EF Core prepared-document storage. |
+| `decisions/0007-layer1-controlled-structural-edits-before-freeform-text-editing.md` | Accepts controlled structural edits before freeform text editing for prepared-document Layer 1 editing. |
+| `decisions/0008-use-src-blazorjsonvisualizer-runtime-for-browser-runtime-workspace.md` | Accepts `src/BlazorJsonVisualizer.Runtime/` as the canonical browser runtime workspace root. |
 
 ## Authority
 
 This document is authoritative for:
 
-- the index of decision records under `docs/decisions/`
-- what counts as a decision record
+- the index of decision records under `docs/decisions/`;
+- what counts as a decision record.
 
 ## Document Contract
 

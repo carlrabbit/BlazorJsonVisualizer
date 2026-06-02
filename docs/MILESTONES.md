@@ -31,10 +31,13 @@ Milestones define sequencing: what is in scope, what is out of scope, what must 
 | `milestones/milestone-0017-layer1-prepared-document-viewer-and-search-completion.md` | Implemented / synchronized | Completes the read-only prepared-document viewer workflow and prepared-document search/reveal UX. |
 | `milestones/milestone-0018-layer1-controlled-editing-transactions.md` | Implemented / synchronized | Adds first controlled Layer 1 structural editing transactions over prepared documents. |
 | `milestones/milestone-0019-edited-export-revision-and-diagnostics-hardening.md` | Implemented / synchronized | Adds edited export, revision consistency, and degraded-state diagnostics hardening. |
+| `milestones/milestone-0020-normalize-engineering-scripts-and-browser-runtime-workspace.md` | Planned | Normalizes engineering scripts, Bun-only runtime tooling, and the browser runtime workspace root. |
 
 ## Spec Alignment
 
 When a spec exists, milestone documents should point to that spec instead of duplicating normative behavior. Milestones may keep scope, sequencing, and exit criteria, but product behavior belongs in `docs/SPECS.md` and `docs/specs/`.
+
+Engineering milestones may point to engineering authority documents under `docs/engineering/` instead of product specs.
 
 ## Authority
 
