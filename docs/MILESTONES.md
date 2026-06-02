@@ -32,6 +32,7 @@ Milestones define sequencing: what is in scope, what is out of scope, what must 
 | `milestones/milestone-0018-layer1-controlled-editing-transactions.md` | Implemented / synchronized | Adds first controlled Layer 1 structural editing transactions over prepared documents. |
 | `milestones/milestone-0019-edited-export-revision-and-diagnostics-hardening.md` | Implemented / synchronized | Adds edited export, revision consistency, and degraded-state diagnostics hardening. |
 | `milestones/milestone-0020-normalize-engineering-scripts-and-browser-runtime-workspace.md` | Implemented | Normalizes engineering scripts, Bun-only runtime tooling, and the browser runtime workspace root. |
+| `milestones/milestone-0021-layer2-json-schema-overlay-over-prepared-documents.md` | Planned / implementation-ready | Adds the read-only Layer 2 JSON Schema overlay over prepared-document Layer 1 sessions. |
 
 ## Spec Alignment
 

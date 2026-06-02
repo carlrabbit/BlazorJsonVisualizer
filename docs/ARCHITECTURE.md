@@ -30,6 +30,7 @@ Architecture documentation is intentionally lightweight while the repository is 
 | `docs/architecture/plugin-model.md` | Describes planned Layer 3 plugin/projection boundaries. |
 | `docs/architecture/prepared-document-runtime-boundary.md` | Describes the prepared-document store, runtime bridge, Blazor host, and TypeScript runtime ownership boundary for range-backed Layer 1 viewing. |
 | `docs/architecture/ef-core-prepared-document-storage-boundary.md` | Describes the EF Core storage backend boundary, user-owned DbContext ownership, and SQL Server optimization layer. |
+| `docs/architecture/schema-overlay-boundary.md` | Describes the Layer 2 JSON Schema overlay ownership boundary over prepared-document sessions. |
 
 ## Authority
 
