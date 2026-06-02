@@ -4,19 +4,37 @@
 
 Preview / planned for first public package release.
 
-This surface is not release-ready. It documents the expected first supported consumer path while packaging and release readiness remain future work.
+This surface is not release-ready. It documents the current repository-supported workflows and the expected first consumer path while packaging and release readiness remain future work.
 
-## Supported now
+## Supported now in the repository
 
 For small JSON documents, direct open remains available in repository/runtime work.
 
-## Preview huge-document path
+For huge JSON documents, use the prepared-document lifecycle:
 
-For huge JSON documents, import the JSON stream first. Import creates a prepared document with structural metadata and derived indexes. Open the prepared document for interactive Layer 1 viewing through the prepared-document runtime bridge, then export when needed.
+```text
+import raw JSON
+  -> open prepared document
+  -> view/search/reveal through the range-backed Layer 1 viewer
+  -> apply controlled Layer 1 edits when needed
+  -> export the current prepared-document revision
+```
 
-Recommended reading:
+## Storage choices
+
+Prepared documents can use the default storage path or the EF Core prepared-document storage backend.
+
+The EF Core backend integrates with a user-owned DbContext. DbSet properties make entity/migration ownership explicit, and the model-builder extension is the authoritative configuration point for BlazorJsonVisualizer storage entities.
+
+SQL Server 2022 and SQL Server 2025 storage optimizations are opt-in. They are not required for correctness.
+
+## Recommended reading
 
 - `public-docs/guides/huge-json-documents.md`
 - `public-docs/guides/import-huge-json.md`
 - `public-docs/guides/open-prepared-document.md`
-- `public-docs/diagnostics/import-diagnostics.md`
+- `public-docs/guides/layer1-prepared-document-search.md`
+- `public-docs/guides/layer1-controlled-editing.md`
+- `public-docs/guides/export-edited-prepared-document.md`
+- `public-docs/guides/ef-core-prepared-document-storage.md`
+- `public-docs/diagnostics.md`

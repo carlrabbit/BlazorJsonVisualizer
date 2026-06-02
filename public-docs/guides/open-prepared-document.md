@@ -2,9 +2,9 @@
 
 ## Status
 
-Preview planned public workflow.
+Preview public workflow.
 
-This guide describes the intended public workflow for opening a prepared JSON document in the BlazorJsonVisualizer Layer 1 viewer. Package publication and final consumer API shape remain planned.
+This guide describes the current public workflow for opening a prepared JSON document in the BlazorJsonVisualizer Layer 1 viewer. Package publication and final consumer API shape remain planned.
 
 ## Purpose
 
@@ -20,7 +20,8 @@ Open the prepared document by identifier.
 Render an initial Layer 1 viewport.
 Request additional rows/ranges as the user navigates.
 Search through prepared-document services.
-Reveal search results or JSON Pointer paths.
+Reveal search results, offsets, or JSON Pointer paths.
+Apply controlled Layer 1 edits when needed.
 Export later when needed.
 ```
 
@@ -54,15 +55,17 @@ When a prepared document is opened, the viewer should:
 - render an initial viewport;
 - request only bounded row/range data;
 - use prepared search services rather than visible-row scanning;
-- show diagnostics when required indexes are missing, stale, failed, or unsupported.
+- reveal search results, offsets, or JSON Pointer targets through bounded row requests;
+- show diagnostics when required indexes are missing, stale, failed, or unsupported;
+- apply controlled Layer 1 edit commands when enabled by the session and structural metadata.
 
-## Limitations
+## Editing Boundary
 
-Milestone 0015 prepared-document sessions are read-only.
+Layer 1 editing is controlled structural editing, not freeform text editing.
 
-Editing, transaction replay into the browser runtime, schema overlays, and projection plugins are later workflows.
+Supported operations are documented in:
 
-Search may be bounded or paged. Returning every match in a huge document at once is not expected.
+- `public-docs/guides/layer1-controlled-editing.md`
 
 ## User Contract
 
@@ -70,4 +73,4 @@ The prepared-document store remains the durable source of truth.
 
 The browser runtime may cache bounded ranges and rows, but the browser cache is not the prepared document.
 
-Applications must not depend on the default file-backed internal directory layout.
+Applications must not depend on the default file-backed internal directory layout or EF Core table layout.

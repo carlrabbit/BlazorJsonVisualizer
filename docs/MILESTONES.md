@@ -28,9 +28,9 @@ Milestones define sequencing: what is in scope, what is out of scope, what must 
 | `milestones/milestone-0014-data-ingestion-adapters-diagnostics-import-job-lifecycle.md` | Implemented / synchronized | Implements ingestion sources, import jobs, progress, cancellation, diagnostics, and encoding policy for huge JSON import. |
 | `milestones/milestone-0015-prepared-document-runtime-bridge-range-backed-layer1-viewer.md` | Implemented / synchronized | Implements the prepared-document runtime bridge and range-backed Layer 1 viewer path. |
 | `milestones/milestone-0016-ef-core-prepared-document-storage-backend.md` | Implemented / synchronized | Implements the EF Core prepared-document storage backend, user-owned DbContext contract, and opt-in SQL Server storage optimizations. |
-| `milestones/milestone-0017-layer1-prepared-document-viewer-and-search-completion.md` | Planned | Completes the read-only prepared-document viewer workflow and prepared-document search/reveal UX. |
-| `milestones/milestone-0018-layer1-controlled-editing-transactions.md` | Planned | Adds first controlled Layer 1 structural editing transactions over prepared documents. |
-| `milestones/milestone-0019-edited-export-revision-and-diagnostics-hardening.md` | Planned | Adds edited export, revision consistency, and degraded-state diagnostics hardening. |
+| `milestones/milestone-0017-layer1-prepared-document-viewer-and-search-completion.md` | Implemented / synchronized | Completes the read-only prepared-document viewer workflow and prepared-document search/reveal UX. |
+| `milestones/milestone-0018-layer1-controlled-editing-transactions.md` | Implemented / synchronized | Adds first controlled Layer 1 structural editing transactions over prepared documents. |
+| `milestones/milestone-0019-edited-export-revision-and-diagnostics-hardening.md` | Implemented / synchronized | Adds edited export, revision consistency, and degraded-state diagnostics hardening. |
 
 ## Spec Alignment
 

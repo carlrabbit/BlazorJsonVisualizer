@@ -1,12 +1,12 @@
 # BlazorJsonVisualizer
 
-BlazorJsonVisualizer is a Blazor-facing package for a standalone TypeScript browser runtime that visualizes, navigates, and incrementally edits large structured JSON documents.
+BlazorJsonVisualizer is a Blazor-facing package for a standalone TypeScript browser runtime that visualizes, navigates, searches, and incrementally edits large structured JSON documents.
 
 ## Current status
 
 BlazorJsonVisualizer is in **Exploration / Active Design** mode.
 
-The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, ingestion, prepared-document storage, search/indexing, visual identity, and browser/Blazor boundaries. Architecture remains emerging and should be documented only where durable subsystem boundaries need explanation.
+The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, ingestion, prepared-document storage, EF Core storage, search/indexing, controlled Layer 1 editing, edited export, visual identity, and browser/Blazor boundaries. Architecture remains emerging and should be documented only where durable subsystem boundaries need explanation.
 
 Public package publication is **preview/planned**. Public docs are preview surfaces and may intentionally distinguish implemented repository behavior from planned consumer workflows. Release readiness is future work and must not be treated as a normal implementation requirement.
 
@@ -19,6 +19,21 @@ For now, contributors can build and validate with:
 ```bash
 ./eng/check.sh
 ```
+
+## Huge JSON workflow
+
+The current repository direction for huge JSON is:
+
+```text
+import raw JSON once
+  -> create a prepared document
+  -> open it through the range-backed Layer 1 viewer
+  -> search and reveal through prepared-document services
+  -> apply controlled Layer 1 edits as transactions
+  -> export the current revision when needed
+```
+
+Prepared documents can be stored through the default storage path or through the EF Core prepared-document storage backend. Applications should depend on the prepared-document store/runtime contracts, not on a provider's internal storage layout.
 
 ## Samples
 
@@ -45,7 +60,14 @@ These preview docs describe currently useful concepts and planned consumer workf
 - [Huge JSON documents](public-docs/guides/huge-json-documents.md)
 - [Import huge JSON](public-docs/guides/import-huge-json.md)
 - [Open a prepared document](public-docs/guides/open-prepared-document.md)
+- [Layer 1 prepared-document search](public-docs/guides/layer1-prepared-document-search.md)
+- [Layer 1 controlled editing](public-docs/guides/layer1-controlled-editing.md)
+- [Export edited prepared documents](public-docs/guides/export-edited-prepared-document.md)
+- [EF Core prepared-document storage](public-docs/guides/ef-core-prepared-document-storage.md)
+- [SQL Server prepared-document storage optimizations](public-docs/guides/sql-server-prepared-document-storage-optimizations.md)
 - [Import diagnostics](public-docs/diagnostics/import-diagnostics.md)
+- [Layer 1 viewer diagnostics](public-docs/diagnostics/layer1-viewer-diagnostics.md)
+- [EF Core storage diagnostics](public-docs/diagnostics/ef-core-storage-diagnostics.md)
 
 ## Contributor documentation
 
