@@ -8,7 +8,7 @@ The browser runtime workspace root is:
 src/BlazorJsonVisualizer.Runtime/
 ```
 
-It contains these TypeScript workspace packages:
+It contains the workspace `package.json`, `bun.lock`, Biome configuration, TypeScript base configuration, and these TypeScript workspace packages:
 
 - `runtime-core`: framework-free session/protocol logic.
 - `runtime-dom`: DOM mounting and rendering shell.
@@ -19,7 +19,7 @@ It contains these TypeScript workspace packages:
 
 `runtime-core` must not import DOM, Blazor, or framework-specific modules.
 
-The browser runtime workspace is TypeScript/Bun-based. It is not a .NET project even though it lives under `src/` with a project-style folder name.
+The browser runtime workspace is TypeScript/Bun-based. It is not a .NET project even though it lives under `src/` with a project-style folder name. Runtime tests live outside the workspace at `tests/BlazorJsonVisualizer.Runtime.Tests/` and are invoked by the workspace Bun scripts.
 
 ## Blazor asset boundary
 

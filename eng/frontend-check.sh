@@ -2,16 +2,19 @@
 set -eu
 . "$(dirname "$0")/common.sh"
 
-if [ ! -f "$REPO_ROOT/package.json" ]; then
-  echo "No package.json found; skipping frontend check"
+RUNTIME_WORKSPACE_DIR="$REPO_ROOT/src/BlazorJsonVisualizer.Runtime"
+
+if [ ! -f "$RUNTIME_WORKSPACE_DIR/package.json" ]; then
+  echo "Runtime workspace package.json not found: $RUNTIME_WORKSPACE_DIR/package.json; skipping frontend check"
   exit 0
 fi
 
-eng_step "frontend-check: biome check"
-if eng_has bun; then
-  cd "$REPO_ROOT"
-  bun run check
-else
-  cd "$REPO_ROOT"
-  npm run check 2>/dev/null || npx biome check . 2>/dev/null || echo "frontend check skipped: bun not found"
+if ! eng_has bun; then
+  echo "Required command not found: bun" >&2
+  echo "Install Bun to run browser runtime validation from $RUNTIME_WORKSPACE_DIR." >&2
+  exit 1
 fi
+
+eng_step "frontend-check: bun run check"
+cd "$RUNTIME_WORKSPACE_DIR"
+bun run check

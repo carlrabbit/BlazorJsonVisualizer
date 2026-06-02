@@ -40,19 +40,13 @@ src/BlazorJsonVisualizer.Runtime/
   runtime-blazor/
 ```
 
-Runtime tests should be placed in one of the following explicitly documented locations:
-
-```text
-src/BlazorJsonVisualizer.Runtime/tests/
-```
-
-or:
+Runtime tests live in the separate Bun-driven test root:
 
 ```text
 tests/BlazorJsonVisualizer.Runtime.Tests/
 ```
 
-The implementation must choose one location and keep package scripts, engineering commands, and docs consistent with that choice.
+The runtime workspace package scripts invoke these tests directly with Bun. The test root must not have its own npm-managed package or `package-lock.json`.
 
 ## Package Split
 
@@ -103,7 +97,7 @@ If the runtime workspace exists and Bun is missing, frontend commands must fail 
 
 The repository should include a lightweight guard that fails when active runtime/engineering surfaces reintroduce npm/npx/package-lock usage.
 
-The guard should check active source, runtime, tests, and `eng/` files. It may exclude `docs/research/` and historical documentation when documented.
+`./eng/tooling-guard.sh` checks active runtime workspace files, runtime test files, and engineering scripts. It excludes historical milestone notes and `docs/research/` from package-lock discovery because those areas may contain non-operational history.
 
 The guard must use shell, dotnet, or Bun/TypeScript. It must not use inline Python.
 

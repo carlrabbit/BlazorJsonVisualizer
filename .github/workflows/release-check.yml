@@ -24,7 +24,7 @@ jobs:
           global-json-file: global.json
 
       - name: Setup Bun
-        if: hashFiles('bun.lock') != ''
+        if: hashFiles('src/BlazorJsonVisualizer.Runtime/bun.lock') != ''
         uses: oven-sh/setup-bun@v2
 
       - name: Run release checks

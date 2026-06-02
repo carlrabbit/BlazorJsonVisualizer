@@ -5,11 +5,5 @@ set -eu
 eng_step "format: dotnet format"
 dotnet format
 
-if [ -f "$REPO_ROOT/biome.json" ]; then
-  eng_step "format: biome format"
-  if eng_has bun; then
-    bun run format
-  else
-    echo "bun not found; skipping biome format"
-  fi
-fi
+eng_step "format: frontend"
+"$REPO_ROOT/eng/frontend-format.sh"

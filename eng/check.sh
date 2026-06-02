@@ -14,13 +14,10 @@ eng_step "check: test"
 eng_step "check: dotnet format --verify-no-changes"
 dotnet format --verify-no-changes
 
-if [ -f "$REPO_ROOT/biome.json" ]; then
-  eng_step "check: biome check"
-  if eng_has bun; then
-    bun run check
-  else
-    echo "bun not found; skipping biome check"
-  fi
-fi
+eng_step "check: frontend"
+"$REPO_ROOT/eng/frontend-check.sh"
+
+eng_step "check: tooling guard"
+"$REPO_ROOT/eng/tooling-guard.sh"
 
 eng_step "check: complete"

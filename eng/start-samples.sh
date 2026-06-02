@@ -36,7 +36,7 @@ LAYER3_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/BlazorJ
 LAYER3_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.ProjectionSample/bin/Debug/net10.0/BlazorJsonVisualizer.ProjectionSample.dll"
 VISUAL_IDENTITY_PROJECT="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/BlazorJsonVisualizer.VisualIdentitySample.csproj"
 VISUAL_IDENTITY_DLL="$REPO_ROOT/samples/BlazorJsonVisualizer.VisualIdentitySample/bin/Debug/net10.0/BlazorJsonVisualizer.VisualIdentitySample.dll"
-RUNTIME_WORKSPACE_DIR="$REPO_ROOT/src/runtime"
+RUNTIME_WORKSPACE_DIR="$REPO_ROOT/src/BlazorJsonVisualizer.Runtime"
 RUNTIME_BLAZOR_DIST_FILE="$RUNTIME_WORKSPACE_DIR/runtime-blazor/dist/index.js"
 RUNTIME_BLAZOR_WWWROOT_FILE="$REPO_ROOT/src/BlazorJsonVisualizer/wwwroot/runtime-blazor.js"
 
@@ -245,7 +245,7 @@ parse_args "$@"
 
 if (( ! DRY_RUN )); then
   require_command dotnet
-  require_command npm
+  require_command bun
   require_command ss
 fi
 
@@ -296,7 +296,7 @@ if (( DRY_RUN )); then
 fi
 
 echo "Building implemented sample projects..."
-run_build_command bun install --cwd "$RUNTIME_WORKSPACE_DIR"
+run_build_command bun install --cwd "$RUNTIME_WORKSPACE_DIR" --frozen-lockfile
 run_build_command bun run --cwd "$RUNTIME_WORKSPACE_DIR" build
 run_build_command cp "$RUNTIME_BLAZOR_DIST_FILE" "$RUNTIME_BLAZOR_WWWROOT_FILE"
 run_build_command dotnet restore "$BASIC_SAMPLE_PROJECT"

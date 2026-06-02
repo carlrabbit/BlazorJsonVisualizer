@@ -52,6 +52,17 @@ src/BlazorJsonVisualizer.Runtime/
   runtime-worker/    — worker entry points and later background processing
 ```
 
+
+## Runtime Tests
+
+Runtime TypeScript tests live in:
+
+```text
+tests/BlazorJsonVisualizer.Runtime.Tests/
+```
+
+The runtime workspace `test` script runs those tests with Bun directly. The runtime test root must not have a separate npm-managed package or `package-lock.json`.
+
 ## Commands
 
 ```sh

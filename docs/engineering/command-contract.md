@@ -24,6 +24,7 @@ This document defines the canonical `eng/` commands and validation tiers for Bla
 | `./eng/check.sh` | Restore, build, test, verify formatting/tooling, and validate the browser runtime/frontend surface. Default completion gate. | Tier 2 |
 | `./eng/frontend-check.sh` | Run Bun/Biome/TypeScript checks for the browser runtime workspace. | When touching TS/frontend/runtime files |
 | `./eng/frontend-format.sh` | Apply Bun/Biome formatting for the browser runtime workspace. | When requested |
+| `./eng/tooling-guard.sh` | Fail on forbidden npm/npx/package-lock usage in active runtime, runtime-test, and engineering surfaces. | Focused or through Tier 2 |
 | `./eng/samples.sh` | Build and validate samples. | When touching samples |
 | `./eng/public-docs.sh` | Validate public documentation required files and consistency checks. | When public docs change |
 | `./eng/long-running-tests.sh [--fast]` | Run tests marked `TestCategory=Slow`; `--fast` uses minimal data for smoke validation. | Explicit only |
@@ -41,7 +42,7 @@ src/BlazorJsonVisualizer.Runtime/
 
 Frontend commands must execute from this workspace root and must use Bun only.
 
-Frontend commands must not fall back to npm or npx. If the runtime workspace exists and Bun is unavailable, the command must fail clearly.
+Frontend commands must not fall back to npm or npx. If the runtime workspace exists and Bun is unavailable, the command must fail clearly. `./eng/check.sh` invokes `./eng/frontend-check.sh` and `./eng/tooling-guard.sh` so Tier 2 validates the browser runtime surface and active tooling policy.
 
 ## Test Classification
 

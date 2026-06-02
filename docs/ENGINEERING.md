@@ -62,6 +62,7 @@ The repository is currently in **Exploration / Active Design** mode. Engineering
 | `./eng/check.sh` | Restore, build, test, verify formatting/tooling, and validate browser runtime/frontend surface. Default completion gate. | Tier 2 |
 | `./eng/frontend-check.sh` | Run Bun/Biome/TypeScript checks for the browser runtime workspace. | Focused |
 | `./eng/frontend-format.sh` | Apply Bun/Biome formatting for the browser runtime workspace. | Focused |
+| `./eng/tooling-guard.sh` | Check active runtime, runtime-test, and engineering surfaces for forbidden npm/npx/package-lock usage. | Focused / Tier 2 |
 | `./eng/samples.sh` | Build and validate samples. | Focused |
 | `./eng/public-docs.sh` | Validate required public documentation surfaces. | Focused |
 | `./eng/long-running-tests.sh [--fast]` | Run explicit long-running tests; `--fast` uses reduced data sizes for validation. | Explicit only |
