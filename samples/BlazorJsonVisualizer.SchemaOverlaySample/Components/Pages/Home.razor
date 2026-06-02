@@ -1,49 +1,60 @@
-﻿@page "/"
+@page "/"
 @rendermode InteractiveServer
+@using System.Text
 @using System.Text.Json
+@using BlazorJsonVisualizer.PreparedDocuments
+@inject IPreparedJsonDocumentStore PreparedDocumentStore
+@inject IJsonDocumentImporter JsonDocumentImporter
+@inject IPreparedDocumentRuntimeBridge PreparedRuntimeBridge
 
 <PageTitle>Layer 2 Schema Overlay Sample</PageTitle>
 
 <h1>Layer 2 Schema Overlay Sample</h1>
 
 <p>
-    This sample demonstrates Layer 2 schema overlay behavior. A small JSON document is loaded
-    alongside a matching JSON Schema. The visualizer displays schema-driven diagnostics and metadata.
+    This sample demonstrates the read-only Layer 2 schema overlay over an imported prepared document.
+    The schema is attached to the prepared-document session, visible rows receive schema markers, and
+    the details/diagnostics payload remains separate from Layer 1 diagnostics.
 </p>
 
-<JsonVisualizer @ref="_visualizer"
-                SessionId="layer2-session"
-                DocumentId="layer2-document"
-                Text="@SampleJson"
-                RuntimeEvent="HandleRuntimeEvent" />
+@if (string.IsNullOrWhiteSpace(_preparedDocumentId))
+{
+    <p>Preparing schema overlay sample document…</p>
+}
+else
+{
+    <JsonVisualizer @key="_preparedDocumentId"
+                    @ref="_visualizer"
+                    SessionId="layer2-prepared-session"
+                    PreparedDocumentId="@_preparedDocumentId"
+                    RuntimeEvent="HandleRuntimeEvent" />
+}
 
 <section style="margin-top: 1.5rem; display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
-        <h2 style="font-size: 1.1rem; margin-top: 0;">Schema metadata lookup</h2>
-        <p style="margin-top: 0;">Enter a path to look up schema metadata, e.g. <code>$.name</code> or <code>$.kind</code>.</p>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Prepared schema controls</h2>
+        <p style="margin-top: 0;">Attach the schema to revision @_currentRevision, inspect details by JSON Pointer, or request bounded diagnostics for visible rows.</p>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-            <input @bind="_schemaPath"
+            <button @onclick="AttachSchemaOverlayAsync" disabled="@string.IsNullOrWhiteSpace(_preparedDocumentId)">Attach schema overlay</button>
+            <button @onclick="DetachSchemaOverlayAsync" disabled="@string.IsNullOrWhiteSpace(_overlayId)">Detach overlay</button>
+        </div>
+        <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+            <input @bind="_schemaPointer"
                    style="flex: 1 1 16rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"
-                   aria-label="Schema path" />
-            <button @onclick="LookupSchemaMetadataAsync"
-                    style="padding: 0.5rem 0.75rem; border: 1px solid #2563eb; background: #2563eb; color: white; border-radius: 4px; cursor: pointer;">
-                Lookup
-            </button>
+                   aria-label="Schema JSON Pointer" />
+            <button @onclick="LookupSchemaDetailsAsync">Lookup details</button>
+            <button @onclick="LoadSchemaDiagnosticsAsync">Validate visible rows</button>
         </div>
         <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button @onclick='() => SetSchemaPath("$.name")'>Lookup name</button>
-            <button @onclick='() => SetSchemaPath("$.kind")'>Lookup kind</button>
-            <button @onclick='() => SetSchemaPath("$.enabled")'>Lookup enabled</button>
+            <button @onclick='() => SetSchemaPointer("/name")'>Details: name</button>
+            <button @onclick='() => SetSchemaPointer("/kind")'>Details: kind</button>
+            <button @onclick='() => SetSchemaPointer("/count")'>Details: count</button>
         </div>
-        <pre style="margin-top: 0.75rem; white-space: pre-wrap;">@_schemaMetadataJson</pre>
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
-        <h2 style="font-size: 1.1rem; margin-top: 0;">Latest runtime event</h2>
-        <p><strong>Type:</strong> @_latestEvent.Type</p>
-        <p><strong>Session:</strong> @_latestEvent.SessionId</p>
-        <p><strong>Document:</strong> @_latestEvent.DocumentId</p>
-        <p><strong>Message:</strong> @_latestEvent.Message</p>
+        <h2 style="font-size: 1.1rem; margin-top: 0;">Schema details payload</h2>
+        <pre style="margin: 0; white-space: pre-wrap;">@_schemaDetailsJson</pre>
     </section>
 
     <section style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem;">
@@ -66,85 +77,167 @@
 
 @code {
     private JsonVisualizer? _visualizer;
-    private string _schemaPath = "$.name";
-    private RuntimeEventDto _latestEvent = new(RuntimeEventTypes.SessionCreated, "layer2-session", "Waiting for runtime event.");
+    private string? _preparedDocumentId;
+    private string? _overlayId;
+    private long _currentRevision;
+    private string _schemaPointer = "/name";
+    private string _schemaDetailsJson = "No schema details lookup yet.";
     private List<SchemaDiagnosticDto> _schemaDiagnostics = [];
-    private string _schemaMetadataJson = "No schema metadata lookup yet.";
-    private bool _schemaAttached;
-    private static readonly JsonSerializerOptions MetadataJsonOptions = new() { WriteIndented = true };
-    private const string SampleSchemaId = "layer2-schema";
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private const string PreparedDocumentId = "layer2-schema-overlay-prepared-sample";
+    private const string SchemaId = "example-item-schema";
 
     private const string SampleJson = """
 {
   "name": "Example item",
   "kind": "demo",
   "enabled": true,
-  "count": 3
+  "count": 12,
+  "tags": ["schema", "prepared"]
 }
 """;
 
     private const string SampleSchemaJson = """
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:blazor-json-visualizer:samples:example-item",
   "title": "Example Item",
   "type": "object",
   "required": ["name", "kind", "enabled"],
   "properties": {
     "name": {
       "type": "string",
-      "description": "Human-readable item name."
+      "title": "Name",
+      "description": "Human-readable item name.",
+      "minLength": 3
     },
+    "kind": {
+      "$ref": "#/$defs/kind"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "Whether the item is enabled.",
+      "default": true
+    },
+    "count": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Intentionally above maximum in the sample document to show diagnostics."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "maxItems": 3
+    }
+  },
+  "$defs": {
     "kind": {
       "type": "string",
       "enum": ["demo", "test", "production"],
       "description": "Item classification."
-    },
-    "enabled": {
-      "type": "boolean",
-      "description": "Whether the item is enabled."
-    },
-    "count": {
-      "type": "number",
-      "description": "Example numeric value."
     }
   }
 }
 """;
 
-    private async Task LookupSchemaMetadataAsync()
+    protected override async Task OnInitializedAsync()
+    {
+        await EnsurePreparedDocumentAsync();
+        _preparedDocumentId = PreparedDocumentId;
+    }
+
+    private async Task EnsurePreparedDocumentAsync()
+    {
+        var existing = await PreparedDocumentStore.GetAsync(PreparedDocumentId);
+        if (existing is not null)
+        {
+            return;
+        }
+
+        await using var sourceStream = new MemoryStream(Encoding.UTF8.GetBytes(SampleJson));
+        await JsonDocumentImporter.ImportAsync(sourceStream, new JsonDocumentImportOptions
+        {
+            DocumentId = PreparedDocumentId,
+            BuildPathIndex = true,
+            BuildSearchIndex = true
+        });
+    }
+
+    private async Task AttachSchemaOverlayAsync()
     {
         if (_visualizer is null)
         {
             return;
         }
 
-        var metadata = await _visualizer.GetSchemaMetadataForPathAsync(_schemaPath);
-        _schemaMetadataJson = metadata is null
-            ? "No schema metadata for this path."
-            : JsonSerializer.Serialize(metadata, MetadataJsonOptions);
+        var metadata = await PreparedRuntimeBridge.GetMetadataAsync("layer2-prepared-session");
+        _currentRevision = metadata.Revision;
+        using var document = JsonDocument.Parse(SampleSchemaJson);
+        var result = await _visualizer.AttachPreparedSchemaOverlayAsync(SchemaId, document.RootElement.Clone(), metadata.Revision);
+        _overlayId = result.OverlayId;
+        _schemaDiagnostics = result.Diagnostics?.Select(ToLegacySchemaDiagnostic).ToList() ?? [];
+        _schemaDetailsJson = JsonSerializer.Serialize(result, JsonOptions);
     }
 
-    private void SetSchemaPath(string path)
+    private async Task DetachSchemaOverlayAsync()
     {
-        _schemaPath = path;
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        var result = await _visualizer.DetachPreparedSchemaOverlayAsync(_overlayId);
+        _overlayId = null;
+        _schemaDiagnostics = [];
+        _schemaDetailsJson = JsonSerializer.Serialize(result, JsonOptions);
     }
 
-    private async Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    private async Task LookupSchemaDetailsAsync()
     {
-        _latestEvent = runtimeEvent;
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        var result = await _visualizer.GetPreparedSchemaDetailsAsync(_schemaPointer, _currentRevision);
+        _schemaDiagnostics = result.Diagnostics?.Select(ToLegacySchemaDiagnostic).ToList() ?? [];
+        _schemaDetailsJson = JsonSerializer.Serialize(result, JsonOptions);
+    }
+
+    private async Task LoadSchemaDiagnosticsAsync()
+    {
+        if (_visualizer is null)
+        {
+            return;
+        }
+
+        var result = await _visualizer.GetPreparedSchemaDiagnosticsAsync(_currentRevision, maxDiagnostics: 10);
+        _schemaDiagnostics = result.Diagnostics?.Select(ToLegacySchemaDiagnostic).ToList() ?? [];
+        _schemaDetailsJson = JsonSerializer.Serialize(result, JsonOptions);
+    }
+
+    private void SetSchemaPointer(string path)
+    {
+        _schemaPointer = path;
+    }
+
+    private Task HandleRuntimeEvent(RuntimeEventDto runtimeEvent)
+    {
+        if (runtimeEvent.Type == RuntimeEventTypes.DocumentLoaded && _visualizer is not null && string.IsNullOrWhiteSpace(_overlayId))
+        {
+            _ = InvokeAsync(AttachSchemaOverlayAsync);
+        }
 
         if (runtimeEvent.SchemaDiagnostics is not null)
         {
             _schemaDiagnostics = runtimeEvent.SchemaDiagnostics.ToList();
         }
 
-        if (runtimeEvent.Type == RuntimeEventTypes.DocumentLoaded && !_schemaAttached && _visualizer is not null)
-        {
-            using var document = JsonDocument.Parse(SampleSchemaJson);
-            await _visualizer.AttachSchemaAsync(SampleSchemaId, document.RootElement.Clone());
-            _schemaAttached = true;
-        }
-
-        await InvokeAsync(StateHasChanged);
+        return InvokeAsync(StateHasChanged);
     }
+
+    private static SchemaDiagnosticDto ToLegacySchemaDiagnostic(SchemaOverlayDiagnosticDto diagnostic)
+        => new(diagnostic.DiagnosticId, diagnostic.NodeId, diagnostic.Path ?? string.Empty, diagnostic.Severity, diagnostic.Message, diagnostic.Source);
 }

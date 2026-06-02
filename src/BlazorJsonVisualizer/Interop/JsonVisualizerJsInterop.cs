@@ -52,6 +52,30 @@ public sealed class JsonVisualizerJsInterop(IJSRuntime jsRuntime) : IAsyncDispos
         return await module.InvokeAsync<PreparedEditResultDto>("applyPreparedEdit", command);
     }
 
+    public async ValueTask<SchemaOverlayAttachResultDto> AttachPreparedSchemaOverlayAsync(SchemaOverlayAttachRequestDto request)
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<SchemaOverlayAttachResultDto>("attachPreparedSchemaOverlay", request);
+    }
+
+    public async ValueTask<SchemaOverlayDetachResultDto> DetachPreparedSchemaOverlayAsync(SchemaOverlayDetachRequestDto request)
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<SchemaOverlayDetachResultDto>("detachPreparedSchemaOverlay", request);
+    }
+
+    public async ValueTask<SchemaDetailsResultDto> GetPreparedSchemaDetailsAsync(SchemaDetailsRequestDto request)
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<SchemaDetailsResultDto>("getPreparedSchemaDetails", request);
+    }
+
+    public async ValueTask<SchemaValidationResultDto> GetPreparedSchemaDiagnosticsAsync(SchemaValidationRequestDto request)
+    {
+        var module = await moduleTask.Value;
+        return await module.InvokeAsync<SchemaValidationResultDto>("getPreparedSchemaDiagnostics", request);
+    }
+
     public async ValueTask ClosePreparedDocumentSessionAsync(string sessionId)
     {
         var module = await moduleTask.Value;

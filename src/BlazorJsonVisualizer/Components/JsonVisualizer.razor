@@ -1,9 +1,10 @@
 @using BlazorJsonVisualizer.Interop
 @using BlazorJsonVisualizer.PreparedDocuments
 @using System.Text.Json
+@using Microsoft.Extensions.DependencyInjection
 @implements IAsyncDisposable
 @inject IJSRuntime JSRuntime
-@inject IPreparedDocumentRuntimeBridge? PreparedDocumentRuntimeBridge
+@inject IServiceProvider Services
 
 <div class="json-visualizer-shell">
     <div id="@_hostElementId"></div>
@@ -15,6 +16,8 @@
     private JsonVisualizerJsInterop? _interop;
     private DotNetObjectReference<JsonVisualizer>? _callbackReference;
     private bool _sessionCreated;
+
+    private IPreparedDocumentRuntimeBridge? PreparedDocumentRuntimeBridge => Services.GetService<IPreparedDocumentRuntimeBridge>();
 
     [Parameter]
     public string? SessionId { get; set; }
@@ -116,6 +119,14 @@
         => PreparedDocumentRuntimeBridge is null
             ? new PreparedEditResultDto(false, command.SessionId, EffectivePreparedDocumentId, command.BaseRevision, 0, false, Diagnostics: [BridgeUnavailableDiagnostic()])
             : await PreparedDocumentRuntimeBridge.ApplyEditAsync(command);
+
+    [JSInvokable]
+    public Task<SchemaOverlayAttachResultDto> AttachPreparedSchemaOverlayAsync(SchemaOverlayAttachRequestDto request)
+        => Task.FromResult(new SchemaOverlayAttachResultDto(true, request.SessionId, request.DocumentId, request.BaseRevision, SchemaId: request.SchemaId, Diagnostics: []));
+
+    [JSInvokable]
+    public Task<SchemaOverlayDetachResultDto> DetachPreparedSchemaOverlayAsync(SchemaOverlayDetachRequestDto request)
+        => Task.FromResult(new SchemaOverlayDetachResultDto(true, request.SessionId, request.DocumentId, request.OverlayId, Diagnostics: []));
 
     [JSInvokable]
     public async Task<PreparedCloseResultDto> ClosePreparedDocumentSessionAsync(string sessionId)
@@ -233,6 +244,60 @@
         }
 
         await _interop.ApplyTransactionAsync(new ApplyTransactionCommand(EffectiveSessionId, transaction));
+    }
+
+    public async Task<SchemaOverlayAttachResultDto> AttachPreparedSchemaOverlayAsync(string schemaId, JsonElement schema, long baseRevision)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(schemaId) || string.IsNullOrWhiteSpace(PreparedDocumentId))
+        {
+            return new SchemaOverlayAttachResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, baseRevision, SchemaId: schemaId);
+        }
+
+        return await _interop.AttachPreparedSchemaOverlayAsync(new SchemaOverlayAttachRequestDto(
+            EffectiveSessionId,
+            EffectivePreparedDocumentId,
+            baseRevision,
+            schemaId,
+            new SchemaSourceDto("inline", Schema: schema),
+            new SchemaOverlayOptionsDto(50, true)));
+    }
+
+    public async Task<SchemaDetailsResultDto> GetPreparedSchemaDetailsAsync(string jsonPointerOrPath, long revision)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId) || string.IsNullOrWhiteSpace(jsonPointerOrPath))
+        {
+            return new SchemaDetailsResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, revision, Target: new SchemaOverlayTargetDto("jsonPointer", Path: jsonPointerOrPath));
+        }
+
+        return await _interop.GetPreparedSchemaDetailsAsync(new SchemaDetailsRequestDto(
+            EffectiveSessionId,
+            EffectivePreparedDocumentId,
+            revision,
+            new SchemaOverlayTargetDto("jsonPointer", Path: jsonPointerOrPath)));
+    }
+
+    public async Task<SchemaValidationResultDto> GetPreparedSchemaDiagnosticsAsync(long revision, int maxDiagnostics = 50)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId))
+        {
+            return new SchemaValidationResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId, revision);
+        }
+
+        return await _interop.GetPreparedSchemaDiagnosticsAsync(new SchemaValidationRequestDto(
+            EffectiveSessionId,
+            EffectivePreparedDocumentId,
+            revision,
+            MaxDiagnostics: maxDiagnostics));
+    }
+
+    public async Task<SchemaOverlayDetachResultDto> DetachPreparedSchemaOverlayAsync(string? overlayId = null)
+    {
+        if (_interop is null || !_sessionCreated || string.IsNullOrWhiteSpace(PreparedDocumentId))
+        {
+            return new SchemaOverlayDetachResultDto(false, EffectiveSessionId, EffectivePreparedDocumentId);
+        }
+
+        return await _interop.DetachPreparedSchemaOverlayAsync(new SchemaOverlayDetachRequestDto(EffectiveSessionId, EffectivePreparedDocumentId, overlayId));
     }
 
     public async Task AttachSchemaAsync(string schemaId, JsonElement schema)

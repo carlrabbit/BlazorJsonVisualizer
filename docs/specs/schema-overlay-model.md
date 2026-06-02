@@ -443,6 +443,13 @@ Minimum host-facing operations:
 
 Normal user/request failures must return result DTOs with diagnostics instead of unhandled exceptions.
 
+
+## Implementation Notes
+
+The Milestone 0021 implementation keeps prepared-document schema overlay state session-scoped in the browser runtime and exposes explicit Blazor host operations for attaching, detaching, resolving details, requesting diagnostics, and refreshing row decorations. Metadata and diagnostics remain revision-bound. The first validation path is intentionally bounded to requested or visible prepared rows and may use row text or caller-supplied row values; it does not load a huge prepared document into the browser as one string.
+
+Local same-document `$ref` targets are resolved for metadata and visible-row validation. Remote and cross-document references return structured unsupported-reference diagnostics. Tuple validation, conditional/applicator keywords, pattern/format validation, and additional-property validation remain unsupported validation-affecting keywords for this milestone and must not be interpreted as a clean full Draft 2020-12 validation result.
+
 ## Failure Semantics
 
 Normal failures include:
