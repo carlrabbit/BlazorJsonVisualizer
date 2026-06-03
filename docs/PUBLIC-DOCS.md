@@ -27,7 +27,7 @@ Public docs are currently **Preview**. They are allowed to be intentionally inco
 | Installation docs | `public-docs/installation.md` | Planned |
 | Package docs | `public-docs/packages.md`, `public-docs/nuget/package-readme.md` | Planned |
 | Public API documentation | `public-docs/api/` | Preview for implemented APIs |
-| Diagnostics reference | `public-docs/diagnostics.md`, `public-docs/diagnostics/import-diagnostics.md`, `public-docs/diagnostics/ef-core-storage-diagnostics.md`, `public-docs/diagnostics/layer1-viewer-diagnostics.md` | Preview for prepared-document, ingestion, storage, and Layer 1 diagnostics |
+| Diagnostics reference | `public-docs/diagnostics.md`, `public-docs/diagnostics/import-diagnostics.md`, `public-docs/diagnostics/ef-core-storage-diagnostics.md`, `public-docs/diagnostics/layer1-viewer-diagnostics.md`, `public-docs/diagnostics/schema-overlay-diagnostics.md` | Preview for prepared-document, ingestion, storage, Layer 1, and schema overlay diagnostics |
 | Samples documentation | `public-docs/samples.md`, `public-docs/samples/` | Preview for repository samples |
 | Release notes | `public-docs/release-notes.md` | Pre-release placeholder |
 | Versioning policy | `public-docs/versioning.md` | Planned |
@@ -38,6 +38,7 @@ Public docs are currently **Preview**. They are allowed to be intentionally inco
 | Layer 1 prepared-document search guide | `public-docs/guides/layer1-prepared-document-search.md` | Preview for read-only Layer 1 search workflow |
 | Layer 1 controlled editing guide | `public-docs/guides/layer1-controlled-editing.md` | Preview for controlled editing transactions |
 | Edited prepared-document export guide | `public-docs/guides/export-edited-prepared-document.md` | Preview for edited export behavior |
+| Layer 2 JSON Schema overlay guide | `public-docs/guides/layer2-json-schema-overlay.md` | Preview for read-only schema overlay behavior |
 | EF Core storage guide | `public-docs/guides/ef-core-prepared-document-storage.md` | Preview for EF Core storage backend |
 | SQL Server storage optimization guide | `public-docs/guides/sql-server-prepared-document-storage-optimizations.md` | Preview for opt-in SQL Server storage recommendations |
 
@@ -56,6 +57,7 @@ When any listed surface changes, keep related public surfaces aligned.
 - When Layer 1 viewer/search behavior changes, review `docs/specs/prepared-document-viewer-search-workflow.md`, `docs/specs/range-backed-layer1-viewer.md`, `public-docs/guides/open-prepared-document.md`, `public-docs/guides/layer1-prepared-document-search.md`, `public-docs/diagnostics.md`, and `public-docs/diagnostics/layer1-viewer-diagnostics.md`.
 - When Layer 1 controlled editing changes, review `docs/specs/layer1-controlled-editing-transactions.md`, `docs/specs/transaction-log.md`, `public-docs/guides/layer1-controlled-editing.md`, and `public-docs/concepts.md`.
 - When edited export or degraded-state behavior changes, review `docs/specs/edited-prepared-document-export.md`, `docs/specs/document-export.md`, `docs/specs/layer1-viewer-diagnostics.md`, `public-docs/guides/export-edited-prepared-document.md`, `public-docs/diagnostics.md`, and `public-docs/diagnostics/layer1-viewer-diagnostics.md`.
+- When Layer 2 JSON Schema overlay behavior changes, review `docs/specs/schema-overlay-model.md`, `docs/architecture/schema-overlay-boundary.md`, `public-docs/concepts.md`, `public-docs/guides/huge-json-documents.md`, `public-docs/guides/layer2-json-schema-overlay.md`, `public-docs/diagnostics.md`, and `public-docs/diagnostics/schema-overlay-diagnostics.md`.
 
 ## Release Readiness
 

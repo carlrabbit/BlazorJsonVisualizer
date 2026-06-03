@@ -16,9 +16,12 @@ For huge JSON documents, use the prepared-document lifecycle:
 import raw JSON
   -> open prepared document
   -> view/search/reveal through the range-backed Layer 1 viewer
+  -> optionally attach a read-only JSON Schema overlay
   -> apply controlled Layer 1 edits when needed
   -> export the current prepared-document revision
 ```
+
+The JSON Schema overlay can add read-only schema metadata, row decorations, details, and diagnostics to a prepared-document session. It does not replace Layer 1 document ownership or enable schema-aware editing.
 
 ## Storage choices
 
@@ -36,5 +39,7 @@ SQL Server 2022 and SQL Server 2025 storage optimizations are opt-in. They are n
 - `public-docs/guides/layer1-prepared-document-search.md`
 - `public-docs/guides/layer1-controlled-editing.md`
 - `public-docs/guides/export-edited-prepared-document.md`
+- `public-docs/guides/layer2-json-schema-overlay.md`
 - `public-docs/guides/ef-core-prepared-document-storage.md`
 - `public-docs/diagnostics.md`
+- `public-docs/diagnostics/schema-overlay-diagnostics.md`

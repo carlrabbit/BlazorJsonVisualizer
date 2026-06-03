@@ -72,6 +72,27 @@ See:
 - `public-docs/guides/open-prepared-document.md`
 - `public-docs/guides/layer1-prepared-document-search.md`
 
+## Layer 2 JSON Schema Overlay
+
+### Supported now
+
+A prepared-document session can attach a read-only JSON Schema overlay.
+
+The schema overlay can provide schema metadata, row decorations, details payloads, and schema diagnostics for prepared-document structure when the required path or structural metadata is available.
+
+Schema overlays explain and validate the document. They do not own source text, storage, viewport behavior, Layer 1 controlled transactions, or export behavior.
+
+Schema overlay results are revision-bound. Metadata or diagnostics produced for an older prepared-document revision must not be presented as current after the document revision changes.
+
+See:
+
+- `public-docs/guides/layer2-json-schema-overlay.md`
+- `public-docs/diagnostics/schema-overlay-diagnostics.md`
+
+### Current limits
+
+Schema-aware editing, automatic schema inference, arbitrary remote `$ref` fetching, complete JSON Schema conformance, schema-driven forms, and Layer 3 projection integration remain planned or out of scope unless documented separately.
+
 ## Controlled Layer 1 Editing
 
 ### Supported now

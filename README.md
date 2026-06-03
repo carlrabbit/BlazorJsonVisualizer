@@ -1,12 +1,12 @@
 # BlazorJsonVisualizer
 
-BlazorJsonVisualizer is a Blazor-facing package for a standalone TypeScript browser runtime that visualizes, navigates, searches, and incrementally edits large structured JSON documents.
+BlazorJsonVisualizer is a Blazor-facing package for a standalone TypeScript browser runtime that visualizes, navigates, searches, enriches, and incrementally edits large structured JSON documents.
 
 ## Current status
 
 BlazorJsonVisualizer is in **Exploration / Active Design** mode.
 
-The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, ingestion, prepared-document storage, EF Core storage, search/indexing, controlled Layer 1 editing, edited export, visual identity, and browser/Blazor boundaries. Architecture remains emerging and should be documented only where durable subsystem boundaries need explanation.
+The repository is behavior-rich and has strong specs for the runtime, prepared-document lifecycle, ingestion, prepared-document storage, EF Core storage, search/indexing, controlled Layer 1 editing, edited export, Layer 2 JSON Schema overlays, visual identity, and browser/Blazor boundaries. Architecture remains emerging and should be documented only where durable subsystem boundaries need explanation.
 
 Public package publication is **preview/planned**. Public docs are preview surfaces and may intentionally distinguish implemented repository behavior from planned consumer workflows. Release readiness is future work and must not be treated as a normal implementation requirement.
 
@@ -29,11 +29,14 @@ import raw JSON once
   -> create a prepared document
   -> open it through the range-backed Layer 1 viewer
   -> search and reveal through prepared-document services
+  -> optionally attach a JSON Schema overlay for metadata and diagnostics
   -> apply controlled Layer 1 edits as transactions
   -> export the current revision when needed
 ```
 
 Prepared documents can be stored through the default storage path or through the EF Core prepared-document storage backend. Applications should depend on the prepared-document store/runtime contracts, not on a provider's internal storage layout.
+
+Layer 2 JSON Schema overlays explain and validate prepared-document structure through schema metadata, row decorations, details payloads, and schema diagnostics. Schema overlays do not own source text, storage, viewport mechanics, transactions, or export behavior.
 
 ## Samples
 
@@ -63,10 +66,12 @@ These preview docs describe currently useful concepts and planned consumer workf
 - [Layer 1 prepared-document search](public-docs/guides/layer1-prepared-document-search.md)
 - [Layer 1 controlled editing](public-docs/guides/layer1-controlled-editing.md)
 - [Export edited prepared documents](public-docs/guides/export-edited-prepared-document.md)
+- [Layer 2 JSON Schema overlay](public-docs/guides/layer2-json-schema-overlay.md)
 - [EF Core prepared-document storage](public-docs/guides/ef-core-prepared-document-storage.md)
 - [SQL Server prepared-document storage optimizations](public-docs/guides/sql-server-prepared-document-storage-optimizations.md)
 - [Import diagnostics](public-docs/diagnostics/import-diagnostics.md)
 - [Layer 1 viewer diagnostics](public-docs/diagnostics/layer1-viewer-diagnostics.md)
+- [Schema overlay diagnostics](public-docs/diagnostics/schema-overlay-diagnostics.md)
 - [EF Core storage diagnostics](public-docs/diagnostics/ef-core-storage-diagnostics.md)
 
 ## Contributor documentation

@@ -14,6 +14,7 @@ For huge JSON documents, use the prepared-document lifecycle instead of loading 
 Import once.
 Open prepared document many times.
 Search and navigation use prepared services and indexes.
+Optional schema overlays add read-only metadata and diagnostics.
 Controlled edits are stored as transactions.
 Export materializes the selected document revision as JSON.
 ```
@@ -25,10 +26,19 @@ Export materializes the selected document revision as JSON.
 3. Open handles read from the prepared document without reparsing the full source.
 4. The range-backed Layer 1 viewer opens a prepared document session and requests bounded rows/ranges instead of receiving the whole source as one browser string.
 5. Search returns bounded result pages with byte offsets, previews, and revision information.
-6. Controlled Layer 1 edits append validated transactions.
-7. Export streams unchanged source regions where possible and materializes supported edited regions from transactions.
+6. A read-only Layer 2 JSON Schema overlay may attach schema metadata to the prepared-document session and provide bounded row decorations, details, and diagnostics.
+7. Controlled Layer 1 edits append validated transactions.
+8. Export streams unchanged source regions where possible and materializes supported edited regions from transactions.
 
-The default implementation is file backed, and EF Core storage is available for applications that want prepared-document artifacts in an application-owned relational database. The public contract is the prepared-document store, ingestion, runtime-viewing, transaction, and export APIs. Applications should not depend on the internal file layout or database table layout.
+The default implementation is file backed, and EF Core storage is available for applications that want prepared-document artifacts in an application-owned relational database. The public contract is the prepared-document store, ingestion, runtime-viewing, schema overlay, transaction, and export APIs. Applications should not depend on the internal file layout or database table layout.
+
+## Schema overlays
+
+Schema overlays are optional. A prepared document remains viewable, searchable, foldable, editable through supported Layer 1 controlled transactions, and exportable without a schema.
+
+A schema overlay can explain visible rows or selected nodes through title, description, expected type, enum, default, and constraint metadata. It can also report schema diagnostics separately from Layer 1 viewer/search/edit/export diagnostics.
+
+Schema overlay metadata and diagnostics are tied to the prepared-document revision they were produced for. After controlled edits change the revision, stale schema overlay results must be recomputed or reported as stale instead of being shown as current.
 
 ## Related guides
 
@@ -37,9 +47,11 @@ The default implementation is file backed, and EF Core storage is available for 
 - `public-docs/guides/layer1-prepared-document-search.md`
 - `public-docs/guides/layer1-controlled-editing.md`
 - `public-docs/guides/export-edited-prepared-document.md`
+- `public-docs/guides/layer2-json-schema-overlay.md`
 - `public-docs/guides/ef-core-prepared-document-storage.md`
 - `public-docs/diagnostics/import-diagnostics.md`
 - `public-docs/diagnostics/layer1-viewer-diagnostics.md`
+- `public-docs/diagnostics/schema-overlay-diagnostics.md`
 
 ## Current Limits
 
@@ -49,4 +61,6 @@ Search is bounded and may be paged. Advanced query languages, fuzzy search, sche
 
 Layer 1 controlled editing is intentionally not freeform text editing. Unsupported edit/export operations fail clearly.
 
-Schema overlays and projection plugins over prepared documents remain later workflows.
+Layer 2 JSON Schema overlays are read-only. Schema-aware editing, automatic schema inference, arbitrary remote `$ref` fetching, full JSON Schema conformance, and schema-driven forms remain planned or out of scope unless documented separately.
+
+Projection plugins over prepared documents remain a later workflow.
